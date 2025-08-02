@@ -1,0 +1,390 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
+import { internalMutation, internalQuery, query } from "./_generated/server";
+
+// Get all active submissions that need view tracking
+export const getActiveSubmissions = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("submissions")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "approved")
+        )
+      )
+      .collect();
+  },
+});
+
+// Update submission view count and log tracking entry
+// Helper function to calculate earnings based on view count and campaign settings
+function calculateEarnings(
+  viewCount: number,
+  cpmRate: number,
+  maxPayoutPerSubmission: number
+): number {
+  const viewsInThousands = Math.floor(viewCount / 1000);
+  const grossEarnings = viewsInThousands * cpmRate;
+  return Math.min(grossEarnings, maxPayoutPerSubmission);
+}
+
+export const updateSubmissionViews = internalMutation({
+  args: {
+    submissionId: v.id("submissions"),
+    viewCount: v.number(),
+    previousViews: v.number(),
+    source: v.string(),
+    updateLastApiCall: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // Fetch required entities
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) {
+      throw new Error("Submission not found");
+    }
+
+    const campaign = await ctx.db.get(submission.campaignId);
+    if (!campaign) {
+      throw new Error("Campaign not found");
+    }
+
+    // Prepare submission updates
+    const submissionUpdates: any = {
+      viewCount: args.viewCount,
+      lastViewUpdate: Date.now(),
+    };
+
+    if (args.updateLastApiCall) {
+      submissionUpdates.lastApiCall = Date.now();
+    }
+
+    // Prepare campaign updates
+    const viewDelta = args.viewCount - args.previousViews;
+    const campaignUpdates: any = {
+      totalViews: (campaign.totalViews || 0) + viewDelta,
+    };
+
+    // Handle earnings and budget for approved submissions
+    if (submission.status === "approved") {
+      const hasViewCountChanged = args.viewCount !== (submission.viewCount || 0);
+      
+      if (hasViewCountChanged) {
+        const newEarnings = calculateEarnings(
+          args.viewCount,
+          campaign.cpmRate,
+          campaign.maxPayoutPerSubmission
+        );
+        
+        const currentEarnings = submission.earnings || 0;
+        const earningsDelta = newEarnings - currentEarnings;
+        
+        if (earningsDelta !== 0) {
+          submissionUpdates.earnings = newEarnings;
+          
+          // Adjust campaign budget (deduct for increases, add back for decreases)
+          const newRemainingBudget = Math.max(
+            0,
+            campaign.remainingBudget - earningsDelta
+          );
+          
+          campaignUpdates.remainingBudget = newRemainingBudget;
+          
+          // Mark campaign as completed if budget is exhausted
+          if (newRemainingBudget === 0 && campaign.status === "active") {
+            campaignUpdates.status = "completed";
+          }
+          
+          // Update creator's total earnings in their profile
+          const creatorProfile = await ctx.db
+            .query("profiles")
+            .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
+            .unique();
+          
+          if (creatorProfile) {
+            const newTotalEarnings = (creatorProfile.totalEarnings || 0) + earningsDelta;
+            await ctx.db.patch(creatorProfile._id, {
+              totalEarnings: Math.max(0, newTotalEarnings), // Ensure non-negative
+            });
+          }
+        }
+      }
+    }
+
+    // Perform atomic database updates
+    await Promise.all([
+      ctx.db.patch(submission.campaignId, campaignUpdates),
+      ctx.db.patch(args.submissionId, submissionUpdates),
+    ]);
+
+    // Log view tracking entry
+    await ctx.db.insert("viewTracking", {
+      submissionId: args.submissionId,
+      viewCount: args.viewCount,
+      timestamp: Date.now(),
+      source: args.source,
+    });
+
+    // Handle threshold crossing for pending submissions
+    if (
+      submission.status === "pending" &&
+      args.previousViews < 1000 &&
+      args.viewCount >= 1000
+    ) {
+      await ctx.runMutation(internal.viewTrackingHelpers.markThresholdMet, {
+        submissionId: args.submissionId,
+      });
+    }
+  },
+});
+
+// Update last API call timestamp for rate limiting
+export const updateLastApiCall = internalMutation({
+  args: { submissionId: v.id("submissions") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.submissionId, {
+      lastApiCall: Date.now(),
+    });
+  },
+});
+
+
+
+// Mark submission as having reached 1K view threshold
+export const markThresholdMet = internalMutation({
+  args: { submissionId: v.id("submissions") },
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) return;
+
+    // Add a flag to indicate threshold was met (for UI purposes)
+    await ctx.db.patch(args.submissionId, {
+      thresholdMetAt: Date.now(),
+    });
+
+    // Send notification to brand about threshold being met
+    const campaign = await ctx.db.get(submission.campaignId);
+    if (campaign) {
+      // Could trigger email notification here
+      console.log(`Submission ${args.submissionId} reached 1K views threshold`);
+    }
+  },
+});
+
+// SECURE: Validate submission access before returning view history
+export const validateSubmissionAccess = internalQuery({
+  args: {
+    submissionId: v.id("submissions"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args): Promise<boolean> => {
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) return false;
+
+    // Creator can access their own submissions
+    if (submission.creatorId === args.userId) {
+      return true;
+    }
+
+    // Brand can access submissions to their campaigns
+    const campaign = await ctx.db.get(submission.campaignId);
+    if (campaign && campaign.brandId === args.userId) {
+      return true;
+    }
+
+    return false;
+  },
+});
+
+// SECURE: Get submission with proper authorization check
+export const getSubmissionWithAuth = internalQuery({
+  args: {
+    submissionId: v.id("submissions"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) return null;
+
+    // Check if user is the creator of the submission
+    if (submission.creatorId === args.userId) {
+      return submission;
+    }
+
+    // Check if user is the brand owner of the campaign
+    const campaign = await ctx.db.get(submission.campaignId);
+    if (campaign && campaign.brandId === args.userId) {
+      return submission;
+    }
+
+    return null;
+  },
+});
+
+// Get view history for a submission (internal)
+export const getViewHistory = internalQuery({
+  args: {
+    submissionId: v.id("submissions"),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("viewTracking")
+      .withIndex("by_submission_id", (q) =>
+        q.eq("submissionId", args.submissionId)
+      )
+      .order("desc")
+      .take(args.limit);
+  },
+});
+
+// Get old view records for cleanup
+export const getOldViewRecords = internalQuery({
+  args: { beforeTimestamp: v.number() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("viewTracking")
+      .withIndex("by_timestamp", (q) => q.lt("timestamp", args.beforeTimestamp))
+      .collect();
+  },
+});
+
+// Delete a view tracking record
+export const deleteViewRecord = internalMutation({
+  args: { recordId: v.id("viewTracking") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.recordId);
+  },
+});
+
+// SECURE: Get submission stats with proper validation
+export const getSubmissionStats = query({
+  args: { submissionId: v.id("submissions") },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    submission: Doc<"submissions">;
+    campaign: Doc<"campaigns"> | null;
+    recentHistory: Doc<"viewTracking">[];
+    hasReachedThreshold: boolean;
+    potentialEarnings: number;
+  } | null> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Authentication required");
+    }
+
+    // Validate access to this submission
+    const hasAccess: boolean = await ctx.runQuery(
+      internal.viewTrackingHelpers.validateSubmissionAccess,
+      {
+        submissionId: args.submissionId,
+        userId,
+      }
+    );
+
+    if (!hasAccess) {
+      throw new Error("Unauthorized access to submission data");
+    }
+
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) {
+      throw new Error("Submission not found");
+    }
+
+    // Get recent view history (last 7 days)
+    const recentHistory: Doc<"viewTracking">[] = await ctx.runQuery(
+      internal.viewTrackingHelpers.getViewHistory,
+      {
+        submissionId: args.submissionId,
+        limit: 168, // 7 days * 24 hours
+      }
+    );
+
+    const campaign = await ctx.db.get(submission.campaignId);
+
+    return {
+      submission,
+      campaign,
+      recentHistory,
+      hasReachedThreshold: (submission.viewCount || 0) >= 1000,
+      potentialEarnings: campaign
+        ? Math.min(
+            Math.floor((submission.viewCount || 0) / 1000) *
+              (campaign.cpmRate / 100),
+            campaign.maxPayoutPerSubmission / 100
+          )
+        : 0,
+    };
+  },
+});
+
+// SECURE: Get view history with proper validation
+export const getViewHistoryForUser = query({
+  args: {
+    submissionId: v.id("submissions"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<Doc<"viewTracking">[]> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Authentication required");
+    }
+
+    // Validate access to this submission
+    const hasAccess: boolean = await ctx.runQuery(
+      internal.viewTrackingHelpers.validateSubmissionAccess,
+      {
+        submissionId: args.submissionId,
+        userId,
+      }
+    );
+
+    if (!hasAccess) {
+      throw new Error("Unauthorized access to submission data");
+    }
+
+    const result: Doc<"viewTracking">[] = await ctx.runQuery(
+      internal.viewTrackingHelpers.getViewHistory,
+      {
+        submissionId: args.submissionId,
+        limit: args.limit || 24,
+      }
+    );
+
+    return result;
+  },
+});
+
+// SECURE: Rate-limited view refresh
+export const canRefreshViews = internalQuery({
+  args: {
+    submissionId: v.id("submissions"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) return false;
+
+    // Check access
+    const hasAccess: boolean = await ctx.runQuery(
+      internal.viewTrackingHelpers.validateSubmissionAccess,
+      {
+        submissionId: args.submissionId,
+        userId: args.userId,
+      }
+    );
+
+    if (!hasAccess) return false;
+
+    // Rate limiting: Allow refresh every 5 minutes
+    const lastRefresh = submission.lastApiCall || 0;
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+
+    return lastRefresh < fiveMinutesAgo;
+  },
+});
