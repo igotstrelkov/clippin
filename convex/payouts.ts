@@ -36,6 +36,7 @@ export const createStripeConnectAccount = action({
         country: args.country || "US",
         email: args.email,
         capabilities: {
+          card_payments: { requested: true },
           transfers: { requested: true },
         },
         business_type: "individual",
@@ -61,7 +62,7 @@ export const createStripeConnectAccount = action({
 // Create Stripe Connect onboarding link
 export const createConnectOnboardingLink = action({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx, _args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -99,7 +100,7 @@ export const getConnectAccountStatus = action({
   args: {},
   handler: async (
     ctx,
-    args
+    _args
   ): Promise<{
     hasAccount: boolean;
     isComplete: boolean;
@@ -202,6 +203,14 @@ export const processPayout = action({
             stripeFee: fees.stripeFee,
             submissionIds: args.submissionIds,
           },
+        }
+      );
+
+      // Update paidOutAmount for each submission
+      await ctx.runMutation(
+        internal.payoutHelpers.updateSubmissionsPaidAmount,
+        {
+          submissionIds: args.submissionIds,
         }
       );
 
@@ -329,8 +338,10 @@ export const handleWebhook = internalAction({
         process.env.STRIPE_WEBHOOK_SECRET!
       );
 
+      console.log(event);
+
       switch (event.type) {
-        case "payment_intent.succeeded":
+        case "payment_intent.succeeded": {
           const paymentIntent = event.data.object;
           if (paymentIntent.metadata.campaignId) {
             // Activate the campaign
@@ -350,8 +361,9 @@ export const handleWebhook = internalAction({
             );
           }
           break;
+        }
 
-        case "payment_intent.payment_failed":
+        case "payment_intent.payment_failed": {
           const failedPayment = event.data.object;
           if (failedPayment.metadata.campaignId) {
             await ctx.runMutation(
@@ -364,8 +376,9 @@ export const handleWebhook = internalAction({
             );
           }
           break;
+        }
 
-        case "account.updated":
+        case "account.updated": {
           // Handle Connect account updates
           const account = event.data.object;
           if (account.metadata?.userId) {
@@ -375,6 +388,7 @@ export const handleWebhook = internalAction({
             );
           }
           break;
+        }
 
         default:
           console.log(`Unhandled event type: ${event.type}`);

@@ -14,8 +14,6 @@ const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
 );
 
-console.log(import.meta.env.VITE_STRIPE_WEBHOOK_SECRET as string);
-
 interface CampaignPaymentProps {
   campaignId: string;
   amount: number;

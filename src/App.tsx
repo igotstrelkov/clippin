@@ -8,60 +8,63 @@ import { Navigation } from "./components/Navigation";
 import { ProfileSetup } from "./components/ProfileSetup";
 
 function App() {
-  const [currentView, setCurrentView] = useState<"marketplace" | "dashboard">(
-    "marketplace"
-  );
-  console.log(currentView);
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      <Navigation currentView={currentView} onViewChange={setCurrentView} />
-
-      <main className="container mx-auto px-4 py-8">
-        {currentView === "marketplace" ? (
-          <CampaignMarketplace />
-        ) : (
-          <>
-            <Authenticated>
-              <AuthenticatedApp />
-            </Authenticated>
-            <Unauthenticated>
-              <div className="max-w-md mx-auto mt-20">
-                <div className="bg-gray-800 rounded-lg p-8 text-center">
-                  <h1 className="text-2xl font-bold mb-6">
-                    Welcome to ClipCash
-                  </h1>
-                  <p className="text-gray-300 mb-6">
-                    Sign in to access your dashboard and manage your campaigns
-                    or submissions.
-                  </p>
-                  <SignInForm />
-                </div>
-              </div>
-            </Unauthenticated>
-          </>
-        )}
-      </main>
+      <Authenticated>
+        {/* This is the main app for authenticated users */}
+        <AuthenticatedApp />
+      </Authenticated>
+      <Unauthenticated>
+        {/* This is the public-facing view for unauthenticated users */}
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto mt-20">
+            <div className="bg-gray-800 rounded-lg p-8 text-center">
+              <h1 className="text-2xl font-bold mb-6">Welcome to Clippin</h1>
+              <p className="text-gray-300 mb-6">
+                Sign in to access your dashboard and manage your campaigns or
+                submissions.
+              </p>
+              <SignInForm />
+            </div>
+          </div>
+        </div>
+      </Unauthenticated>
     </div>
   );
 }
 
 function AuthenticatedApp() {
   const profile = useQuery(api.profiles.getCurrentProfile);
-  console.log(profile);
+  const [currentView, setCurrentView] = useState<"marketplace" | "dashboard">(
+    "marketplace"
+  );
 
   if (profile === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
       </div>
     );
   }
 
   if (!profile) {
+    // If authenticated but no profile, force profile setup
     return <ProfileSetup />;
   }
 
-  return <Dashboard />;
+  // User is authenticated and has a profile, show the main app
+  return (
+    <>
+      <Navigation currentView={currentView} onViewChange={setCurrentView} />
+      <main className="container mx-auto px-4 py-8">
+        {currentView === "marketplace" ? (
+          <CampaignMarketplace />
+        ) : (
+          <Dashboard />
+        )}
+      </main>
+    </>
+  );
 }
 
 export default App;

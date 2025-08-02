@@ -21,7 +21,6 @@ import type * as http from "../http.js";
 import type * as payoutHelpers from "../payoutHelpers.js";
 import type * as payouts from "../payouts.js";
 import type * as profiles from "../profiles.js";
-import type * as router from "../router.js";
 import type * as submissions from "../submissions.js";
 import type * as tiktokVerification from "../tiktokVerification.js";
 import type * as viewTracking from "../viewTracking.js";
@@ -44,7 +43,6 @@ declare const fullApi: ApiFromModules<{
   payoutHelpers: typeof payoutHelpers;
   payouts: typeof payouts;
   profiles: typeof profiles;
-  router: typeof router;
   submissions: typeof submissions;
   tiktokVerification: typeof tiktokVerification;
   viewTracking: typeof viewTracking;

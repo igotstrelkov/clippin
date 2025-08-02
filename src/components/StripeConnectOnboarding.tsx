@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { useMutation, useAction, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { useAction, useQuery } from "convex/react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { api } from "../../convex/_generated/api";
 
 interface ConnectStatus {
   hasAccount: boolean;
@@ -13,10 +13,16 @@ interface ConnectStatus {
 
 export function StripeConnectOnboarding() {
   const [loading, setLoading] = useState(false);
-  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null);
-  
-  const createConnectAccount = useAction(api.payouts.createStripeConnectAccount);
-  const createOnboardingLink = useAction(api.payouts.createConnectOnboardingLink);
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(
+    null
+  );
+
+  const createConnectAccount = useAction(
+    api.payouts.createStripeConnectAccount
+  );
+  const createOnboardingLink = useAction(
+    api.payouts.createConnectOnboardingLink
+  );
   const getAccountStatus = useAction(api.payouts.getConnectAccountStatus);
   const user = useQuery(api.auth.loggedInUser);
 
@@ -45,7 +51,9 @@ export function StripeConnectOnboarding() {
       toast.success("Payment account created! Now let's complete the setup.");
       await checkAccountStatus();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create account");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create account"
+      );
     } finally {
       setLoading(false);
     }
@@ -57,7 +65,9 @@ export function StripeConnectOnboarding() {
       const result = await createOnboardingLink();
       window.location.href = result.url;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to start onboarding");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start onboarding"
+      );
       setLoading(false);
     }
   };
@@ -78,16 +88,30 @@ export function StripeConnectOnboarding() {
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center mb-4">
           <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center mr-4">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+              />
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Set Up Payments</h3>
-            <p className="text-gray-400">Create your payment account to receive payouts</p>
+            <h3 className="text-lg font-semibold text-white">
+              Set Up Payments
+            </h3>
+            <p className="text-gray-400">
+              Create your payment account to receive payouts
+            </p>
           </div>
         </div>
-        
+
         <div className="space-y-4">
           <div className="bg-gray-700 rounded-lg p-4">
             <h4 className="font-medium text-white mb-2">What you'll need:</h4>
@@ -98,7 +122,7 @@ export function StripeConnectOnboarding() {
               <li>• Business details (if applicable)</li>
             </ul>
           </div>
-          
+
           <button
             onClick={handleCreateAccount}
             disabled={loading}
@@ -116,30 +140,50 @@ export function StripeConnectOnboarding() {
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center mb-4">
           <div className="w-12 h-12 bg-yellow-600 rounded-lg flex items-center justify-center mr-4">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
             </svg>
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Complete Setup</h3>
-            <p className="text-gray-400">Finish setting up your payment account</p>
+            <p className="text-gray-400">
+              Finish setting up your payment account
+            </p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="bg-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-white">Account Status</span>
-              <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded">Incomplete</span>
+              <span className="text-sm font-medium text-white">
+                Account Status
+              </span>
+              <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded">
+                Incomplete
+              </span>
             </div>
             <div className="space-y-2 text-sm text-gray-300">
               <div className="flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-2 ${connectStatus.chargesEnabled ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                Charges {connectStatus.chargesEnabled ? 'Enabled' : 'Disabled'}
+                <div
+                  className={`w-2 h-2 rounded-full mr-2 ${connectStatus.chargesEnabled ? "bg-green-500" : "bg-gray-500"}`}
+                ></div>
+                Charges {connectStatus.chargesEnabled ? "Enabled" : "Disabled"}
               </div>
               <div className="flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-2 ${connectStatus.payoutsEnabled ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                Payouts {connectStatus.payoutsEnabled ? 'Enabled' : 'Disabled'}
+                <div
+                  className={`w-2 h-2 rounded-full mr-2 ${connectStatus.payoutsEnabled ? "bg-green-500" : "bg-gray-500"}`}
+                ></div>
+                Payouts {connectStatus.payoutsEnabled ? "Enabled" : "Disabled"}
               </div>
             </div>
           </div>
@@ -160,12 +204,24 @@ export function StripeConnectOnboarding() {
     <div className="bg-gray-800 rounded-lg p-6">
       <div className="flex items-center mb-4">
         <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mr-4">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <svg
+            className="w-6 h-6 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
           </svg>
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Payment Account Ready</h3>
+          <h3 className="text-lg font-semibold text-white">
+            Payment Account Ready
+          </h3>
           <p className="text-gray-400">You can now receive payouts</p>
         </div>
       </div>
@@ -173,7 +229,9 @@ export function StripeConnectOnboarding() {
       <div className="bg-gray-700 rounded-lg p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-white">Account Status</span>
-          <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">Active</span>
+          <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">
+            Active
+          </span>
         </div>
         <div className="space-y-2 text-sm text-gray-300">
           <div className="flex items-center">

@@ -15,7 +15,7 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
   return (
     <div className="w-full">
       <form
-        className="flex flex-col gap-form-field"
+        className="flex flex-col gap-form-field gap-3"
         onSubmit={(e) => {
           e.preventDefault();
           setSubmitting(true);

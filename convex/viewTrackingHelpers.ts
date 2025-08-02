@@ -25,11 +25,63 @@ export const getActiveSubmissions = internalQuery({
 function calculateEarnings(
   viewCount: number,
   cpmRate: number,
-  maxPayoutPerSubmission: number
+  maxPayout?: number
 ): number {
-  const viewsInThousands = Math.floor(viewCount / 1000);
-  const grossEarnings = viewsInThousands * cpmRate;
-  return Math.min(grossEarnings, maxPayoutPerSubmission);
+  const earnings = (viewCount / 1000) * cpmRate;
+  return maxPayout ? Math.min(earnings, maxPayout) : earnings;
+}
+
+// Helper function to process earnings updates and related database changes
+async function processEarningsUpdate(
+  ctx: { db: any },
+  submission: Doc<"submissions">,
+  campaign: Doc<"campaigns">,
+  newViewCount: number
+) {
+  const newEarnings = calculateEarnings(
+    newViewCount,
+    campaign.cpmRate,
+    campaign.maxPayoutPerSubmission
+  );
+  
+  const currentEarnings = submission.earnings || 0;
+  const earningsDelta = newEarnings - currentEarnings;
+  
+  // Only proceed if earnings actually changed
+  if (earningsDelta === 0) {
+    return null;
+  }
+  
+  // Calculate new campaign budget
+  const newRemainingBudget = Math.max(
+    0,
+    campaign.remainingBudget - earningsDelta
+  );
+  
+  // Prepare updates
+  const submissionUpdates = { earnings: newEarnings };
+  const campaignUpdates: any = { remainingBudget: newRemainingBudget };
+  
+  // Mark campaign as completed if budget is exhausted
+  if (newRemainingBudget === 0 && campaign.status === "active") {
+    campaignUpdates.status = "completed";
+  }
+  
+  // Update creator's total earnings in their profile
+  const creatorProfile = await ctx.db
+    .query("profiles")
+    // @ts-expect-error - Convex query builder type inference
+    .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
+    .unique();
+  
+  if (creatorProfile) {
+    const newTotalEarnings = (creatorProfile.totalEarnings || 0) + earningsDelta;
+    await ctx.db.patch(creatorProfile._id, {
+      totalEarnings: Math.max(0, newTotalEarnings), // Ensure non-negative
+    });
+  }
+  
+  return { submissionUpdates, campaignUpdates };
 }
 
 export const updateSubmissionViews = internalMutation({
@@ -68,49 +120,18 @@ export const updateSubmissionViews = internalMutation({
       totalViews: (campaign.totalViews || 0) + viewDelta,
     };
 
-    // Handle earnings and budget for approved submissions
-    if (submission.status === "approved") {
-      const hasViewCountChanged = args.viewCount !== (submission.viewCount || 0);
+    // Handle earnings and budget updates for approved submissions
+    if (submission.status === "approved" && args.viewCount !== (submission.viewCount || 0)) {
+      const earningsUpdate = await processEarningsUpdate(
+        ctx,
+        submission,
+        campaign,
+        args.viewCount
+      );
       
-      if (hasViewCountChanged) {
-        const newEarnings = calculateEarnings(
-          args.viewCount,
-          campaign.cpmRate,
-          campaign.maxPayoutPerSubmission
-        );
-        
-        const currentEarnings = submission.earnings || 0;
-        const earningsDelta = newEarnings - currentEarnings;
-        
-        if (earningsDelta !== 0) {
-          submissionUpdates.earnings = newEarnings;
-          
-          // Adjust campaign budget (deduct for increases, add back for decreases)
-          const newRemainingBudget = Math.max(
-            0,
-            campaign.remainingBudget - earningsDelta
-          );
-          
-          campaignUpdates.remainingBudget = newRemainingBudget;
-          
-          // Mark campaign as completed if budget is exhausted
-          if (newRemainingBudget === 0 && campaign.status === "active") {
-            campaignUpdates.status = "completed";
-          }
-          
-          // Update creator's total earnings in their profile
-          const creatorProfile = await ctx.db
-            .query("profiles")
-            .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
-            .unique();
-          
-          if (creatorProfile) {
-            const newTotalEarnings = (creatorProfile.totalEarnings || 0) + earningsDelta;
-            await ctx.db.patch(creatorProfile._id, {
-              totalEarnings: Math.max(0, newTotalEarnings), // Ensure non-negative
-            });
-          }
-        }
+      if (earningsUpdate) {
+        Object.assign(submissionUpdates, earningsUpdate.submissionUpdates);
+        Object.assign(campaignUpdates, earningsUpdate.campaignUpdates);
       }
     }
 

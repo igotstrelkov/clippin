@@ -75,6 +75,7 @@ const applicationTables = {
     initialViewCount: v.optional(v.number()), // Views at submission time
     thresholdMetAt: v.optional(v.number()), // When 1K threshold was reached
     earnings: v.optional(v.number()),
+    paidOutAmount: v.optional(v.number()), // Total amount paid out for this submission
     submittedAt: v.number(),
     approvedAt: v.optional(v.number()),
     rejectionReason: v.optional(v.string()),

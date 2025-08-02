@@ -1,7 +1,6 @@
-import { useQuery } from "convex/react";
+import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { SignOutButton } from "../SignOutButton";
-import { Authenticated, Unauthenticated } from "convex/react";
 
 interface NavigationProps {
   currentView: "marketplace" | "dashboard";
@@ -20,9 +19,9 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
               <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center mr-3">
                 <span className="text-white font-bold text-sm">C</span>
               </div>
-              <span className="text-xl font-bold">ClipCash</span>
+              <span className="text-xl font-bold">Clippin</span>
             </div>
-            
+
             <div className="flex space-x-1">
               <button
                 onClick={() => onViewChange("marketplace")}
@@ -34,7 +33,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
               >
                 Marketplace
               </button>
-              
+
               <Authenticated>
                 <button
                   onClick={() => onViewChange("dashboard")}
@@ -56,7 +55,9 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
                     <div className="text-sm font-medium">
-                      {profile.userType === "creator" ? profile.creatorName : profile.companyName}
+                      {profile.userType === "creator"
+                        ? profile.creatorName
+                        : profile.companyName}
                     </div>
                     <div className="text-xs text-gray-400 capitalize">
                       {profile.userType}
@@ -64,17 +65,16 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                   </div>
                   <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-sm">
-                      {profile.userType === "creator" 
-                        ? (profile.creatorName?.charAt(0) || "C")
-                        : (profile.companyName?.charAt(0) || "B")
-                      }
+                      {profile.userType === "creator"
+                        ? profile.creatorName?.charAt(0) || "C"
+                        : profile.companyName?.charAt(0) || "B"}
                     </span>
                   </div>
                   <SignOutButton />
                 </div>
               )}
             </Authenticated>
-            
+
             <Unauthenticated>
               <button
                 onClick={() => onViewChange("dashboard")}

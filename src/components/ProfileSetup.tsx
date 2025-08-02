@@ -107,7 +107,7 @@ export function ProfileSetup() {
     <div className="max-w-2xl mx-auto">
       <div className="bg-gray-800 rounded-lg p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4">Welcome to ClipCash!</h1>
+          <h1 className="text-3xl font-bold mb-4">Welcome to Clippin!</h1>
           <p className="text-gray-300">
             Let's set up your profile to get started.
           </p>

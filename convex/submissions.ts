@@ -100,6 +100,13 @@ export const submitToCampaign = mutation({
       });
     }
 
+    // Update creator's total submissions count
+    if (profile) {
+      await ctx.db.patch(profile._id, {
+        totalSubmissions: (profile.totalSubmissions || 0) + 1,
+      });
+    }
+
     // Send notification to brand (schedule as action)
     try {
       const brandUser = await ctx.db.get(campaign.brandId);

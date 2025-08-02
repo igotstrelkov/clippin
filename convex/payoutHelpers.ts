@@ -1,4 +1,4 @@
-import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
+import { query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -34,16 +34,27 @@ export const getPendingEarnings = query({
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();
 
-    // For MVP, assume all approved submissions are pending payout
-    // In production, you'd track which submissions have been paid
-    const totalPending = approvedSubmissions.reduce((sum, sub) => sum + (sub.earnings || 0), 0);
+    // Calculate pending earnings: total earnings minus what's already been paid out
+    const totalPending = approvedSubmissions.reduce((sum, sub) => {
+      const earnings = sub.earnings || 0;
+      const paidOut = sub.paidOutAmount || 0;
+      const pending = Math.max(0, earnings - paidOut); // Ensure non-negative
+      return sum + pending;
+    }, 0);
 
     const submissionsWithCampaigns = await Promise.all(
       approvedSubmissions.map(async (submission) => {
         const campaign = await ctx.db.get(submission.campaignId);
+        const earnings = submission.earnings || 0;
+        const paidOut = submission.paidOutAmount || 0;
+        const pending = Math.max(0, earnings - paidOut);
+        
         return {
           ...submission,
           campaignTitle: campaign?.title || "Unknown Campaign",
+          pendingAmount: pending, // Amount pending payout for this submission
+          totalEarnings: earnings, // Total lifetime earnings
+          paidOutAmount: paidOut, // Amount already paid out
         };
       })
     );
@@ -52,6 +63,25 @@ export const getPendingEarnings = query({
       totalPending,
       submissions: submissionsWithCampaigns,
     };
+  },
+});
+
+// Update paidOutAmount for submissions after successful payout
+export const updateSubmissionsPaidAmount = internalMutation({
+  args: {
+    submissionIds: v.array(v.id("submissions")),
+  },
+  handler: async (ctx, args) => {
+    // Update each submission to mark current earnings as paid out
+    for (const submissionId of args.submissionIds) {
+      const submission = await ctx.db.get(submissionId);
+      if (submission) {
+        const currentEarnings = submission.earnings || 0;
+        await ctx.db.patch(submissionId, {
+          paidOutAmount: currentEarnings, // Set paid amount to current earnings
+        });
+      }
+    }
   },
 });
 
