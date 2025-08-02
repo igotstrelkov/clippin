@@ -1,236 +1,438 @@
-import { useQuery, useMutation, useAction } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { TikTokVerification } from "./TikTokVerification";
-import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
-import { PayoutRequestModal } from "./PayoutRequestModal";
-import { ViewTracker } from "./ViewTracker";
-import { ViewChart } from "./ViewChart";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "convex/react";
+import {
+  AlertTriangle,
+  DollarSign,
+  Eye,
+  History,
+  ListChecks,
+  MoreHorizontal,
+  TrendingUp,
+  Video,
+  Wallet,
+} from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
+import { PayoutRequestModal } from "./PayoutRequestModal";
+import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
+import TikTokVerification from "./TikTokVerification";
+import { ViewChart } from "./ViewChart";
+import { ViewTracker } from "./ViewTracker";
+
+// Type definitions based on Convex queries
+
+type Payout = {
+  _id: Id<"payments">;
+  amount: number;
+  createdAt: number;
+  status: "completed" | "failed" | "pending";
+};
+
+type Submission = {
+  _id: Id<"submissions">;
+  campaignTitle: string;
+  submittedAt: number;
+  status: "approved" | "rejected" | "pending";
+  rejectionReason?: string;
+  earnings?: number;
+  tiktokVideoUrl?: string;
+};
 
 export function CreatorDashboard() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
-  const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
-  
+  const [expandedSubmission, setExpandedSubmission] =
+    useState<Submission | null>(null);
+
   const stats = useQuery(api.profiles.getCreatorStats);
   const submissions = useQuery(api.submissions.getCreatorSubmissions);
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
   const payouts = useQuery(api.payoutHelpers.getCreatorPayouts);
-  const getConnectStatus = useAction(api.payouts.getConnectAccountStatus);
 
-  if (stats === undefined || submissions === undefined || pendingEarnings === undefined || payouts === undefined) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
-      </div>
-    );
+  const isLoading =
+    stats === undefined ||
+    submissions === undefined ||
+    pendingEarnings === undefined ||
+    payouts === undefined;
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
   }
 
   if (!stats) {
     return (
-      <div className="text-center py-20">
-        <p className="text-gray-400">Unable to load creator stats</p>
-      </div>
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error Loading Dashboard</AlertTitle>
+        <AlertDescription>
+          Could not load your stats. Please refresh the page.
+        </AlertDescription>
+      </Alert>
     );
   }
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Creator Dashboard</h1>
-        {!stats.tiktokVerified && (
-          <div className="bg-yellow-900/20 border border-yellow-600 rounded-lg px-4 py-2">
-            <span className="text-yellow-400 text-sm">⚠️ Verify TikTok to submit</span>
-          </div>
-        )}
-      </div>
+      <h1 className="text-3xl font-bold">Creator Dashboard</h1>
 
-      {/* TikTok Verification */}
       {!stats.tiktokVerified && <TikTokVerification />}
-
-      {/* Stripe Connect Onboarding */}
       <StripeConnectOnboarding />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-green-400 mb-1">
-            ${(stats.totalEarnings / 100).toFixed(2)}
-          </div>
-          <div className="text-gray-400">Total Earnings</div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-yellow-400 mb-1">
-            ${(pendingEarnings.totalPending / 100).toFixed(2)}
-          </div>
-          <div className="text-gray-400">Pending Payout</div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-blue-400 mb-1">
-            {stats.totalSubmissions}
-          </div>
-          <div className="text-gray-400">Total Submissions</div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-purple-400 mb-1">
-            {stats.recent24hViews.toLocaleString()}
-          </div>
-          <div className="text-gray-400">Views (24h)</div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-yellow-400 mb-1">
-            ${(stats.recent24hEarnings / 100).toFixed(2)}
-          </div>
-          <div className="text-gray-400">Earnings (24h)</div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <StatCard
+          icon={DollarSign}
+          title="Total Earnings"
+          value={`$${(stats.totalEarnings / 100).toLocaleString()}`}
+        />
+        <StatCard
+          icon={Wallet}
+          title="Pending Payout"
+          value={`$${((pendingEarnings?.totalPending || 0) / 100).toLocaleString()}`}
+        />
+        <StatCard
+          icon={ListChecks}
+          title="Total Submissions"
+          value={stats.totalSubmissions.toLocaleString()}
+        />
+        <StatCard
+          icon={Eye}
+          title="Views (24h)"
+          value={stats.recent24hViews.toLocaleString()}
+        />
+        <StatCard
+          icon={TrendingUp}
+          title="Earnings (24h)"
+          value={`$${(stats.recent24hEarnings / 100).toLocaleString()}`}
+        />
       </div>
 
-      {/* Payout Section */}
-      {pendingEarnings.totalPending > 0 && (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-semibold mb-1">Available for Payout</h3>
-              <p className="text-gray-400">
-                {pendingEarnings.submissions.length} approved submission{pendingEarnings.submissions.length !== 1 ? 's' : ''} ready
-              </p>
+      <Tabs defaultValue="submissions">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="submissions">Submissions</TabsTrigger>
+          <TabsTrigger value="payouts">Payouts</TabsTrigger>
+        </TabsList>
+        <TabsContent value="submissions">
+          <SubmissionsSection
+            submissions={submissions}
+            onExpand={setExpandedSubmission}
+          />
+        </TabsContent>
+        <TabsContent value="payouts">
+          <PayoutsSection
+            payouts={payouts}
+            pendingAmount={pendingEarnings?.totalPending || 0}
+            onRequestPayout={() => setShowPayoutModal(true)}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {expandedSubmission && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>
+              Performance for: {expandedSubmission.campaignTitle}
+            </CardTitle>
+            <CardDescription>
+              Submitted on{" "}
+              {new Date(expandedSubmission.submittedAt).toLocaleDateString()}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {expandedSubmission.status === "rejected" &&
+              expandedSubmission.rejectionReason && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Rejection Feedback</AlertTitle>
+                  <AlertDescription>
+                    {expandedSubmission.rejectionReason}
+                  </AlertDescription>
+                </Alert>
+              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ViewTracker
+                submissionId={expandedSubmission._id}
+                showRefreshButton
+              />
+              {/* <StatCard
+                icon={DollarSign}
+                title="Total Earnings"
+                value={`$${((expandedSubmission.earnings || 0) / 100).toLocaleString()}`}
+              /> */}
+              <ViewChart submissionId={expandedSubmission._id} />
             </div>
-            <button 
-              onClick={() => setShowPayoutModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-            >
-              Request ${(pendingEarnings.totalPending / 100).toFixed(2)}
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Payout History */}
-      {payouts.length > 0 && (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Recent Payouts</h3>
-          <div className="space-y-3">
-            {payouts.slice(0, 3).map((payout) => (
-              <div key={payout._id} className="flex justify-between items-center p-3 bg-gray-900 rounded-lg">
-                <div>
-                  <div className="font-medium">${(payout.amount / 100).toFixed(2)}</div>
-                  <div className="text-sm text-gray-400">
-                    {new Date(payout.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-                <div className={`px-2 py-1 rounded-full text-xs ${
-                  payout.status === "completed" 
-                    ? "bg-green-900/20 text-green-400"
-                    : payout.status === "failed"
-                    ? "bg-red-900/20 text-red-400"
-                    : "bg-yellow-900/20 text-yellow-400"
-                }`}>
-                  {payout.status}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {showPayoutModal && (
+        <PayoutRequestModal
+          isOpen={showPayoutModal}
+          onClose={() => setShowPayoutModal(false)}
+        />
       )}
+    </div>
+  );
+}
 
-      {/* Recent Submissions with View Tracking */}
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Recent Submissions</h3>
-        {submissions.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h4 className="text-lg font-medium text-white mb-2">No Submissions Yet</h4>
-            <p className="text-gray-400">Browse campaigns and submit your TikTok videos to start earning!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {submissions.slice(0, 5).map((submission) => (
-              <div key={submission._id} className="bg-gray-900 rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h4 className="font-medium">{submission.campaignTitle}</h4>
-                    <p className="text-sm text-gray-400">
-                      Submitted {new Date(submission.submittedAt).toLocaleDateString()}
-                    </p>
-                    {submission.status === "rejected" && submission.rejectionReason && (
-                      <div className="mt-2 p-2 bg-red-900/20 border border-red-600 rounded text-sm">
-                        <span className="text-red-400 font-medium">Feedback: </span>
-                        <span className="text-red-300">{submission.rejectionReason}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className={`inline-block px-2 py-1 rounded-full text-xs ${
-                      submission.status === "approved" 
-                        ? "bg-green-900/20 text-green-400"
-                        : submission.status === "rejected"
-                        ? "bg-red-900/20 text-red-400"
-                        : "bg-yellow-900/20 text-yellow-400"
-                    }`}>
-                      {submission.status}
-                    </div>
-                    <button
-                      onClick={() => setExpandedSubmission(
-                        expandedSubmission === submission._id ? null : submission._id
-                      )}
-                      className="text-purple-400 hover:text-purple-300 text-sm"
+function SubmissionsSection({
+  submissions,
+  onExpand,
+}: {
+  submissions: Submission[] | undefined;
+  onExpand: (s: Submission) => void;
+}) {
+  return (
+    <Card>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Campaign</TableHead>
+              <TableHead>Submitted</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Earnings</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {submissions && submissions.length > 0 ? (
+              submissions.map((s) => (
+                <TableRow key={s._id}>
+                  <TableCell className="font-medium">
+                    {s.campaignTitle}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(s.submittedAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        s.status === "approved"
+                          ? "default"
+                          : s.status === "rejected"
+                            ? "destructive"
+                            : "secondary"
+                      }
                     >
-                      {expandedSubmission === submission._id ? "Hide" : "Details"}
-                    </button>
-                  </div>
-                </div>
+                      {s.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {s.earnings
+                      ? `$${(s.earnings / 100).toLocaleString()}`
+                      : "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onExpand(s)}>
+                          View Performance
+                        </DropdownMenuItem>
+                        {s.tiktokVideoUrl && (
+                          <DropdownMenuItem asChild>
+                            <a
+                              href={s.tiktokVideoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              View on TikTok
+                            </a>
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  <Video className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-medium">
+                    No Submissions Yet
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Browse campaigns and submit a video to start earning.
+                  </p>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
 
-                {/* View Tracking */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                  <ViewTracker 
-                    submissionId={submission._id} 
-                    showRefreshButton={true}
-                  />
-                  {submission.status === "approved" && (
-                    <div className="bg-gray-800 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-green-400 mb-1">
-                        ${((submission.earnings || 0) / 100).toFixed(2)}
-                      </div>
-                      <div className="text-gray-400">Earnings</div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Expanded Details */}
-                {expandedSubmission === submission._id && (
-                  <div className="mt-4 pt-4 border-t border-gray-700">
-                    <ViewChart submissionId={submission._id} />
-                    <div className="mt-4">
-                      <a 
-                        href={submission.tiktokUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-purple-400 hover:text-purple-300 underline text-sm"
-                      >
-                        View TikTok Post →
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+function PayoutsSection({
+  payouts,
+  pendingAmount,
+  onRequestPayout,
+}: {
+  payouts: Payout[] | undefined;
+  pendingAmount: number;
+  onRequestPayout: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>Payout History</CardTitle>
+            <CardDescription>
+              Your requested payouts and their status.
+            </CardDescription>
           </div>
-        )}
-      </div>
+          {pendingAmount > 0 && (
+            <Button onClick={onRequestPayout}>
+              Request Payout (${(pendingAmount / 100).toLocaleString()})
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {payouts && payouts.length > 0 ? (
+              payouts.map((p) => (
+                <TableRow key={p._id}>
+                  <TableCell>
+                    {new Date(p.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        p.status === "completed"
+                          ? "default"
+                          : p.status === "failed"
+                            ? "destructive"
+                            : "secondary"
+                      }
+                    >
+                      {p.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    ${(p.amount / 100).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={3} className="h-24 text-center">
+                  <History className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-medium">No Payouts Yet</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Your payout history will appear here.
+                  </p>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
 
-      {/* Payout Request Modal */}
-      <PayoutRequestModal 
-        isOpen={showPayoutModal} 
-        onClose={() => setShowPayoutModal(false)} 
-      />
+function StatCard({
+  icon: Icon,
+  title,
+  value,
+}: {
+  icon: React.ElementType;
+  title: string;
+  value: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-8 animate-pulse">
+      <Skeleton className="h-9 w-72" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {[...Array(5)].map((_, i) => (
+          <Skeleton key={i} className="h-24" />
+        ))}
+      </div>
+      <div className="space-y-4">
+        <div className="flex space-x-2 border-b">
+          <Skeleton className="h-10 w-1/2" />
+          <Skeleton className="h-10 w-1/2" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex justify-between items-center p-2">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-5 w-16" />
+                  <Skeleton className="h-8 w-8" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

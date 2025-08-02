@@ -1,4 +1,8 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAction, useQuery } from "convex/react";
+import { ArrowDown, ArrowUp, Eye, Info, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -46,18 +50,27 @@ export function ViewTracker({
 
   if (!viewHistory || viewHistory.length === 0) {
     return (
-      <div className={`${compact ? "p-2" : "p-4"} bg-gray-800 rounded-lg`}>
-        <div className="text-gray-400 text-sm">No view data available</div>
-        {showRefreshButton && (
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="mt-2 text-purple-400 hover:text-purple-300 text-sm"
-          >
-            {refreshing ? "Loading..." : "Load Views"}
-          </button>
-        )}
-      </div>
+      <Card className={compact ? "p-2" : "p-4"}>
+        <div className="flex flex-col items-center justify-center text-center text-muted-foreground space-y-2">
+          <Info className="h-6 w-6" />
+          <p className="text-sm">No view data available yet.</p>
+          {showRefreshButton && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                void handleRefresh();
+              }}
+              disabled={refreshing}
+            >
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              />
+              {refreshing ? "Loading..." : "Load Initial Views"}
+            </Button>
+          )}
+        </div>
+      </Card>
     );
   }
 
@@ -69,107 +82,121 @@ export function ViewTracker({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="text-lg font-bold text-blue-400">
+      <div className="flex items-center gap-2 text-sm">
+        <Eye className="h-4 w-4 text-muted-foreground" />
+        <span className="font-bold">
           {latestViews.viewCount.toLocaleString()}
-        </div>
-        <div className="text-xs text-gray-400">views</div>
+        </span>
+        <span className="text-muted-foreground">views</span>
         {viewChange !== 0 && (
-          <div
-            className={`text-xs ${viewChange > 0 ? "text-green-400" : "text-red-400"}`}
+          <span
+            className={`flex items-center gap-1 ${viewChange > 0 ? "text-green-500" : "text-red-500"}`}
           >
-            ({viewChange > 0 ? "+" : ""}
-            {viewChange.toLocaleString()})
-          </div>
+            (
+            {viewChange > 0 ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : (
+              <ArrowDown className="h-3 w-3" />
+            )}
+            {Math.abs(viewChange).toLocaleString()})
+          </span>
         )}
         {showRefreshButton && (
-          <button
-            onClick={handleRefresh}
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 ml-1"
+            onClick={() => {
+              void handleRefresh();
+            }}
             disabled={refreshing}
-            className="text-purple-400 hover:text-purple-300 text-xs ml-2"
           >
-            {refreshing ? "..." : "↻"}
-          </button>
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+          </Button>
         )}
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-gray-400 font-medium">Views</span>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-base font-medium">View Tracking</CardTitle>
         {showRefreshButton && (
-          <button
-            onClick={handleRefresh}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              void handleRefresh();
+            }}
             disabled={refreshing}
-            className="text-purple-400 hover:text-purple-300 text-sm flex items-center gap-1"
           >
-            <svg
-              className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </button>
-        )}
-      </div>
-
-      <div className="text-2xl font-bold text-white mb-1">
-        {latestViews.viewCount.toLocaleString()}
-      </div>
-
-      {viewChange !== 0 && (
-        <div
-          className={`text-sm mb-2 ${viewChange > 0 ? "text-green-400" : "text-red-400"}`}
-        >
-          {viewChange > 0 ? "+" : ""}
-          {viewChange.toLocaleString()} since last update
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        <span>
-          Last updated: {new Date(latestViews.timestamp).toLocaleString()}
-        </span>
-        <span
-          className={`px-2 py-1 rounded text-xs ${
-            latestViews.source === "tiktok_api"
-              ? "bg-blue-900/20 text-blue-400"
-              : latestViews.source === "manual_refresh"
-                ? "bg-purple-900/20 text-purple-400"
-                : "bg-gray-900/20 text-gray-400"
-          }`}
-        >
-          {latestViews.source === "tiktok_api"
-            ? "Auto"
-            : latestViews.source === "manual_refresh"
-              ? "Manual"
-              : "System"}
-        </span>
-      </div>
-
-      {/* Threshold indicator */}
-      {latestViews.viewCount >= 1000 && (
-        <div className="mt-2 flex items-center gap-1 text-xs text-green-400">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-              clipRule="evenodd"
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
             />
-          </svg>
-          Minimum views reached
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        <div className="text-3xl font-bold">
+          {latestViews.viewCount.toLocaleString()}
         </div>
-      )}
-    </div>
+        <p
+          className={`text-sm ${viewChange >= 0 ? "text-green-500" : "text-red-500"}`}
+        >
+          {viewChange >= 0 ? "+" : ""}
+          {viewChange.toLocaleString()} views since last update
+        </p>
+        <div className="text-xs text-muted-foreground mt-4 flex items-center gap-2">
+          <span>
+            Last updated: {new Date(latestViews.timestamp).toLocaleString()}
+          </span>
+          <Badge
+            variant={
+              latestViews.source === "tiktok_api" ? "default" : "secondary"
+            }
+          >
+            {latestViews.source.replace("_", " ")}
+          </Badge>
+        </div>
+      </CardContent>
+      {/* {viewHistory.length > 1 && (
+        <CardContent className="pt-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead className="text-right">Views</TableHead>
+                <TableHead className="text-right">Change</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {viewHistory.map((item, index) => {
+                const prevItem = viewHistory[index + 1];
+                const change = prevItem ? item.viewCount - prevItem.viewCount : 0;
+                return (
+                  <TableRow key={item.timestamp}>
+                    <TableCell>{new Date(item.timestamp).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Badge variant={item.source === "tiktok_api" ? "default" : "secondary"}>
+                        {item.source.replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{item.viewCount.toLocaleString()}</TableCell>
+                    <TableCell className={`text-right ${change > 0 ? "text-green-500" : change < 0 ? "text-red-500" : "text-muted-foreground"}`}>
+                      {change > 0 ? "+" : ""}{change.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      )} */}
+    </Card>
   );
 }

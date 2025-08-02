@@ -2,10 +2,42 @@ import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
+import { Id } from "../../convex/_generated/dataModel";
 import { CampaignPayment } from "./CampaignPayment";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, AlertTriangle, PlusCircle, XCircle } from 'lucide-react';
+
+// Define a more specific type for the campaign prop
+type Campaign = {
+  _id: Id<"campaigns">;
+  title: string;
+  description?: string;
+  category?: string;
+  endDate?: number;
+  youtubeAssetUrl?: string;
+  requirements?: string[];
+  status: 'draft' | 'active' | 'paused' | 'completed';
+  totalBudget: number;
+  cpmRate?: number;
+  maxPayoutPerSubmission?: number;
+  // Fields from dashboard view
+  _creationTime?: number;
+  remainingBudget?: number;
+  totalSubmissions?: number;
+  approvedSubmissions?: number;
+  totalViews?: number;
+  updatedTime?: number;
+};
 
 interface EditCampaignModalProps {
-  campaign: any;
+  campaign: Campaign | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -29,13 +61,13 @@ export function EditCampaignModal({ campaign, isOpen, onClose, onSuccess }: Edit
   useEffect(() => {
     if (campaign) {
       setFormData({
-        title: campaign.title || "",
-        description: campaign.description || "",
-        category: campaign.category || "lifestyle",
+        title: campaign.title ?? '',
+        description: campaign.description ?? '',
+        category: campaign.category ?? '',
         endDate: campaign.endDate ? new Date(campaign.endDate).toISOString().split('T')[0] : "",
-        youtubeAssetUrl: campaign.youtubeAssetUrl || "",
-        requirements: campaign.requirements?.length > 0 ? campaign.requirements : [""],
-        status: campaign.status || "active",
+        youtubeAssetUrl: campaign.youtubeAssetUrl ?? '',
+        requirements: campaign.requirements ?? [],
+        status: campaign.status === 'draft' ? 'active' : campaign.status,
       });
     }
   }, [campaign]);
@@ -44,110 +76,73 @@ export function EditCampaignModal({ campaign, isOpen, onClose, onSuccess }: Edit
 
   // If this is a draft campaign, show payment flow
   if (campaign.status === "draft") {
-    if (showPayment) {
-      return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-white">Complete Payment</h2>
-                <p className="text-gray-400 text-sm">Activate "{campaign.title}"</p>
-              </div>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-white"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <CampaignPayment
-              campaignId={campaign._id}
-              amount={campaign.totalBudget / 100}
-              onSuccess={() => {
-                toast.success("Campaign activated successfully!");
-                onSuccess();
-                onClose();
-              }}
-              onCancel={() => setShowPayment(false)}
-            />
-          </div>
-        </div>
-      );
-    }
-
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-xl font-bold text-white">Activate Campaign</h2>
-              <p className="text-gray-400 text-sm">"{campaign.title}"</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent>
+          {showPayment ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Complete Payment</DialogTitle>
+                <DialogDescription>Activate "{campaign.title}"</DialogDescription>
+              </DialogHeader>
+              <CampaignPayment
+                campaignId={campaign._id}
+                amount={campaign.totalBudget / 100}
+                onSuccess={() => {
+                  toast.success("Campaign activated successfully!");
+                  onSuccess();
+                  onClose();
+                }}
+                onCancel={() => setShowPayment(false)}
+              />
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Activate Campaign</DialogTitle>
+                <DialogDescription>"{campaign.title}"</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-6 py-4">
+                <Alert variant="default">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Payment Required</AlertTitle>
+                  <AlertDescription>
+                    This campaign is a draft. Complete payment to activate it and make it available to creators.
+                  </AlertDescription>
+                </Alert>
 
-          <div className="space-y-6">
-            <div className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4">
-              <div className="flex items-center mb-2">
-                <svg className="w-5 h-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <span className="text-yellow-400 font-medium">Payment Required</span>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Campaign Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Budget:</span>
+                      <span>${(campaign.totalBudget / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">CPM Rate:</span>
+                      <span>${((campaign.cpmRate ?? 0) / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Max Payout:</span>
+                      <span>${((campaign.maxPayoutPerSubmission ?? 0) / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Category:</span>
+                      <span className="capitalize">{campaign.category}</span>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-              <p className="text-yellow-300 text-sm">
-                This campaign is in draft status. Complete payment to activate it and make it available to creators.
-              </p>
-            </div>
-
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h4 className="font-medium text-white mb-3">Campaign Details</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Budget:</span>
-                  <span className="text-white">${(campaign.totalBudget / 100).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">CPM Rate:</span>
-                  <span className="text-white">${(campaign.cpmRate / 100).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Max Payout:</span>
-                  <span className="text-white">${(campaign.maxPayoutPerSubmission / 100).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Category:</span>
-                  <span className="text-white capitalize">{campaign.category}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={onClose}
-                className="flex-1 bg-gray-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setShowPayment(true)}
-                className="flex-1 bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors"
-              >
-                Complete Payment
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={onClose}>Cancel</Button>
+                <Button onClick={() => setShowPayment(true)}>Complete Payment</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     );
   }
 
@@ -207,168 +202,131 @@ export function EditCampaignModal({ campaign, isOpen, onClose, onSuccess }: Edit
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-900 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Edit Campaign</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Campaign Title *
-            </label>
-            <input
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Campaign</DialogTitle>
+          <DialogDescription>Make changes to your campaign details below.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-6 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Campaign Title *</Label>
+            <Input
+              id="title"
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
               placeholder="Enter campaign title"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Description *
-            </label>
-            <textarea
+          <div className="space-y-2">
+            <Label htmlFor="description">Description *</Label>
+            <Textarea
+              id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
               placeholder="Describe your campaign"
               required
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Category
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
-              >
-                <option value="lifestyle">Lifestyle</option>
-                <option value="fashion">Fashion</option>
-                <option value="beauty">Beauty</option>
-                <option value="fitness">Fitness</option>
-                <option value="food">Food</option>
-                <option value="travel">Travel</option>
-                <option value="tech">Technology</option>
-                <option value="gaming">Gaming</option>
-                <option value="music">Music</option>
-                <option value="comedy">Comedy</option>
-                <option value="education">Education</option>
-                <option value="business">Business</option>
-              </select>
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lifestyle">Lifestyle</SelectItem>
+                  <SelectItem value="fashion">Fashion</SelectItem>
+                  <SelectItem value="beauty">Beauty</SelectItem>
+                  <SelectItem value="fitness">Fitness</SelectItem>
+                  <SelectItem value="food">Food</SelectItem>
+                  <SelectItem value="travel">Travel</SelectItem>
+                  <SelectItem value="tech">Technology</SelectItem>
+                  <SelectItem value="gaming">Gaming</SelectItem>
+                  <SelectItem value="music">Music</SelectItem>
+                  <SelectItem value="comedy">Comedy</SelectItem>
+                  <SelectItem value="education">Education</SelectItem>
+                  <SelectItem value="business">Business</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
-              >
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
-                <option value="completed">Completed</option>
-              </select>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value as any })}>
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Select a status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              End Date (Optional)
-            </label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="endDate">End Date (Optional)</Label>
+            <Input
+              id="endDate"
               type="date"
               value={formData.endDate}
               onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              YouTube Asset URL (Optional)
-            </label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="youtubeAssetUrl">YouTube Asset URL (Optional)</Label>
+            <Input
+              id="youtubeAssetUrl"
               type="url"
               value={formData.youtubeAssetUrl}
               onChange={(e) => setFormData({ ...formData, youtubeAssetUrl: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
               placeholder="https://youtube.com/watch?v=..."
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Requirements
-            </label>
+          <div className="space-y-2">
+            <Label>Requirements</Label>
             <div className="space-y-2">
               {formData.requirements.map((requirement, index) => (
-                <div key={index} className="flex gap-2">
-                  <input
+                <div key={index} className="flex gap-2 items-center">
+                  <Input
                     type="text"
                     value={requirement}
                     onChange={(e) => handleRequirementChange(index, e.target.value)}
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
-                    placeholder={`Requirement ${index + 1}`}
+                    placeholder={`Requirement #${index + 1}`}
                   />
                   {formData.requirements.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeRequirement(index)}
-                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      ×
-                    </button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeRequirement(index)}>
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    </Button>
                   )}
                 </div>
               ))}
-              <button
-                type="button"
-                onClick={addRequirement}
-                className="text-purple-400 hover:text-purple-300 text-sm"
-              >
-                + Add Requirement
-              </button>
+              <Button type="button" variant="outline" size="sm" onClick={addRequirement}>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add Requirement
+              </Button>
             </div>
           </div>
 
-          <div className="flex space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-600 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
               {loading ? "Updating..." : "Update Campaign"}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -4,6 +4,19 @@ import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { SignInForm } from "../SignInForm";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CheckCircle, DollarSign, Info, Loader2, Percent, Target, Video } from "lucide-react";
 
 interface CampaignModalProps {
   campaignId: Id<"campaigns">;
@@ -23,25 +36,20 @@ export function CampaignModal({ campaignId, onClose }: CampaignModalProps) {
     const url = tiktokUrl.trim();
     if (!url) return;
 
-    // Validate TikTok URL format
     const tiktokPatterns = [
-      /^https?:\/\/(www\.)?tiktok\.com\/@[\w.-]+\/video\/\d+/,
+      /^https?:\/\/(www\.)?tiktok\.com\/@[-.\w]+\/video\/\d+/,
       /^https?:\/\/vm\.tiktok\.com\/[\w]+/,
       /^https?:\/\/(www\.)?tiktok\.com\/t\/[\w]+/,
     ];
 
-    const isValidUrl = tiktokPatterns.some((pattern) => pattern.test(url));
-    if (!isValidUrl) {
+    if (!tiktokPatterns.some((p) => p.test(url))) {
       toast.error("Please provide a valid TikTok URL");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await submitToCampaign({
-        campaignId,
-        tiktokUrl: url,
-      });
+      await submitToCampaign({ campaignId, tiktokUrl: url });
       toast.success("Submission successful! Awaiting brand approval.");
       onClose();
     } catch (error) {
@@ -51,195 +59,170 @@ export function CampaignModal({ campaignId, onClose }: CampaignModalProps) {
     }
   };
 
-  if (!campaign) {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
+  const budgetUsedPercentage = campaign
+    ? ((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) * 100
+    : 0;
 
   const canSubmit = profile?.userType === "creator" && profile?.tiktokVerified;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-gray-800 p-6 border-b border-gray-700 flex justify-between items-start">
-          <div>
-            <h2 className="text-2xl font-bold mb-2">{campaign.title}</h2>
-            <div className="flex items-center gap-3">
-              {campaign.brandLogo ? (
-                <img
-                  src={campaign.brandLogo}
-                  alt={`${campaign.brandName} logo`}
-                  className="w-8 h-8 rounded-full object-cover bg-gray-700"
-                  onError={(e) => {
-                    // Fallback to initials if image fails to load
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = "none";
-                    target.nextElementSibling?.classList.remove("hidden");
-                  }}
-                />
-              ) : null}
-              <div
-                className={`w-8 h-8 bg-purple-600 rounded flex items-center justify-center ${campaign.brandLogo ? "hidden" : ""}`}
-              >
-                <span className="text-white font-bold text-sm">
-                  {campaign.brandName.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <p className="text-gray-300 font-bold">{campaign.brandName}</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {/* Campaign Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-green-400 mb-1">
-                ${(campaign.cpmRate / 100).toFixed(2)}
-              </div>
-              <div className="text-sm text-gray-400">per 1,000 views</div>
-            </div>
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-blue-400 mb-1">
-                ${(campaign.maxPayoutPerSubmission / 100).toLocaleString()}
-              </div>
-              <div className="text-sm text-gray-400">
-                max payout per submission
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Description</h3>
-            <p className="text-gray-300">{campaign.description}</p>
-          </div>
-
-          {/* Source Content - Removed for now */}
-
-          {/* Requirements */}
-          {campaign.requirements.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Requirements</h3>
-              <ul className="space-y-2">
-                {campaign.requirements.map((req, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-purple-400 mt-1">•</span>
-                    <span className="text-gray-300">{req}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Budget Progress */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Campaign Progress</h3>
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <div className="flex justify-between text-sm mb-2">
-                <span>Budget Used</span>
-                <span>
-                  {(
-                    ((campaign.totalBudget - campaign.remainingBudget) /
-                      campaign.totalBudget) *
-                    100
-                  ).toFixed(1)}
-                  %
-                </span>
-              </div>
-              <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
-                <div
-                  className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) * 100, 100)}%`,
-                  }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-xs text-gray-400">
-                <span>
-                  $
-                  {(
-                    (campaign.totalBudget - campaign.remainingBudget) /
-                    100
-                  ).toLocaleString()}{" "}
-                  spent
-                </span>
-                <span>
-                  ${(campaign.remainingBudget / 100).toLocaleString()} remaining
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Submission Form */}
-          {profile ? (
-            canSubmit ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    TikTok Post URL
-                  </label>
-                  <input
-                    type="url"
-                    value={tiktokUrl}
-                    onChange={(e) => setTiktokUrl(e.target.value)}
-                    placeholder="https://www.tiktok.com/@username/video/..."
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
-                    required
-                  />
+    <Dialog open={true} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        {!campaign ? (
+          <CampaignModalSkeleton />
+        ) : (
+          <>
+            <DialogHeader>
+              <div className="flex items-start gap-4">
+                <Avatar className="w-16 h-16 border">
+                  <AvatarImage src={campaign.brandLogo ?? ""} />
+                  <AvatarFallback>{campaign.brandName.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <DialogTitle className="text-2xl mb-1">{campaign.title}</DialogTitle>
+                  <DialogDescription className="flex items-center gap-4">
+                    <span>by <span className="font-semibold">{campaign.brandName}</span></span>
+                    <Badge variant="secondary">{campaign.category}</Badge>
+                  </DialogDescription>
                 </div>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !tiktokUrl.trim()}
-                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-                >
-                  {isSubmitting ? "Submitting..." : "Submit to Campaign"}
-                </button>
-              </form>
-            ) : (
-              <div className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4">
-                <h4 className="font-semibold text-yellow-400 mb-2">
-                  Action Required
-                </h4>
-                {profile.userType !== "creator" ? (
-                  <p className="text-yellow-300">
-                    Only creators can submit to campaigns. Please update your
-                    profile.
-                  </p>
-                ) : (
-                  <p className="text-yellow-300">
-                    Please verify your TikTok account to submit to campaigns.
-                  </p>
-                )}
               </div>
-            )
-          ) : (
-            <div className="bg-blue-900/20 border border-blue-600 rounded-lg p-4 text-center">
-              <h4 className="font-semibold text-blue-400 mb-2">
-                Sign In Required
-              </h4>
-              <p className="text-blue-300 mb-4">
-                Please sign in to submit to this campaign.
-              </p>
-              <div className="max-w-sm mx-auto">
-                <SignInForm />
-              </div>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-6">
+              <StatCard icon={DollarSign} title="CPM Rate" value={`$${(campaign.cpmRate / 100).toFixed(2)}`} description="per 1,000 views" />
+              <StatCard icon={Target} title="Max Payout" value={`$${(campaign.maxPayoutPerSubmission / 100).toLocaleString()}`} description="per submission" />
+              <StatCard icon={Percent} title="Budget Used" value={`${budgetUsedPercentage.toFixed(1)}%`} progress={budgetUsedPercentage} />
             </div>
-          )}
+
+            <div className="space-y-6">
+              <Card>
+                <CardHeader><CardTitle>Description</CardTitle></CardHeader>
+                <CardContent><p className="text-muted-foreground">{campaign.description}</p></CardContent>
+              </Card>
+
+              {campaign.requirements.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle>Requirements</CardTitle></CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {campaign.requirements.map((req, index) => (
+                        <li key={index} className="flex items-start gap-3">
+                          <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">{req}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardHeader><CardTitle>Submit Your Video</CardTitle></CardHeader>
+                <CardContent>
+                  {profile ? (
+                    canSubmit ? (
+                      <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
+                        <div>
+                          <Label htmlFor="tiktokUrl">TikTok Post URL</Label>
+                          <div className="flex gap-2 mt-1">
+                            <Input
+                              id="tiktokUrl"
+                              type="url"
+                              value={tiktokUrl}
+                              onChange={(e) => setTiktokUrl(e.target.value)}
+                              placeholder="https://www.tiktok.com/@username/video/..."
+                              required
+                            />
+                            <Button type="submit" disabled={isSubmitting}>
+                              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Submit
+                            </Button>
+                          </div>
+                        </div>
+                      </form>
+                    ) : (
+                      <Alert variant="default">
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>Action Required</AlertTitle>
+                        <AlertDescription>
+                          {profile.userType !== "creator"
+                            ? "Only creators can submit to campaigns."
+                            : "Please verify your TikTok account in your profile to submit."}
+                        </AlertDescription>
+                      </Alert>
+                    )
+                  ) : (
+                    <Alert variant="default" className="text-center">
+                      <Video className="h-4 w-4" />
+                      <AlertTitle>Sign In to Participate</AlertTitle>
+                      <AlertDescription className="mt-4">
+                        <SignInForm />
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Close</Button>
+              </DialogClose>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StatCard({ icon: Icon, title, value, description, progress }: {
+  icon: React.ElementType;
+  title: string;
+  value: string;
+  description?: string;
+  progress?: number;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <Icon className="w-4 h-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
+        {progress !== undefined && <Progress value={progress} className="mt-2 h-2" />}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CampaignModalSkeleton() {
+  return (
+    <>
+      <DialogHeader>
+        <div className="flex items-start gap-4">
+          <Skeleton className="w-16 h-16 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-7 w-3/4" />
+            <Skeleton className="h-5 w-1/2" />
+          </div>
         </div>
+      </DialogHeader>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-6">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
       </div>
-    </div>
+      <div className="space-y-6">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-28 w-full" />
+      </div>
+      <DialogFooter className="mt-6">
+        <Skeleton className="h-10 w-24" />
+      </DialogFooter>
+    </>
   );
 }

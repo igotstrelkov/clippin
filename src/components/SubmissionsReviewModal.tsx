@@ -1,311 +1,426 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useMutation, useQuery } from "convex/react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  MoreHorizontal,
+  TrendingUp,
+  Video,
+  XCircle,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { ViewTracker } from "./ViewTracker";
 import { ViewChart } from "./ViewChart";
+import { ViewTracker } from "./ViewTracker";
+
+// Define a more specific type for submissions from the query
+type Submission = {
+  _id: Id<"submissions">;
+  creatorName: string;
+  tiktokUsername: string;
+  tiktokUrl: string;
+  status: "pending" | "approved" | "rejected";
+  hasReachedThreshold: boolean;
+  potentialEarnings: number;
+  submittedAt: number;
+  earnings?: number;
+  rejectionReason?: string;
+};
 
 interface SubmissionsReviewModalProps {
   campaignId: string;
   onClose: () => void;
 }
 
-export function SubmissionsReviewModal({ campaignId, onClose }: SubmissionsReviewModalProps) {
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+export function SubmissionsReviewModal({
+  campaignId,
+  onClose,
+}: SubmissionsReviewModalProps) {
+  const [rejectionCandidate, setRejectionCandidate] =
+    useState<Submission | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showViewDetails, setShowViewDetails] = useState<string | null>(null);
-  
-  const submissions = useQuery(api.submissions.getCampaignSubmissions, { 
-    campaignId: campaignId as Id<"campaigns"> 
-  });
-  const updateSubmissionStatus = useMutation(api.submissions.updateSubmissionStatus);
+  const [expandedSubmissionId, setExpandedSubmissionId] = useState<
+    string | null
+  >(null);
 
-  if (submissions === undefined) {
+  const submissions = useQuery(api.submissions.getCampaignSubmissions, {
+    campaignId: campaignId as Id<"campaigns">,
+  }) as Submission[] | undefined;
+
+  const updateSubmissionStatus = useMutation(
+    api.submissions.updateSubmissionStatus
+  );
+
+  const handleApprove = async (submissionId: Id<"submissions">) => {
+    try {
+      await updateSubmissionStatus({ submissionId, status: "approved" });
+      toast.success("Submission approved!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to approve submission"
+      );
+    }
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!rejectionCandidate || !rejectionReason.trim()) {
+      toast.error("A rejection reason is required.");
+      return;
+    }
+    try {
+      await updateSubmissionStatus({
+        submissionId: rejectionCandidate._id,
+        status: "rejected",
+        rejectionReason: rejectionReason.trim(),
+      });
+      toast.success("Submission rejected");
+      setRejectionCandidate(null);
+      setRejectionReason("");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to reject submission"
+      );
+    }
+  };
+
+  const { pendingSubmissions, reviewedSubmissions } = useMemo(() => {
+    if (!submissions)
+      return { pendingSubmissions: [], reviewedSubmissions: [] };
+    const pending = submissions.filter((s) => s.status === "pending");
+    const reviewed = submissions.filter((s) => s.status !== "pending");
+    return { pendingSubmissions: pending, reviewedSubmissions: reviewed };
+  }, [submissions]);
+
+  const isLoading = submissions === undefined;
+
+  return (
+    <Dialog open={true} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-6xl w-full max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Review Submissions</DialogTitle>
+          <DialogDescription>
+            Approve or reject creator submissions for your campaign.
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <SubmissionsSkeleton />
+        ) : (submissions ?? []).length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-16">
+            <Video className="h-16 w-16 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">No Submissions Yet</h3>
+            <p className="text-muted-foreground text-sm">
+              Submissions will appear here once creators respond.
+            </p>
+          </div>
+        ) : (
+          <Tabs
+            defaultValue="pending"
+            className="flex-grow flex flex-col overflow-hidden"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="pending">
+                Pending ({pendingSubmissions.length})
+              </TabsTrigger>
+              <TabsTrigger value="reviewed">
+                Reviewed ({reviewedSubmissions.length})
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex-grow overflow-y-auto">
+              <TabsContent value="pending" className="mt-4">
+                <SubmissionsTable
+                  submissions={pendingSubmissions}
+                  onApprove={handleApprove}
+                  onReject={setRejectionCandidate}
+                  expandedId={expandedSubmissionId}
+                  onToggleExpand={setExpandedSubmissionId}
+                />
+              </TabsContent>
+              <TabsContent value="reviewed" className="mt-4">
+                <SubmissionsTable
+                  submissions={reviewedSubmissions}
+                  expandedId={expandedSubmissionId}
+                  onToggleExpand={setExpandedSubmissionId}
+                />
+              </TabsContent>
+            </div>
+          </Tabs>
+        )}
+      </DialogContent>
+
+      {rejectionCandidate && (
+        <AlertDialog
+          open={!!rejectionCandidate}
+          onOpenChange={(isOpen) => !isOpen && setRejectionCandidate(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reject Submission?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Provide feedback for{" "}
+                <strong>{rejectionCandidate.creatorName}</strong> to help them
+                improve. This reason will be shared with the creator.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="grid gap-2">
+              <Label htmlFor="rejectionReason">
+                Rejection Reason (Required)
+              </Label>
+              <Textarea
+                id="rejectionReason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="e.g., Video quality is poor, content doesn't align with brand..."
+                rows={3}
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setRejectionReason("")}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  void handleRejectConfirm();
+                }}
+                disabled={!rejectionReason.trim()}
+              >
+                Confirm Rejection
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </Dialog>
+  );
+}
+
+function SubmissionsTable({
+  submissions,
+  onApprove,
+  onReject,
+  expandedId,
+  onToggleExpand,
+}: {
+  submissions: Submission[];
+  onApprove?: (id: Id<"submissions">) => Promise<void>;
+  onReject?: (sub: Submission) => void;
+  expandedId: string | null;
+  onToggleExpand: (id: string | null) => void;
+}) {
+  if (submissions.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mx-auto"></div>
-        </div>
+      <div className="text-center py-12 text-muted-foreground">
+        <p>No submissions in this category.</p>
       </div>
     );
   }
 
-  const handleApprove = async (submissionId: Id<"submissions">) => {
-    try {
-      await updateSubmissionStatus({ 
-        submissionId, 
-        status: "approved" 
-      });
-      toast.success("Submission approved successfully!");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to approve submission");
-    }
-  };
-
-  const handleRejectClick = (submission: any) => {
-    setSelectedSubmission(submission);
-    setRejectionReason("");
-    setShowRejectModal(true);
-  };
-
-  const handleRejectConfirm = async () => {
-    if (!selectedSubmission || !rejectionReason.trim()) {
-      toast.error("Please provide a rejection reason");
-      return;
-    }
-
-    try {
-      await updateSubmissionStatus({ 
-        submissionId: selectedSubmission._id, 
-        status: "rejected",
-        rejectionReason: rejectionReason.trim()
-      });
-      toast.success("Submission rejected with feedback sent to creator");
-      setShowRejectModal(false);
-      setSelectedSubmission(null);
-      setRejectionReason("");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to reject submission");
-    }
-  };
-
-  const pendingSubmissions = submissions.filter(s => s.status === "pending");
-  const reviewedSubmissions = submissions.filter(s => s.status !== "pending");
-
   return (
-    <>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 bg-gray-800 p-6 border-b border-gray-700 flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Review Submissions</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white text-2xl"
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="p-6">
-            {submissions.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">📝</div>
-                <p className="text-gray-400 text-lg">No submissions yet</p>
-                <p className="text-gray-500">Submissions will appear here once creators start submitting to your campaign.</p>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {/* Pending Submissions */}
-                {pendingSubmissions.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4 text-yellow-400">
-                      Pending Review ({pendingSubmissions.length})
-                    </h3>
-                    <div className="grid gap-6">
-                      {pendingSubmissions.map((submission) => (
-                        <div key={submission._id} className="bg-gray-900 rounded-lg p-6">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h4 className="text-lg font-semibold">{submission.creatorName}</h4>
-                                {submission.tiktokUsername && (
-                                  <span className="text-sm text-gray-400">@{submission.tiktokUsername}</span>
-                                )}
-                              </div>
-                              
-                              <div className="mb-4">
-                                <a 
-                                  href={submission.tiktokUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-purple-400 hover:text-purple-300 underline break-all"
-                                >
-                                  {submission.tiktokUrl}
-                                </a>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                                <div className="bg-gray-800 rounded-lg p-3">
-                                  <ViewTracker 
-                                    submissionId={submission._id} 
-                                    showRefreshButton={true}
-                                    compact={true}
-                                  />
-                                </div>
-                                <div className="text-center">
-                                  <div className={`text-lg font-bold ${
-                                    submission.hasReachedThreshold ? "text-green-400" : "text-red-400"
-                                  }`}>
-                                    {submission.hasReachedThreshold ? "✓" : "✗"}
-                                  </div>
-                                  <div className="text-xs text-gray-400">1K+ Views</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-lg font-bold text-yellow-400">
-                                    ${submission.potentialEarnings.toFixed(2)}
-                                  </div>
-                                  <div className="text-xs text-gray-400">Potential Earnings</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-lg font-bold text-gray-400">
-                                    {new Date(submission.submittedAt).toLocaleDateString()}
-                                  </div>
-                                  <div className="text-xs text-gray-400">Submitted</div>
-                                </div>
-                              </div>
-
-                              {/* View Details Toggle */}
-                              <button
-                                onClick={() => setShowViewDetails(
-                                  showViewDetails === submission._id ? null : submission._id
-                                )}
-                                className="text-purple-400 hover:text-purple-300 text-sm mb-4"
-                              >
-                                {showViewDetails === submission._id ? "Hide" : "Show"} View History
-                              </button>
-
-                              {/* View Chart */}
-                              {showViewDetails === submission._id && (
-                                <div className="mb-4">
-                                  <ViewChart submissionId={submission._id} height={100} />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex gap-3">
-                            <button
-                              onClick={() => handleApprove(submission._id)}
-                              disabled={!submission.hasReachedThreshold}
-                              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleRejectClick(submission)}
-                              className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-                            >
-                              Reject
-                            </button>
-                          </div>
-
-                          {!submission.hasReachedThreshold && (
-                            <div className="mt-3 p-3 bg-yellow-900/20 border border-yellow-600 rounded-lg">
-                              <p className="text-yellow-400 text-sm">
-                                ⚠️ This submission hasn't reached the minimum 1,000 views threshold yet.
-                              </p>
-                            </div>
+    <div className="border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[200px]">Creator</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Earned</TableHead>
+            <TableHead>Submitted</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {submissions.map((sub) => (
+            <>
+              <TableRow key={sub._id}>
+                <TableCell className="font-medium">
+                  <div>{sub.creatorName}</div>
+                  <a
+                    href={`https://tiktok.com/@${sub.tiktokUsername}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
+                    @{sub.tiktokUsername}
+                  </a>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      sub.status === "approved"
+                        ? "default"
+                        : sub.status === "rejected"
+                          ? "destructive"
+                          : "secondary"
+                    }
+                  >
+                    {sub.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-mono">
+                  ${sub.potentialEarnings.toLocaleString()}
+                </TableCell>
+                <TableCell>
+                  {new Date(sub.submittedAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {onApprove && onReject && (
+                    <Button
+                      onClick={() => {
+                        if (onApprove) void onApprove(sub._id);
+                      }}
+                      size="sm"
+                      disabled={!sub.hasReachedThreshold}
+                      className="mr-2"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" /> Approve
+                    </Button>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onToggleExpand(
+                            expandedId === sub._id ? null : sub._id
+                          )
+                        }
+                      >
+                        <TrendingUp className="h-4 w-4 mr-2" /> View Performance
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a
+                          href={sub.tiktokUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Video className="h-4 w-4 mr-2" />
+                          View on TikTok
+                        </a>
+                      </DropdownMenuItem>
+                      {onReject && (
+                        <DropdownMenuItem
+                          onClick={() => onReject(sub)}
+                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                        >
+                          <XCircle className="h-4 w-4 mr-2" /> Reject
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+              {expandedId === sub._id && (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Performance Details</CardTitle>
+                        {!sub.hasReachedThreshold &&
+                          sub.status === "pending" && (
+                            <Alert variant="destructive" className="mt-2">
+                              <AlertTriangle className="h-4 w-4" />
+                              <AlertDescription>
+                                This submission has not met the 1,000 view
+                                threshold for approval.
+                              </AlertDescription>
+                            </Alert>
                           )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                        {sub.status === "rejected" && sub.rejectionReason && (
+                          <Alert variant="destructive" className="mt-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription>
+                              <strong>Rejection Reason:</strong>{" "}
+                              {sub.rejectionReason}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ViewTracker submissionId={sub._id} showRefreshButton />
+                        <ViewChart submissionId={sub._id} />
+                      </CardContent>
+                    </Card>
+                  </TableCell>
+                </TableRow>
+              )}
+            </>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
 
-                {/* Reviewed Submissions */}
-                {reviewedSubmissions.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4 text-gray-300">
-                      Reviewed ({reviewedSubmissions.length})
-                    </h3>
-                    <div className="grid gap-4">
-                      {reviewedSubmissions.map((submission) => (
-                        <div key={submission._id} className="bg-gray-900 rounded-lg p-4">
-                          <div className="flex justify-between items-center">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-1">
-                                <h4 className="font-semibold">{submission.creatorName}</h4>
-                                <div className={`px-2 py-1 rounded-full text-xs ${
-                                  submission.status === "approved" 
-                                    ? "bg-green-900/20 text-green-400"
-                                    : "bg-red-900/20 text-red-400"
-                                }`}>
-                                  {submission.status}
-                                </div>
-                              </div>
-                              <a 
-                                href={submission.tiktokUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-purple-400 hover:text-purple-300 underline text-sm break-all"
-                              >
-                                {submission.tiktokUrl}
-                              </a>
-                              {submission.status === "rejected" && submission.rejectionReason && (
-                                <div className="mt-2 p-2 bg-red-900/20 border border-red-600 rounded text-sm">
-                                  <span className="text-red-400 font-medium">Reason: </span>
-                                  <span className="text-red-300">{submission.rejectionReason}</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <ViewTracker 
-                                submissionId={submission._id} 
-                                compact={true}
-                              />
-                              {submission.status === "approved" && (
-                                <div className="text-sm text-green-400 mt-1">
-                                  ${((submission.earnings || 0) / 100).toFixed(2)} earned
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+function SubmissionsSkeleton() {
+  return (
+    <div className="space-y-4 p-1">
+      <div className="flex space-x-2 border-b">
+        <Skeleton className="h-10 w-1/2" />
+        <Skeleton className="h-10 w-1/2" />
+      </div>
+      <div className="border rounded-lg p-4">
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-24" />
               </div>
-            )}
-          </div>
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-5 w-24" />
+              <div className="flex gap-2">
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="h-9 w-9" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Rejection Modal */}
-      {showRejectModal && selectedSubmission && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-gray-800 rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-bold mb-4">Reject Submission</h3>
-            <p className="text-gray-400 mb-4">
-              Please provide feedback to help <strong>{selectedSubmission.creatorName}</strong> improve their future submissions.
-            </p>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Rejection Reason *</label>
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"
-                placeholder="e.g., Content doesn't align with brand guidelines, insufficient views, poor video quality..."
-                required
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setSelectedSubmission(null);
-                  setRejectionReason("");
-                }}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRejectConfirm}
-                disabled={!rejectionReason.trim()}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-              >
-                Reject & Send Feedback
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 }

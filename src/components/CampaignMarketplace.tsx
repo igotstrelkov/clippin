@@ -4,23 +4,38 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { CampaignCard } from "./CampaignCard";
 import { CampaignModal } from "./CampaignModal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DollarSign, Search, SearchX, Target } from "lucide-react";
+import { CampaignCardSkeleton } from "./CampaignCardSkeleton";
 
 export function CampaignMarketplace() {
+  const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"newest" | "budget" | "cpm">("newest");
   const [selectedCampaignId, setSelectedCampaignId] =
     useState<Id<"campaigns"> | null>(null);
 
-  const campaigns = useQuery(api.campaigns.getActiveCampaigns) || [];
+  const campaigns = useQuery(api.campaigns.getActiveCampaigns);
 
-  // Filter campaigns by category
-  const filteredCampaigns = campaigns.filter(
-    (campaign) =>
-      categoryFilter === "all" || campaign.category === categoryFilter
-  );
+  const filteredCampaigns = campaigns
+    ? campaigns.filter(
+        (campaign) =>
+          (categoryFilter === "all" || campaign.category === categoryFilter) &&
+          (searchQuery === "" ||
+            campaign.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : [];
 
-  // Sort campaigns
-  const sortedCampaigns = [...filteredCampaigns].sort((a, b) => {
+  const sortedCampaigns = filteredCampaigns.sort((a, b) => {
     switch (sortBy) {
       case "budget":
         return b.totalBudget - a.totalBudget;
@@ -48,90 +63,132 @@ export function CampaignMarketplace() {
     { value: "business", label: "Business" },
   ];
 
+  const totalBudget = campaigns?.reduce((sum, c) => sum + c.totalBudget, 0) ?? 0;
+  const avgCpm =
+    campaigns && campaigns.length > 0
+      ? campaigns.reduce((sum, c) => sum + c.cpmRate, 0) / campaigns.length
+      : 0;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">
+        <h1 className="text-4xl font-bold tracking-tight mb-4">
           Campaign{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">
             Marketplace
           </span>
         </h1>
-        <p className="text-gray-300 text-lg max-w-2xl mx-auto">
+        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
           Discover exciting brand campaigns and start earning money from your
           TikTok content. Get paid based on your video performance with
           transparent CPM rates.
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gray-800 rounded-lg p-6 text-center">
-          <div className="text-3xl font-bold text-purple-400 mb-2">
-            {campaigns.length}
-          </div>
-          <div className="text-gray-300">Active Campaigns</div>
-        </div>
-        <div className="bg-gray-800 rounded-lg p-6 text-center">
-          <div className="text-3xl font-bold text-green-400 mb-2">
-            $
-            {(
-              campaigns.reduce((sum, c) => sum + c.totalBudget, 0) / 100
-            ).toLocaleString()}
-          </div>
-          <div className="text-gray-300">Total Budget Available</div>
-        </div>
-        <div className="bg-gray-800 rounded-lg p-6 text-center">
-          <div className="text-3xl font-bold text-blue-400 mb-2">
-            $
-            {campaigns.length > 0
-              ? (
-                  campaigns.reduce((sum, c) => sum + c.cpmRate, 0) /
-                  campaigns.length /
-                  100
-                ).toFixed(2)
-              : "0.00"}
-          </div>
-          <div className="text-gray-300">Average CPM Rate</div>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Active Campaigns
+            </CardTitle>
+            <Target className="w-5 h-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{campaigns?.length ?? "..."}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Budget Available
+            </CardTitle>
+            <DollarSign className="w-5 h-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              ${(totalBudget / 100).toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Average CPM Rate
+            </CardTitle>
+            <DollarSign className="w-5 h-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">${(avgCpm / 100).toFixed(2)}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-gray-300">Category:</label>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
-          >
-            {categories.map((category) => (
-              <option key={category.value} value={category.value}>
-                {category.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-gray-300">Sort by:</label>
-          <select
-            value={sortBy}
-            onChange={(e) =>
-              setSortBy(e.target.value as "newest" | "budget" | "cpm")
-            }
-            className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
-          >
-            <option value="newest">Newest First</option>
-            <option value="budget">Highest Budget</option>
-            <option value="cpm">Highest CPM</option>
-          </select>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div className="grid gap-2 md:col-span-1">
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  type="search"
+                  placeholder="Search by campaign title..."
+                  className="pl-8 w-full"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category-filter">Category</Label>
+              <Select
+                value={categoryFilter}
+                onValueChange={setCategoryFilter}
+              >
+                <SelectTrigger id="category-filter">
+                  <SelectValue placeholder="Filter by category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="sort-by">Sort by</Label>
+              <Select
+                value={sortBy}
+                onValueChange={(value) =>
+                  setSortBy(value as "newest" | "budget" | "cpm")
+                }
+              >
+                <SelectTrigger id="sort-by">
+                  <SelectValue placeholder="Sort campaigns" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="budget">Highest Budget</SelectItem>
+                  <SelectItem value="cpm">Highest CPM</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Campaign Grid */}
-      {sortedCampaigns.length > 0 ? (
+      {!campaigns ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <CampaignCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : sortedCampaigns.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedCampaigns.map((campaign) => (
             <CampaignCard
@@ -142,31 +199,17 @@ export function CampaignMarketplace() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-300 mb-2">
-            No campaigns found
-          </h3>
-          <p className="text-gray-400">
-            {categoryFilter === "all"
-              ? "No active campaigns available at the moment."
-              : `No campaigns found in the ${categories.find((c) => c.value === categoryFilter)?.label} category.`}
-          </p>
-        </div>
+        <Card className="text-center py-12">
+          <CardContent className="flex flex-col items-center gap-4">
+            <SearchX className="w-16 h-16 text-muted-foreground" />
+            <h3 className="text-xl font-semibold">No campaigns found</h3>
+            <p className="text-muted-foreground">
+              {categoryFilter === "all"
+                ? "No active campaigns are available right now."
+                : `No campaigns were found in the "${categories.find((c) => c.value === categoryFilter)?.label}" category.`}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Campaign Modal */}

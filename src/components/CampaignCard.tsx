@@ -1,4 +1,15 @@
 import { Id } from "../../convex/_generated/dataModel";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 interface Campaign {
   _id: Id<"campaigns">;
@@ -20,92 +31,69 @@ interface CampaignCardProps {
 
 export function CampaignCard({ campaign, onClick }: CampaignCardProps) {
   const budgetUsedPercentage =
-    ((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) *
-    100;
+    campaign.totalBudget > 0
+      ? ((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) *
+        100
+      : 0;
 
   return (
-    <div
+    <Card
       onClick={onClick}
-      className="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors cursor-pointer border border-gray-700 hover:border-purple-500"
+      className="hover:border-primary transition-colors cursor-pointer"
     >
-      {/* Header with brand info */}
-      <div className="flex items-center gap-3 mb-4">
-        {campaign.brandLogo ? (
-          <img
-            src={campaign.brandLogo}
-            alt={`${campaign.brandName} logo`}
-            className="w-10 h-10 rounded-full object-cover bg-gray-700"
-            onError={(e) => {
-              // Fallback to initials if image fails to load
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
-              target.nextElementSibling?.classList.remove("hidden");
-            }}
-          />
-        ) : null}
-        <div
-          className={`w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center ${campaign.brandLogo ? "hidden" : ""}`}
-        >
-          <span className="text-white font-bold text-sm">
+      <CardHeader className="flex-row gap-4 items-center">
+        <Avatar>
+          <AvatarImage src={campaign.brandLogo ?? ""} />
+          <AvatarFallback>
             {campaign.brandName.charAt(0).toUpperCase()}
-          </span>
+          </AvatarFallback>
+        </Avatar>
+        <div className="grid gap-1">
+          <CardTitle className="text-lg">{campaign.brandName}</CardTitle>
+          <Badge variant="outline">{campaign.category}</Badge>
         </div>
-        <div>
-          <p className="text-gray-300 font-medium">{campaign.brandName}</p>
-          <span className="inline-block px-2 py-1 bg-blue-900 text-blue-200 text-xs rounded-full">
-            {campaign.category}
-          </span>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <h3 className="text-xl font-semibold tracking-tight">
+            {campaign.title}
+          </h3>
+          <CardDescription className="line-clamp-2">
+            {campaign.description}
+          </CardDescription>
         </div>
-      </div>
-
-      {/* Campaign title and description */}
-      <h3 className="text-xl font-bold mb-2 text-white">{campaign.title}</h3>
-      <p className="text-gray-300 mb-4 line-clamp-2">{campaign.description}</p>
-
-      {/* Payment info */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-gray-900 p-3 rounded-lg">
-          <div className="text-lg font-bold text-green-400">
-            ${(campaign.cpmRate / 100).toFixed(2)}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-secondary p-3 rounded-lg">
+            <div className="text-lg font-bold text-primary">
+              ${(campaign.cpmRate / 100).toFixed(2)}
+            </div>
+            <div className="text-xs text-muted-foreground">per 1,000 views</div>
           </div>
-          <div className="text-xs text-gray-400">per 1,000 views</div>
-        </div>
-        <div className="bg-gray-900 p-3 rounded-lg">
-          <div className="text-lg font-bold text-blue-400">
-            ${(campaign.maxPayoutPerSubmission / 100).toLocaleString()}
+          <div className="bg-secondary p-3 rounded-lg">
+            <div className="text-lg font-bold">
+              ${(campaign.maxPayoutPerSubmission / 100).toLocaleString()}
+            </div>
+            <div className="text-xs text-muted-foreground">max payout</div>
           </div>
-          <div className="text-xs text-gray-400">max payout</div>
         </div>
-      </div>
-
-      {/* Budget progress */}
-      <div className="mb-2">
-        <div className="flex justify-between text-sm mb-1">
-          <span className="text-gray-400">Budget Used</span>
-          <span className="text-gray-300">
-            {budgetUsedPercentage.toFixed(1)}%
-          </span>
+      </CardContent>
+      <CardFooter className="flex-col items-start gap-2">
+        <div className="w-full">
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-muted-foreground">Budget Used</span>
+            <span className="font-medium">
+              {budgetUsedPercentage.toFixed(1)}%
+            </span>
+          </div>
+          <Progress value={budgetUsedPercentage} />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>
+              ${((campaign.totalBudget - campaign.remainingBudget) / 100).toLocaleString()}
+            </span>
+            <span>${(campaign.remainingBudget / 100).toLocaleString()} Remaining</span>
+          </div>
         </div>
-        <div className="w-full bg-gray-700 rounded-full h-2">
-          <div
-            className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full"
-            style={{ width: `${Math.min(budgetUsedPercentage, 100)}%` }}
-          ></div>
-        </div>
-        <div className="flex justify-between text-xs text-gray-400 mt-1">
-          <span>
-            $
-            {(
-              (campaign.totalBudget - campaign.remainingBudget) /
-              100
-            ).toLocaleString()}{" "}
-            spent
-          </span>
-          <span>
-            ${(campaign.remainingBudget / 100).toLocaleString()} remaining
-          </span>
-        </div>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

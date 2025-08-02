@@ -1,272 +1,533 @@
-import { useQuery, useMutation } from "convex/react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMutation, useQuery } from "convex/react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { CreateCampaignModal } from "./CreateCampaignModal";
 import { EditCampaignModal } from "./EditCampaignModal";
 import { SubmissionsReviewModal } from "./SubmissionsReviewModal";
-import { useState } from "react";
-import { toast } from "sonner";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DollarSign,
+  Eye,
+  FileWarning,
+  FolderOpen,
+  ListChecks,
+  MoreHorizontal,
+  Package,
+  PlusCircle,
+  Trash2,
+} from "lucide-react";
+import { Id } from "../../convex/_generated/dataModel";
+
+// This type is based on the data returned from the getBrandCampaigns query
+type Campaign = {
+  _id: Id<"campaigns">;
+  _creationTime: number;
+  title: string;
+  status: "active" | "draft" | "completed" | "paused";
+  totalBudget: number;
+  remainingBudget: number;
+  totalSubmissions?: number;
+  approvedSubmissions?: number;
+  totalViews?: number;
+  updatedTime?: number;
+};
 
 export function BrandDashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingCampaign, setEditingCampaign] = useState<any>(null);
-  const [reviewingCampaign, setReviewingCampaign] = useState<any>(null);
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [reviewingCampaign, setReviewingCampaign] = useState<Campaign | null>(
+    null
+  );
+  const [deletingCampaignId, setDeletingCampaignId] =
+    useState<Id<"campaigns"> | null>(null);
 
   const campaigns = useQuery(api.campaigns.getBrandCampaigns);
   const deleteCampaign = useMutation(api.campaigns.deleteCampaign);
 
-  if (campaigns === undefined) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
-      </div>
-    );
-  }
-
-  const handleDeleteCampaign = async (campaignId: string) => {
-    if (!confirm("Are you sure you want to delete this campaign?")) return;
-
+  const handleDelete = async () => {
+    if (!deletingCampaignId) return;
     try {
-      await deleteCampaign({ campaignId: campaignId as any });
+      await deleteCampaign({ campaignId: deletingCampaignId });
       toast.success("Campaign deleted successfully");
+      setDeletingCampaignId(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete campaign");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete campaign"
+      );
     }
   };
 
-  const activeCampaigns = campaigns.filter(c => c.status === "active");
-  const draftCampaigns = campaigns.filter(c => c.status === "draft");
-  const completedCampaigns = campaigns.filter(c => c.status === "completed");
+  const { activeCampaigns, draftCampaigns, completedCampaigns, stats } =
+    useMemo(() => {
+      if (!campaigns) {
+        return {
+          activeCampaigns: [],
+          draftCampaigns: [],
+          completedCampaigns: [],
+          stats: { totalSpent: 0, totalViews: 0, totalSubmissions: 0 },
+        };
+      }
+      const active = campaigns.filter((c) => c.status === "active");
+      const drafts = campaigns.filter((c) => c.status === "draft");
+      const completed = campaigns.filter((c) => c.status === "completed");
+      const totalSpent = campaigns.reduce(
+        (sum, c) => sum + (c.totalBudget - c.remainingBudget),
+        0
+      );
+      const totalViews = campaigns.reduce(
+        (sum, c) => sum + (c.totalViews || 0),
+        0
+      );
+      const totalSubmissions = campaigns.reduce(
+        (sum, c) => sum + (c.totalSubmissions || 0),
+        0
+      );
+      return {
+        activeCampaigns: active,
+        draftCampaigns: drafts,
+        completedCampaigns: completed,
+        stats: { totalSpent, totalViews, totalSubmissions },
+      };
+    }, [campaigns]);
 
-  const totalSpent = campaigns.reduce((sum, campaign) => 
-    sum + (campaign.totalBudget - campaign.remainingBudget), 0
-  );
-
-  const totalViews = campaigns.reduce((sum, campaign) => 
-    sum + (campaign.totalViews || 0), 0
-  );
-
-  const totalSubmissions = campaigns.reduce((sum, campaign) => 
-    sum + (campaign.totalSubmissions || 0), 0
-  );
+  if (campaigns === undefined) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Brand Dashboard</h1>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-        >
+        <Button onClick={() => setShowCreateModal(true)}>
+          <PlusCircle className="mr-2 h-4 w-4" />
           Create Campaign
-        </button>
+        </Button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-green-400 mb-1">
-            ${(totalSpent / 100).toFixed(2)}
-          </div>
-          <div className="text-gray-400">Total Spent</div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-blue-400 mb-1">
-            {totalViews.toLocaleString()}
-          </div>
-          <div className="text-gray-400">Total Views</div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-purple-400 mb-1">
-            {activeCampaigns.length}
-          </div>
-          <div className="text-gray-400">Active Campaigns</div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="text-2xl font-bold text-yellow-400 mb-1">
-            {totalSubmissions}
-          </div>
-          <div className="text-gray-400">Total Submissions</div>
-        </div>
+        <StatCard
+          icon={DollarSign}
+          title="Total Spent"
+          value={`$${(stats.totalSpent / 100).toLocaleString()}`}
+        />
+        <StatCard
+          icon={Eye}
+          title="Total Views"
+          value={stats.totalViews.toLocaleString()}
+        />
+        <StatCard
+          icon={Package}
+          title="Active Campaigns"
+          value={activeCampaigns.length.toString()}
+        />
+        <StatCard
+          icon={ListChecks}
+          title="Total Submissions"
+          value={stats.totalSubmissions.toString()}
+        />
       </div>
 
-      {/* Draft Campaigns - Payment Required */}
-      {draftCampaigns.length > 0 && (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="flex items-center mb-4">
-            <svg className="w-6 h-6 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <h3 className="text-lg font-semibold text-white">Payment Required</h3>
-          </div>
-          <p className="text-gray-400 mb-4">
-            Complete payment for these campaigns to activate them and make them available to creators.
-          </p>
-          <div className="space-y-3">
-            {draftCampaigns.map((campaign) => (
-              <div key={campaign._id} className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="font-medium text-white">{campaign.title}</h4>
-                    <p className="text-sm text-yellow-300">
-                      Budget: ${(campaign.totalBudget / 100).toFixed(2)} • Created {new Date(campaign._creationTime).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setEditingCampaign(campaign)}
-                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Complete Payment
-                    </button>
-                    <button
-                      onClick={() => handleDeleteCampaign(campaign._id)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <Tabs defaultValue="active">
+        <TabsList>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="drafts">
+            Drafts{" "}
+            <Badge variant="destructive" className="ml-2">
+              {draftCampaigns.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="completed">Completed</TabsTrigger>
+        </TabsList>
 
-      {/* Active Campaigns */}
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Active Campaigns</h3>
-        {activeCampaigns.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <h4 className="text-lg font-medium text-white mb-2">No Active Campaigns</h4>
-            <p className="text-gray-400">Create your first campaign to start working with creators!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {activeCampaigns.map((campaign) => (
-              <div key={campaign._id} className="bg-gray-900 rounded-lg p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h4 className="font-semibold text-white">{campaign.title}</h4>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    campaign.status === "active" 
-                      ? "bg-green-900/20 text-green-400"
-                      : campaign.status === "paused"
-                      ? "bg-yellow-900/20 text-yellow-400"
-                      : "bg-gray-900/20 text-gray-400"
-                  }`}>
-                    {campaign.status}
-                  </span>
-                </div>
-                
-                <div className="space-y-2 text-sm mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Budget:</span>
-                    <span className="text-white">${(campaign.totalBudget / 100).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Remaining:</span>
-                    <span className="text-white">${(campaign.remainingBudget / 100).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Views:</span>
-                    <span className="text-white">{(campaign.totalViews || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Submissions:</span>
-                    <span className="text-white">{campaign.totalSubmissions || 0}</span>
-                  </div>
-                </div>
+        <TabsContent value="active">
+          <CampaignsTable
+            campaigns={activeCampaigns}
+            setEditingCampaign={setEditingCampaign}
+            setReviewingCampaign={setReviewingCampaign}
+            setDeletingCampaignId={setDeletingCampaignId}
+          />
+        </TabsContent>
 
-                <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
-                  <div 
-                    className="bg-purple-600 h-2 rounded-full" 
-                    style={{ 
-                      width: `${Math.max(0, Math.min(100, ((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) * 100))}%` 
-                    }}
-                  ></div>
-                </div>
+        <TabsContent value="drafts">
+          <Card>
+            <CardContent>
+              {/* <CardHeader>
+                <CardTitle>Draft Campaigns</CardTitle>
+              </CardHeader> */}
 
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setReviewingCampaign(campaign)}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm font-medium transition-colors"
-                  >
-                    Review ({campaign.totalSubmissions || 0})
-                  </button>
-                  <button
-                    onClick={() => setEditingCampaign(campaign)}
-                    className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded text-sm font-medium transition-colors"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Completed Campaigns */}
-      {completedCampaigns.length > 0 && (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Completed Campaigns</h3>
-          <div className="space-y-3">
-            {completedCampaigns.slice(0, 5).map((campaign) => (
-              <div key={campaign._id} className="flex justify-between items-center p-4 bg-gray-900 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-white">{campaign.title}</h4>
-                  <p className="text-sm text-gray-400">
-                    {(campaign.totalViews || 0).toLocaleString()} views • 
-                    ${((campaign.totalBudget - campaign.remainingBudget) / 100).toFixed(2)} spent
+              {draftCampaigns.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <FileWarning className="mx-auto h-12 w-12" />
+                  <h3 className="mt-4 text-lg font-medium">No Drafts</h3>
+                  <p className="mt-1 text-sm">
+                    You have no campaigns awaiting payment.
                   </p>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-green-400 font-medium">Completed</div>
-                  <div className="text-xs text-gray-400">
-                    {campaign.approvedSubmissions || 0} submissions
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              ) : (
+                <>
+                  {/* <CardHeader>
+                    <CardTitle>Draft Campaigns</CardTitle>
+                    <AlertDescription>
+                      These campaigns are not yet active. Complete payment to
+                      make them available to creators.
+                    </AlertDescription>
+                  </CardHeader> */}
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Campaign</TableHead>
+                          <TableHead>Budget</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {draftCampaigns.map((campaign) => (
+                          <TableRow key={campaign._id}>
+                            <TableCell className="font-medium">
+                              {campaign.title}
+                            </TableCell>
+                            <TableCell>
+                              ${(campaign.totalBudget / 100).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(
+                                campaign._creationTime
+                              ).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => setEditingCampaign(campaign)}
+                                >
+                                  Complete Payment
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="px-2"
+                                  onClick={() =>
+                                    setDeletingCampaignId(campaign._id)
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="completed">
+          <CampaignsTable
+            campaigns={completedCampaigns}
+            setEditingCampaign={setEditingCampaign}
+            setReviewingCampaign={setReviewingCampaign}
+            setDeletingCampaignId={setDeletingCampaignId}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {showCreateModal && (
+        <CreateCampaignModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => setShowCreateModal(false)}
+        />
       )}
-
-      {/* Modals */}
-      <CreateCampaignModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={() => {
-          setShowCreateModal(false);
-          // Campaigns will refresh automatically due to live queries
-        }}
-      />
-
       {editingCampaign && (
         <EditCampaignModal
           campaign={editingCampaign}
           isOpen={!!editingCampaign}
           onClose={() => setEditingCampaign(null)}
-          onSuccess={() => {
-            setEditingCampaign(null);
-            // Campaigns will refresh automatically due to live queries
-          }}
+          onSuccess={() => setEditingCampaign(null)}
         />
       )}
-
       {reviewingCampaign && (
         <SubmissionsReviewModal
           campaignId={reviewingCampaign._id}
           onClose={() => setReviewingCampaign(null)}
         />
       )}
+
+      <AlertDialog
+        open={!!deletingCampaignId}
+        onOpenChange={(open) => !open && setDeletingCampaignId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your
+              campaign and all of its associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                void handleDelete();
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function CampaignsTable({
+  campaigns,
+  setEditingCampaign,
+  setReviewingCampaign,
+  setDeletingCampaignId,
+}: {
+  campaigns: Campaign[];
+  setEditingCampaign: (c: Campaign) => void;
+  setReviewingCampaign: (c: Campaign) => void;
+  setDeletingCampaignId: (id: Id<"campaigns">) => void;
+}) {
+  if (campaigns.length === 0) {
+    return (
+      <Card>
+        <CardContent className="text-center py-12 text-muted-foreground">
+          <FolderOpen className="mx-auto h-12 w-12" />
+          <h3 className="mt-4 text-lg font-medium">No Campaigns Found</h3>
+          <p className="mt-1 text-sm">
+            There are no campaigns in this category.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Campaign</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Budget</TableHead>
+              <TableHead className="text-right">Views</TableHead>
+              <TableHead className="text-right">Submissions</TableHead>
+              <TableHead>Last Updated</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {campaigns.map((campaign) => (
+              <TableRow key={campaign._id}>
+                <TableCell className="font-medium">{campaign.title}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      campaign.status === "active" ? "default" : "outline"
+                    }
+                  >
+                    {campaign.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="font-mono">
+                    ${(campaign.remainingBudget / 100).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    of ${(campaign.totalBudget / 100).toLocaleString()}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {(campaign.totalViews || 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {campaign.approvedSubmissions || 0} /{" "}
+                  {campaign.totalSubmissions || 0}
+                </TableCell>
+                <TableCell>
+                  {campaign.updatedTime
+                    ? new Date(campaign.updatedTime).toLocaleDateString()
+                    : "N/A"}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setReviewingCampaign(campaign)}
+                      >
+                        Review Submissions
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setEditingCampaign(campaign)}
+                      >
+                        Edit Campaign
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => setDeletingCampaignId(campaign._id)}
+                      >
+                        Delete Campaign
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  title,
+  value,
+}: {
+  icon: React.ElementType;
+  title: string;
+  value: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-10 w-40" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Card>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <Skeleton className="h-5 w-32" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-5 w-20" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Skeleton className="h-5 w-24 ml-auto" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Skeleton className="h-5 w-16 ml-auto" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Skeleton className="h-5 w-28 ml-auto" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-5 w-24" />
+                  </TableHead>
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(3)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-40" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-24" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-20 ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-12 ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-16 ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-8 w-8 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
