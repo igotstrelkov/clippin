@@ -15,12 +15,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-8">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-sm">C</span>
-              </div>
-              <span className="text-xl font-bold">Clippin</span>
-            </div>
+            <img src="/logo-white.png" alt="Clippin" width={130} />
 
             <div className="flex space-x-1">
               <button
