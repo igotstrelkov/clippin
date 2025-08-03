@@ -151,22 +151,20 @@ export const getCreatorSubmissions = query({
 
     // Get campaign info for each submission
     const submissionsWithCampaigns = await Promise.all(
-      submissions.map(async (submission) => {
-        const campaign = await ctx.db.get(submission.campaignId);
+      submissions.map(async (s) => {
+        const campaign = await ctx.db.get(s.campaignId);
 
-        // Calculate potential earnings
         const potentialEarnings = campaign
           ? Math.min(
-              Math.floor((submission.viewCount || 0) / 1000) *
-                (campaign.cpmRate / 100),
+              Math.floor((s.viewCount || 0) / 1000) * (campaign.cpmRate / 100),
               campaign.maxPayoutPerSubmission / 100
             )
           : 0;
 
         return {
-          ...submission,
-          campaignTitle: campaign?.title || "Unknown Campaign",
-          hasReachedThreshold: (submission.viewCount || 0) >= 1000,
+          ...s,
+          campaignTitle: campaign?.title,
+          hasReachedThreshold: (s.viewCount || 0) >= 1000,
           potentialEarnings,
         };
       })
@@ -341,3 +339,57 @@ export const markThresholdMet = internalMutation({
     });
   },
 });
+
+// Get all submissions for a brand's campaigns
+export const getBrandSubmissions = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const brandCampaigns = await ctx.db
+      .query("campaigns")
+      .withIndex("by_brand_id", (q) => q.eq("brandId", userId))
+      .collect();
+
+    if (brandCampaigns.length === 0) {
+      return [];
+    }
+
+    const allSubmissions = await Promise.all(
+      brandCampaigns.map(async (campaign) => {
+        const submissions = await ctx.db
+          .query("submissions")
+          .withIndex("by_campaign_id", (q) => q.eq("campaignId", campaign._id))
+          .order("desc")
+          .collect();
+
+        return Promise.all(
+          submissions.map(async (submission) => {
+            const creatorProfile = await ctx.db
+              .query("profiles")
+              .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
+              .unique();
+
+            const potentialEarnings = Math.min(
+              Math.floor((submission.viewCount || 0) / 1000) * (campaign.cpmRate / 100),
+              campaign.maxPayoutPerSubmission / 100
+            );
+
+            return {
+              ...submission,
+              campaignTitle: campaign.title,
+              creatorName: creatorProfile?.creatorName || "Unknown Creator",
+              tiktokUsername: creatorProfile?.tiktokUsername,
+              hasReachedThreshold: (submission.viewCount || 0) >= 1000,
+              potentialEarnings,
+            };
+          })
+        );
+      })
+    );
+
+    return allSubmissions.flat().sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+

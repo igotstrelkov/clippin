@@ -9,11 +9,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -23,22 +24,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { useQuery } from "convex/react";
 import {
   AlertTriangle,
   DollarSign,
   Eye,
-  History,
   ListChecks,
-  MoreHorizontal,
   TrendingUp,
-  Video,
-  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import { Doc } from "../../convex/_generated/dataModel";
 import { PayoutRequestModal } from "./PayoutRequestModal";
 import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
 import TikTokVerification from "./TikTokVerification";
@@ -47,17 +44,9 @@ import { ViewTracker } from "./ViewTracker";
 
 // Type definitions based on Convex queries
 
-type Payout = {
-  _id: Id<"payments">;
-  amount: number;
-  createdAt: number;
-  status: "completed" | "failed" | "pending";
-};
-
-type Submission = {
-  _id: Id<"submissions">;
-  campaignTitle: string;
-  submittedAt: number;
+export type SubmissionWithCampaign = Doc<"submissions"> & {
+  campaignTitle: string | undefined;
+  potentialEarnings: number;
   status: "approved" | "rejected" | "pending";
   rejectionReason?: string;
   earnings?: number;
@@ -67,10 +56,12 @@ type Submission = {
 export function CreatorDashboard() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [expandedSubmission, setExpandedSubmission] =
-    useState<Submission | null>(null);
+    useState<SubmissionWithCampaign | null>(null);
 
   const stats = useQuery(api.profiles.getCreatorStats);
-  const submissions = useQuery(api.submissions.getCreatorSubmissions);
+  const submissions: SubmissionWithCampaign[] | undefined = useQuery(
+    api.submissions.getCreatorSubmissions
+  );
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
   const payouts = useQuery(api.payoutHelpers.getCreatorPayouts);
 
@@ -103,17 +94,17 @@ export function CreatorDashboard() {
       {!stats.tiktokVerified && <TikTokVerification />}
       <StripeConnectOnboarding />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={DollarSign}
           title="Total Earnings"
           value={`$${(stats.totalEarnings / 100).toLocaleString()}`}
         />
-        <StatCard
+        {/* <StatCard
           icon={Wallet}
           title="Pending Payout"
           value={`$${((pendingEarnings?.totalPending || 0) / 100).toLocaleString()}`}
-        />
+        /> */}
         <StatCard
           icon={ListChecks}
           title="Total Submissions"
@@ -131,63 +122,111 @@ export function CreatorDashboard() {
         />
       </div>
 
-      <Tabs defaultValue="submissions">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="submissions">Submissions</TabsTrigger>
-          <TabsTrigger value="payouts">Payouts</TabsTrigger>
-        </TabsList>
-        <TabsContent value="submissions">
-          <SubmissionsSection
-            submissions={submissions}
-            onExpand={setExpandedSubmission}
-          />
-        </TabsContent>
-        <TabsContent value="payouts">
-          <PayoutsSection
-            payouts={payouts}
-            pendingAmount={pendingEarnings?.totalPending || 0}
-            onRequestPayout={() => setShowPayoutModal(true)}
-          />
-        </TabsContent>
-      </Tabs>
-
-      {expandedSubmission && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle>
-              Performance for: {expandedSubmission.campaignTitle}
-            </CardTitle>
-            <CardDescription>
-              Submitted on{" "}
-              {new Date(expandedSubmission.submittedAt).toLocaleDateString()}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {expandedSubmission.status === "rejected" &&
-              expandedSubmission.rejectionReason && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Rejection Feedback</AlertTitle>
-                  <AlertDescription>
-                    {expandedSubmission.rejectionReason}
-                  </AlertDescription>
-                </Alert>
-              )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ViewTracker
-                submissionId={expandedSubmission._id}
-                showRefreshButton
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Submissions</CardTitle>
+              <CardDescription>
+                Track your campaign submissions and earnings
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SubmissionsSection
+                submissions={submissions}
+                onExpand={setExpandedSubmission}
               />
-              {/* <StatCard
-                icon={DollarSign}
-                title="Total Earnings"
-                value={`$${((expandedSubmission.earnings || 0) / 100).toLocaleString()}`}
-              /> */}
-              <ViewChart submissionId={expandedSubmission._id} />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Available Payout</CardTitle>
+              <CardDescription>
+                Request payout anytime, no minimum required
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="text-4xl font-bold">
+                ${(pendingEarnings?.totalPending / 100 || 0).toFixed(2)}
+              </div>
+              <div className="text-sm text-muted-foreground mb-4">
+                Ready to withdraw
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => setShowPayoutModal(true)}
+              >
+                Request Payout
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Payouts processed weekly via Stripe Connect
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full">
+                Update TikTok Account
+              </Button>
+              <Button variant="outline" className="w-full">
+                Edit Profile
+              </Button>
+              <Button variant="outline" className="w-full">
+                Help & Support
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Dialog
+        open={!!expandedSubmission}
+        onOpenChange={(isOpen) => !isOpen && setExpandedSubmission(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          {expandedSubmission && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  Performance for: {expandedSubmission.campaignTitle}
+                </DialogTitle>
+                <DialogDescription>
+                  Submitted on{" "}
+                  {new Date(
+                    expandedSubmission._creationTime
+                  ).toLocaleDateString()}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {expandedSubmission.status === "rejected" &&
+                  expandedSubmission.rejectionReason && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Rejection Feedback</AlertTitle>
+                      <AlertDescription>
+                        {expandedSubmission.rejectionReason}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ViewTracker
+                    submissionId={expandedSubmission._id}
+                    showRefreshButton
+                  />
+                  <ViewChart submissionId={expandedSubmission._id} />
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {showPayoutModal && (
         <PayoutRequestModal
@@ -203,174 +242,81 @@ function SubmissionsSection({
   submissions,
   onExpand,
 }: {
-  submissions: Submission[] | undefined;
-  onExpand: (s: Submission) => void;
+  submissions: SubmissionWithCampaign[] | undefined;
+  onExpand: (s: SubmissionWithCampaign) => void;
 }) {
   return (
     <Card>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Campaign</TableHead>
-              <TableHead>Submitted</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Earnings</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {submissions && submissions.length > 0 ? (
-              submissions.map((s) => (
-                <TableRow key={s._id}>
-                  <TableCell className="font-medium">
-                    {s.campaignTitle}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(s.submittedAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        s.status === "approved"
-                          ? "default"
-                          : s.status === "rejected"
-                            ? "destructive"
-                            : "secondary"
-                      }
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Campaign</TableHead>
+            <TableHead>Submitted</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Views</TableHead>
+            {/* <TableHead>Link</TableHead> */}
+            <TableHead className="text-right">Earnings</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {submissions && submissions.length > 0 ? (
+            submissions.map((s) => (
+              <TableRow
+                key={s._id}
+                onClick={() => onExpand(s)}
+                className="cursor-pointer hover:bg-muted/50"
+              >
+                <TableCell className="font-medium">
+                  {s.campaignTitle ?? "Unknown Campaign"}
+                </TableCell>
+                <TableCell>
+                  {new Date(s._creationTime).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      s.status === "approved"
+                        ? "default"
+                        : s.status === "rejected"
+                          ? "destructive"
+                          : "outline"
+                    }
+                  >
+                    {s.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{s.viewCount?.toLocaleString() ?? "—"}</TableCell>
+                {/* <TableCell>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    asChild
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <a
+                      href={s.tiktokUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline font-semibold"
                     >
-                      {s.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {s.earnings
-                      ? `$${(s.earnings / 100).toLocaleString()}`
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onExpand(s)}>
-                          View Performance
-                        </DropdownMenuItem>
-                        {s.tiktokVideoUrl && (
-                          <DropdownMenuItem asChild>
-                            <a
-                              href={s.tiktokVideoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              View on TikTok
-                            </a>
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  <Video className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-medium">
-                    No Submissions Yet
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Browse campaigns and submit a video to start earning.
-                  </p>
+                      View Post
+                    </a>
+                  </Button>
+                </TableCell> */}
+                <TableCell className="text-right font-medium">
+                  {`$${s.potentialEarnings.toFixed(2)}`}
                 </TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-}
-
-function PayoutsSection({
-  payouts,
-  pendingAmount,
-  onRequestPayout,
-}: {
-  payouts: Payout[] | undefined;
-  pendingAmount: number;
-  onRequestPayout: () => void;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>Payout History</CardTitle>
-            <CardDescription>
-              Your requested payouts and their status.
-            </CardDescription>
-          </div>
-          {pendingAmount > 0 && (
-            <Button onClick={onRequestPayout}>
-              Request Payout (${(pendingAmount / 100).toLocaleString()})
-            </Button>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={6} className="h-24 text-center">
+                No submissions yet.
+              </TableCell>
+            </TableRow>
           )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {payouts && payouts.length > 0 ? (
-              payouts.map((p) => (
-                <TableRow key={p._id}>
-                  <TableCell>
-                    {new Date(p.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        p.status === "completed"
-                          ? "default"
-                          : p.status === "failed"
-                            ? "destructive"
-                            : "secondary"
-                      }
-                    >
-                      {p.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    ${(p.amount / 100).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
-                  <History className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-medium">No Payouts Yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Your payout history will appear here.
-                  </p>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
+        </TableBody>
+      </Table>
     </Card>
   );
 }

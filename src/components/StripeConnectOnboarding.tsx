@@ -170,13 +170,13 @@ export function StripeConnectOnboarding() {
             </div>
             <div className="flex items-center text-sm text-muted-foreground">
               <div
-                className={`w-2 h-2 rounded-full mr-2 ${connectStatus.chargesEnabled ? "bg-green-500" : "bg-destructive"}`}
+                className={`w-2 h-2 rounded-full mr-2 ${connectStatus.chargesEnabled ? "bg-green-500" : "bg-red-500"}`}
               />
               Charges {connectStatus.chargesEnabled ? "Enabled" : "Disabled"}
             </div>
             <div className="flex items-center text-sm text-muted-foreground">
               <div
-                className={`w-2 h-2 rounded-full mr-2 ${connectStatus.payoutsEnabled ? "bg-green-500" : "bg-destructive"}`}
+                className={`w-2 h-2 rounded-full mr-2 ${connectStatus.payoutsEnabled ? "bg-green-500" : "bg-red-500"}`}
               />
               Payouts {connectStatus.payoutsEnabled ? "Enabled" : "Disabled"}
             </div>

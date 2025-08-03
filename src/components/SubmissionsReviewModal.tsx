@@ -41,6 +41,7 @@ import { useMutation, useQuery } from "convex/react";
 import {
   AlertTriangle,
   CheckCircle2,
+  Loader2,
   MoreHorizontal,
   TrendingUp,
   Video,
@@ -144,7 +145,7 @@ export function SubmissionsReviewModal({
         </DialogHeader>
 
         {isLoading ? (
-          <SubmissionsSkeleton />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (submissions ?? []).length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-16">
             <Video className="h-16 w-16 text-muted-foreground" />

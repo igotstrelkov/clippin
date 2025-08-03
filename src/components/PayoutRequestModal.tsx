@@ -1,16 +1,13 @@
-import { useEffect, useState } from "react";
-import { useAction, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -19,15 +16,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useAction, useQuery } from "convex/react";
 import { Loader2, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { api } from "../../convex/_generated/api";
 
 interface PayoutRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function PayoutRequestModal({ isOpen, onClose }: PayoutRequestModalProps) {
+export function PayoutRequestModal({
+  isOpen,
+  onClose,
+}: PayoutRequestModalProps) {
   const [loading, setLoading] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
 
@@ -50,15 +53,18 @@ export function PayoutRequestModal({ isOpen, onClose }: PayoutRequestModalProps)
     );
   };
 
-  const selectedEarnings = pendingEarnings?.submissions
-    .filter((sub) => selectedSubmissions.includes(sub._id))
-    .reduce((sum, sub) => sum + (sub.pendingAmount || 0), 0) || 0;
+  const selectedEarnings =
+    pendingEarnings?.submissions
+      .filter((sub) => selectedSubmissions.includes(sub._id))
+      .reduce((sum, sub) => sum + (sub.pendingAmount || 0), 0) || 0;
 
   const handleSelectAll = () => {
     if (selectedSubmissions.length === pendingEarnings?.submissions.length) {
       setSelectedSubmissions([]);
     } else {
-      setSelectedSubmissions(pendingEarnings?.submissions.map((s) => s._id) || []);
+      setSelectedSubmissions(
+        pendingEarnings?.submissions.map((s) => s._id) || []
+      );
     }
   };
 
@@ -89,6 +95,7 @@ export function PayoutRequestModal({ isOpen, onClose }: PayoutRequestModalProps)
         <DialogHeader>
           <DialogTitle>Request Payout</DialogTitle>
         </DialogHeader>
+
         <div className="max-h-[60vh] overflow-y-auto pr-4">
           {pendingEarnings === undefined ? (
             <div className="flex justify-center items-center h-48">

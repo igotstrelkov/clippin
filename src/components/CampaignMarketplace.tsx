@@ -1,10 +1,6 @@
-import { useQuery } from "convex/react";
-import { useState } from "react";
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
-import { CampaignCard } from "./CampaignCard";
-import { CampaignModal } from "./CampaignModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,10 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useQuery } from "convex/react";
 import { DollarSign, Search, SearchX, Target } from "lucide-react";
+import { useState } from "react";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
+import { CampaignCard } from "./CampaignCard";
 import { CampaignCardSkeleton } from "./CampaignCardSkeleton";
+import { CampaignModal } from "./CampaignModal";
 
 export function CampaignMarketplace() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,7 +63,8 @@ export function CampaignMarketplace() {
     { value: "business", label: "Business" },
   ];
 
-  const totalBudget = campaigns?.reduce((sum, c) => sum + c.totalBudget, 0) ?? 0;
+  const totalBudget =
+    campaigns?.reduce((sum, c) => sum + c.totalBudget, 0) ?? 0;
   const avgCpm =
     campaigns && campaigns.length > 0
       ? campaigns.reduce((sum, c) => sum + c.cpmRate, 0) / campaigns.length
@@ -73,15 +74,14 @@ export function CampaignMarketplace() {
     <div className="space-y-8">
       <div className="text-center">
         <h1 className="text-4xl font-bold tracking-tight mb-4">
-          Campaign{" "}
+          Turn Your{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">
-            Marketplace
+            TikTok Into Cash
           </span>
         </h1>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Discover exciting brand campaigns and start earning money from your
-          TikTok content. Get paid based on your video performance with
-          transparent CPM rates.
+          Connect with top brands, create amazing content, and get paid for
+          every view. Join thousands of creators earning money on Clippin.
         </p>
       </div>
 
@@ -94,7 +94,9 @@ export function CampaignMarketplace() {
             <Target className="w-5 h-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{campaigns?.length ?? "..."}</div>
+            <div className="text-3xl font-bold">
+              {campaigns?.length ?? "..."}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -118,7 +120,9 @@ export function CampaignMarketplace() {
             <DollarSign className="w-5 h-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${(avgCpm / 100).toFixed(2)}</div>
+            <div className="text-3xl font-bold">
+              ${(avgCpm / 100).toFixed(2)}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -143,10 +147,7 @@ export function CampaignMarketplace() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="category-filter">Category</Label>
-              <Select
-                value={categoryFilter}
-                onValueChange={setCategoryFilter}
-              >
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger id="category-filter">
                   <SelectValue placeholder="Filter by category" />
                 </SelectTrigger>

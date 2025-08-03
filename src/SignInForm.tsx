@@ -1,7 +1,4 @@
 "use client";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +10,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface SignInFormProps {
   onSuccess?: () => void;
@@ -36,10 +36,9 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
               onSuccess?.();
             })
             .catch((error) => {
-              const toastTitle =
-                error.message.includes("Invalid password")
-                  ? "Invalid password. Please try again."
-                  : flow === "signIn"
+              const toastTitle = error.message.includes("Invalid password")
+                ? "Invalid password. Please try again."
+                : flow === "signIn"
                   ? "Could not sign in, did you mean to sign up?"
                   : "Could not sign up, did you mean to sign in?";
               toast.error(toastTitle);
@@ -64,13 +63,19 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
               id="email"
               type="email"
               name="email"
-              placeholder="m@example.com"
+              placeholder="example@gmail.com"
               required
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" name="password" required />
+            <Input
+              id="password"
+              type="password"
+              name="password"
+              placeholder="********"
+              required
+            />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">

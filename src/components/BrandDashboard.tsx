@@ -26,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -39,15 +40,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DollarSign,
   Eye,
-  FileWarning,
   FolderOpen,
-  ListChecks,
+  Loader2,
   MoreHorizontal,
   Package,
   PlusCircle,
-  Trash2,
 } from "lucide-react";
 import { Id } from "../../convex/_generated/dataModel";
+import { SubmissionCard } from "./SubmissionCard";
 
 // This type is based on the data returned from the getBrandCampaigns query
 type Campaign = {
@@ -73,6 +73,10 @@ export function BrandDashboard() {
     useState<Id<"campaigns"> | null>(null);
 
   const campaigns = useQuery(api.campaigns.getBrandCampaigns);
+  const submissions = useQuery(api.submissions.getBrandSubmissions);
+  const updateSubmissionStatus = useMutation(
+    api.submissions.updateSubmissionStatus
+  );
   const deleteCampaign = useMutation(api.campaigns.deleteCampaign);
 
   const handleDelete = async () => {
@@ -88,38 +92,79 @@ export function BrandDashboard() {
     }
   };
 
-  const { activeCampaigns, draftCampaigns, completedCampaigns, stats } =
-    useMemo(() => {
-      if (!campaigns) {
-        return {
-          activeCampaigns: [],
-          draftCampaigns: [],
-          completedCampaigns: [],
-          stats: { totalSpent: 0, totalViews: 0, totalSubmissions: 0 },
-        };
-      }
-      const active = campaigns.filter((c) => c.status === "active");
-      const drafts = campaigns.filter((c) => c.status === "draft");
-      const completed = campaigns.filter((c) => c.status === "completed");
-      const totalSpent = campaigns.reduce(
-        (sum, c) => sum + (c.totalBudget - c.remainingBudget),
-        0
-      );
-      const totalViews = campaigns.reduce(
-        (sum, c) => sum + (c.totalViews || 0),
-        0
-      );
-      const totalSubmissions = campaigns.reduce(
-        (sum, c) => sum + (c.totalSubmissions || 0),
-        0
-      );
+  const handleApprove = (submissionId: Id<"submissions">) => {
+    updateSubmissionStatus({ submissionId, status: "approved" })
+      .then(() => {
+        toast.success("Submission approved successfully");
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to approve submission"
+        );
+      });
+  };
+
+  const handleReject = (submissionId: Id<"submissions">) => {
+    updateSubmissionStatus({
+      submissionId,
+      status: "rejected",
+      rejectionReason: "Not specified",
+    })
+      .then(() => {
+        toast.success("Submission rejected successfully");
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to reject submission"
+        );
+      });
+  };
+
+  const { activeCampaigns, stats } = useMemo(() => {
+    if (!campaigns) {
       return {
-        activeCampaigns: active,
-        draftCampaigns: drafts,
-        completedCampaigns: completed,
-        stats: { totalSpent, totalViews, totalSubmissions },
+        activeCampaigns: [],
+        stats: {
+          totalSpent: 0,
+          totalViews: 0,
+          totalSubmissions: 0,
+          avgCpm: 0,
+        },
       };
-    }, [campaigns]);
+    }
+    const active = campaigns.filter((c) => c.status === "active");
+
+    const totalSpent = campaigns.reduce(
+      (sum, c) => sum + (c.totalBudget - c.remainingBudget),
+      0
+    );
+    const totalViews = campaigns.reduce(
+      (sum, c) => sum + (c.totalViews || 0),
+      0
+    );
+    const totalSubmissions = campaigns.reduce(
+      (sum, c) => sum + (c.totalSubmissions || 0),
+      0
+    );
+    // Calculate average CPM (Cost Per Mille = cost per 1000 views)
+    const avgCpm = totalViews > 0 ? (totalSpent / totalViews) * 1000 : 0;
+    return {
+      activeCampaigns: active,
+      stats: { totalSpent, totalViews, totalSubmissions, avgCpm },
+    };
+  }, [campaigns]);
+
+  const { pendingSubmissions, reviewedSubmissions } = useMemo(() => {
+    if (!submissions)
+      return { pendingSubmissions: [], reviewedSubmissions: [] };
+    const pending = submissions.filter((s) => s.status === "pending");
+    const reviewed = submissions.filter((s) => s.status !== "pending");
+    return { pendingSubmissions: pending, reviewedSubmissions: reviewed };
+  }, [submissions]);
+
+  const submissionsLoading = submissions === undefined;
 
   if (campaigns === undefined) {
     return <DashboardSkeleton />;
@@ -152,120 +197,269 @@ export function BrandDashboard() {
           value={activeCampaigns.length.toString()}
         />
         <StatCard
-          icon={ListChecks}
-          title="Total Submissions"
-          value={stats.totalSubmissions.toString()}
+          icon={DollarSign}
+          title="Avg CPM"
+          value={`$${(stats.avgCpm / 100).toFixed(2)}`}
         />
       </div>
 
-      <Tabs defaultValue="active">
+      <Tabs defaultValue="campaigns">
         <TabsList>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="drafts">
-            Drafts{" "}
-            <Badge variant="destructive" className="ml-2">
-              {draftCampaigns.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="submissions">Submissions</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active">
-          <CampaignsTable
-            campaigns={activeCampaigns}
-            setEditingCampaign={setEditingCampaign}
-            setReviewingCampaign={setReviewingCampaign}
-            setDeletingCampaignId={setDeletingCampaignId}
-          />
+        <TabsContent value="campaigns">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-4">
+                Campaign Management
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Monitor and manage your active campaigns
+              </p>
+
+              {/* Campaign Cards */}
+              <div className="space-y-4">
+                {activeCampaigns.map((campaign) => (
+                  <Card key={campaign._id} className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <h3 className="text-lg font-semibold">
+                          {campaign.title}
+                        </h3>
+                        <Badge variant="secondary">Fashion</Badge>
+                        <Badge variant="outline">{campaign.status}</Badge>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => setEditingCampaign(campaign)}
+                          >
+                            Edit Campaign
+                          </DropdownMenuItem>
+                          {/* <DropdownMenuItem
+                            onClick={() => setReviewingCampaign(campaign)}
+                          >
+                            View Submissions
+                          </DropdownMenuItem> */}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeletingCampaignId(campaign._id)}
+                          >
+                            Delete Campaign
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-6 mb-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Budget Used
+                        </p>
+                        <p className="text-lg font-semibold">
+                          $
+                          {(
+                            (campaign.totalBudget - campaign.remainingBudget) /
+                            100
+                          ).toLocaleString()}{" "}
+                          / ${(campaign.totalBudget / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Views</p>
+                        <p className="text-lg font-semibold">
+                          {(campaign.totalViews || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Submissions
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {campaign.approvedSubmissions || 0}/
+                          {campaign.totalSubmissions || 0}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">CPM</p>
+                        <p className="text-lg font-semibold">
+                          $
+                          {campaign.totalViews && campaign.totalViews > 0
+                            ? (
+                                (((campaign.totalBudget -
+                                  campaign.remainingBudget) /
+                                  campaign.totalViews) *
+                                  1000) /
+                                100
+                              ).toFixed(2)
+                            : "0.00"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Budget Progress</span>
+                        <span>
+                          {Math.round(
+                            ((campaign.totalBudget - campaign.remainingBudget) /
+                              campaign.totalBudget) *
+                              100
+                          )}
+                          %
+                        </span>
+                      </div>
+                      <Progress
+                        value={
+                          ((campaign.totalBudget - campaign.remainingBudget) /
+                            campaign.totalBudget) *
+                          100
+                        }
+                      />
+                      {/* <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
+                          style={{
+                            width: `${Math.round(((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) * 100)}%`,
+                          }}
+                        ></div>
+                      </div> */}
+                    </div>
+
+                    {(campaign.totalSubmissions || 0) >
+                      (campaign.approvedSubmissions || 0) && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p className="text-sm text-yellow-800">
+                          {(campaign.totalSubmissions || 0) -
+                            (campaign.approvedSubmissions || 0)}{" "}
+                          submissions pending review
+                        </p>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+
+                {activeCampaigns.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Package className="mx-auto h-12 w-12" />
+                    <h3 className="mt-4 text-lg font-medium">
+                      No Active Campaigns
+                    </h3>
+                    <p className="mt-1 text-sm">
+                      Create your first campaign to get started.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
-        <TabsContent value="drafts">
-          <Card>
-            <CardContent>
-              {/* <CardHeader>
-                <CardTitle>Draft Campaigns</CardTitle>
-              </CardHeader> */}
+        <TabsContent value="submissions">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Recent Submissions</h2>
+              <p className="text-muted-foreground mb-6">
+                Review and approve creator submissions
+              </p>
 
-              {draftCampaigns.length === 0 ? (
+              {submissionsLoading ? (
+                <div className="flex justify-center items-center p-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : (submissions ?? []).length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  <FileWarning className="mx-auto h-12 w-12" />
-                  <h3 className="mt-4 text-lg font-medium">No Drafts</h3>
+                  <FolderOpen className="mx-auto h-12 w-12" />
+                  <h3 className="mt-4 text-lg font-medium">
+                    No Recent Submissions
+                  </h3>
                   <p className="mt-1 text-sm">
-                    You have no campaigns awaiting payment.
+                    Submissions will appear here when creators submit content.
                   </p>
                 </div>
               ) : (
-                <>
-                  {/* <CardHeader>
-                    <CardTitle>Draft Campaigns</CardTitle>
-                    <AlertDescription>
-                      These campaigns are not yet active. Complete payment to
-                      make them available to creators.
-                    </AlertDescription>
-                  </CardHeader> */}
-                  <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Campaign</TableHead>
-                          <TableHead>Budget</TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {draftCampaigns.map((campaign) => (
-                          <TableRow key={campaign._id}>
-                            <TableCell className="font-medium">
-                              {campaign.title}
-                            </TableCell>
-                            <TableCell>
-                              ${(campaign.totalBudget / 100).toLocaleString()}
-                            </TableCell>
-                            <TableCell>
-                              {new Date(
-                                campaign._creationTime
-                              ).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => setEditingCampaign(campaign)}
-                                >
-                                  Complete Payment
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="px-2"
-                                  onClick={() =>
-                                    setDeletingCampaignId(campaign._id)
-                                  }
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                  <span className="sr-only">Delete</span>
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </>
-                </>
+                <Tabs defaultValue="pending" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="pending">
+                      Pending ({pendingSubmissions.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="reviewed">
+                      Reviewed ({reviewedSubmissions.length})
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="pending">
+                    <div className="space-y-4 mt-4">
+                      {pendingSubmissions.map((submission) => (
+                        <SubmissionCard
+                          key={submission._id}
+                          submission={submission}
+                          onApprove={handleApprove}
+                          onReject={handleReject}
+                        />
+                      ))}
+                      {pendingSubmissions.length === 0 && (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <p>No pending submissions.</p>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="reviewed">
+                    <div className="space-y-4 mt-4">
+                      {reviewedSubmissions.map((submission) => (
+                        <SubmissionCard
+                          key={submission._id}
+                          submission={submission}
+                          onApprove={handleApprove}
+                          onReject={handleReject}
+                        />
+                      ))}
+                      {reviewedSubmissions.length === 0 && (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <p>No reviewed submissions.</p>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
-        <TabsContent value="completed">
-          <CampaignsTable
-            campaigns={completedCampaigns}
-            setEditingCampaign={setEditingCampaign}
-            setReviewingCampaign={setReviewingCampaign}
-            setDeletingCampaignId={setDeletingCampaignId}
-          />
+        <TabsContent value="analytics">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-4">
+                Performance Analytics
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Detailed insights into your campaign performance
+              </p>
+
+              <Card className="p-12">
+                <div className="text-center text-muted-foreground">
+                  <div className="mx-auto w-16 h-16 bg-muted rounded-lg flex items-center justify-center mb-4">
+                    <Eye className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">
+                    Campaign Performance Over Time
+                  </h3>
+                  <p className="text-sm mb-8">Interactive charts coming soon</p>
+                </div>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -316,119 +510,6 @@ export function BrandDashboard() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function CampaignsTable({
-  campaigns,
-  setEditingCampaign,
-  setReviewingCampaign,
-  setDeletingCampaignId,
-}: {
-  campaigns: Campaign[];
-  setEditingCampaign: (c: Campaign) => void;
-  setReviewingCampaign: (c: Campaign) => void;
-  setDeletingCampaignId: (id: Id<"campaigns">) => void;
-}) {
-  if (campaigns.length === 0) {
-    return (
-      <Card>
-        <CardContent className="text-center py-12 text-muted-foreground">
-          <FolderOpen className="mx-auto h-12 w-12" />
-          <h3 className="mt-4 text-lg font-medium">No Campaigns Found</h3>
-          <p className="mt-1 text-sm">
-            There are no campaigns in this category.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Campaign</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Budget</TableHead>
-              <TableHead className="text-right">Views</TableHead>
-              <TableHead className="text-right">Submissions</TableHead>
-              <TableHead>Last Updated</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {campaigns.map((campaign) => (
-              <TableRow key={campaign._id}>
-                <TableCell className="font-medium">{campaign.title}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      campaign.status === "active" ? "default" : "outline"
-                    }
-                  >
-                    {campaign.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="font-mono">
-                    ${(campaign.remainingBudget / 100).toLocaleString()}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    of ${(campaign.totalBudget / 100).toLocaleString()}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {(campaign.totalViews || 0).toLocaleString()}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {campaign.approvedSubmissions || 0} /{" "}
-                  {campaign.totalSubmissions || 0}
-                </TableCell>
-                <TableCell>
-                  {campaign.updatedTime
-                    ? new Date(campaign.updatedTime).toLocaleDateString()
-                    : "N/A"}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => setReviewingCampaign(campaign)}
-                      >
-                        Review Submissions
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setEditingCampaign(campaign)}
-                      >
-                        Edit Campaign
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => setDeletingCampaignId(campaign._id)}
-                      >
-                        Delete Campaign
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
   );
 }
 
