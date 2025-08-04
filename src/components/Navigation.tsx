@@ -5,9 +5,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { Link, useLocation } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { SignOutButton } from "../SignOutButton";
@@ -19,12 +19,16 @@ export function Navigation() {
   const [logoSrc, setLogoSrc] = useState("/logo-white.png"); // Default logo
   const profile = useQuery(api.profiles.getCurrentProfile);
   const location = useLocation();
-  
-  const currentView = location.pathname.startsWith('/dashboard') ? 'dashboard' : 'marketplace';
+
+  const currentView = location.pathname.startsWith("/dashboard")
+    ? "dashboard"
+    : "marketplace";
 
   useEffect(() => {
     if (resolvedTheme) {
-      setLogoSrc(resolvedTheme === "dark" ? "/logo-white.png" : "/logo-black.png");
+      setLogoSrc(
+        resolvedTheme === "dark" ? "/logo-white.png" : "/logo-black.png"
+      );
     }
   }, [resolvedTheme]);
 
@@ -59,7 +63,6 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center gap-4">
-            <ThemeToggle />
             <Authenticated>
               {profile && (
                 <DropdownMenu>
@@ -94,6 +97,7 @@ export function Navigation() {
                 </DropdownMenu>
               )}
             </Authenticated>
+            <ThemeToggle />
 
             <Unauthenticated>
               <Button asChild>

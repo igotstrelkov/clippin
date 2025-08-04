@@ -15,7 +15,6 @@ import {
 } from "recharts";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { Card } from "./ui/card";
 
 interface ViewChartProps {
   submissionId: Id<"submissions">;
@@ -57,7 +56,7 @@ export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
   };
 
   return (
-    <Card>
+    <>
       <div className="flex flex-col">
         <ChartContainer config={chartConfig} style={{ height: `${height}px` }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -105,6 +104,6 @@ export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
           </ResponsiveContainer>
         </ChartContainer>
       </div>
-    </Card>
+    </>
   );
 }

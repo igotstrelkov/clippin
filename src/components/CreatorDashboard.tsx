@@ -30,7 +30,6 @@ import { PayoutRequestModal } from "./PayoutRequestModal";
 import { SubmissionCard } from "./SubmissionCard";
 import TikTokVerification from "./TikTokVerification";
 import { ViewChart } from "./ViewChart";
-import { ViewTracker } from "./ViewTracker";
 
 // Type definitions based on Convex queries
 
@@ -139,7 +138,7 @@ export function CreatorDashboard() {
             </CardHeader>
             <CardContent className="text-center">
               <div className="text-4xl font-bold">
-                ${(pendingEarnings?.totalPending / 100 || 0).toFixed(2)}
+                ${(pendingEarnings?.totalPending / 100 || 0).toLocaleString()}
               </div>
               <div className="text-sm text-muted-foreground mb-4">
                 Ready to withdraw
@@ -204,11 +203,11 @@ export function CreatorDashboard() {
                       </AlertDescription>
                     </Alert>
                   )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <ViewTracker
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  {/* <ViewTracker
                     submissionId={expandedSubmission._id}
                     showRefreshButton
-                  />
+                  /> */}
                   <ViewChart submissionId={expandedSubmission._id} />
                 </div>
               </div>
@@ -257,7 +256,7 @@ function SubmissionsSection({
               key={s._id}
               submission={submissionForCard}
               onExpand={() => onExpand(s)}
-              profile={profile}
+              userType={profile?.userType}
             />
           );
         })

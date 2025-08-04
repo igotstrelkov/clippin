@@ -505,7 +505,7 @@ export function BrandDashboard() {
                           submission={submission}
                           onApprove={handleApprove}
                           onReject={handleReject}
-                          profile={profile}
+                          userType={profile?.userType}
                         />
                       ))}
                       {pendingSubmissions.length === 0 && (
@@ -523,7 +523,7 @@ export function BrandDashboard() {
                           submission={submission}
                           onApprove={handleApprove}
                           onReject={handleReject}
-                          profile={profile}
+                          userType={profile?.userType}
                         />
                       ))}
                       {reviewedSubmissions.length === 0 && (

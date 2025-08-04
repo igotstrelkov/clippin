@@ -19,7 +19,6 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { ViewChart } from "./ViewChart";
-import { ViewTracker } from "./ViewTracker";
 
 // Extended submission type for the card component
 // Using Pick to only require the fields we actually use in the component
@@ -33,21 +32,18 @@ type Submission = Pick<
   potentialEarnings: number;
 };
 
-// Profile type - use Convex generated type
-type Profile = Doc<"profiles"> | null | undefined;
-
 export function SubmissionCard({
   submission,
   onApprove,
   onReject,
   onExpand,
-  profile,
+  userType,
 }: {
   submission: Submission;
   onApprove?: (id: Id<"submissions">) => void;
   onReject?: (id: Id<"submissions">) => void;
   onExpand?: (submission: Submission) => void;
-  profile?: Profile;
+  userType?: "brand" | "creator";
 }) {
   const [expandedSubmission, setExpandedSubmission] =
     useState<Submission | null>(null);
@@ -115,9 +111,7 @@ export function SubmissionCard({
               </div>
               <div className="text-center">
                 <p className="text-xs text-muted-foreground mb-1">
-                  {profile?.userType === "brand"
-                    ? "Est. Cost"
-                    : "Est. Earnings"}
+                  {userType === "brand" ? "Est. Cost" : "Est. Earnings"}
                 </p>
                 <p className="font-bold text-lg">
                   ${submission.potentialEarnings.toFixed(2)}
@@ -231,11 +225,11 @@ export function SubmissionCard({
                       </AlertDescription>
                     </Alert>
                   )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <ViewTracker
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  {/* <ViewTracker
                     submissionId={expandedSubmission._id}
                     showRefreshButton
-                  />
+                  /> */}
                   <ViewChart submissionId={expandedSubmission._id} />
                 </div>
               </div>
