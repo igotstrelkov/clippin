@@ -338,8 +338,6 @@ export const handleWebhook = internalAction({
         process.env.STRIPE_WEBHOOK_SECRET!
       );
 
-      console.log(event);
-
       switch (event.type) {
         case "payment_intent.succeeded": {
           const paymentIntent = event.data.object;

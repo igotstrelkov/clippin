@@ -1,31 +1,60 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle, Copy, Info, Loader2, KeyRound, Search, AtSign, ArrowRight } from "lucide-react";
-
-type VerificationStep = "username" | "generate" | "bio" | "verify" | "success";
+import { useMutation, useQuery } from "convex/react";
+import {
+  ArrowRight,
+  AtSign,
+  CheckCircle,
+  Copy,
+  Info,
+  KeyRound,
+  Loader2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { api } from "../../convex/_generated/api";
 
 function TikTokVerification() {
-  const [step, setStep] = useState<VerificationStep>("username");
   const [tiktokUsername, setTiktokUsername] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const profile = useQuery(api.profiles.getCurrentProfile);
+
   const generateCode = useMutation(api.profiles.generateTikTokVerificationCode);
   const verifyBio = useMutation(api.profiles.verifyTikTokBio);
 
+  // Determine current step from database state
+  const getStep = () => {
+    if (profile?.tiktokVerified) return "success";
+    if (profile?.tiktokVerificationCode) return "bio";
+    if (profile?.tiktokUsername) return "generate";
+    return "username";
+  };
+
+  const step = getStep();
+
+  // Show success toast when verification completes
+  // useEffect(() => {
+  //   if (profile?.tiktokVerified && !profile.tiktokVerificationCode) {
+  //     toast.success("TikTok account verified successfully!");
+  //   }
+  // }, [profile?.tiktokVerified, profile?.tiktokVerificationCode]);
+
+  // Show error toast when verification fails
   useEffect(() => {
-    if (profile?.tiktokVerified) {
-      setStep("success");
+    if (profile?.tiktokVerificationError) {
+      toast.error(profile.tiktokVerificationError);
     }
-  }, [profile]);
+  }, [profile?.tiktokVerificationError]);
 
   if (step === "success" && profile?.tiktokVerified) {
     return (
@@ -34,46 +63,54 @@ function TikTokVerification() {
           <div className="mx-auto bg-green-100 dark:bg-green-900/20 rounded-full h-16 w-16 flex items-center justify-center mb-4">
             <CheckCircle className="h-10 w-10 text-green-500" />
           </div>
-          <CardTitle className="text-green-500">TikTok Account Verified!</CardTitle>
+          <CardTitle className="text-green-500">
+            TikTok Account Verified!
+          </CardTitle>
           <CardDescription>@{profile.tiktokUsername}</CardDescription>
         </CardHeader>
         <CardContent className="text-center">
           <p className="text-muted-foreground">
-            Your TikTok account has been successfully verified. You can now submit to campaigns.
+            Your TikTok account has been successfully verified. You can now
+            submit to campaigns.
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const handleUsernameSubmit = (e: React.FormEvent) => {
+  const handleUsernameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const username = tiktokUsername.trim();
+    const username = profile?.tiktokUsername || tiktokUsername.trim();
     if (!username) return;
 
-    if (username.length < 2 || username.length > 24) {
-      toast.error("Username must be between 2 and 24 characters.");
-      return;
-    }
-
-    if (!/^[a-zA-Z0-9._]+$/.test(username)) {
-      toast.error("Username can only contain letters, numbers, periods, and underscores.");
-      return;
-    }
-
     setTiktokUsername(username);
-    setStep("generate");
+
+    // Automatically generate code after setting username
+    setIsLoading(true);
+    try {
+      await generateCode({ tiktokUsername: username });
+      toast.success("Verification code generated successfully!");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to generate code.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGenerateCode = async () => {
+    if (!profile?.tiktokUsername || tiktokUsername.trim()) {
+      toast.error("Please enter a TikTok username first.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const result = await generateCode({ tiktokUsername });
-      setVerificationCode(result.verificationCode);
-      setStep("bio");
-    } catch (error) {
-      toast.error("Failed to generate code. Please check the username and try again.");
-      console.error(error);
+      await generateCode({
+        tiktokUsername: profile?.tiktokUsername || tiktokUsername.trim(),
+      });
+      toast.success("Verification code generated successfully!");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to generate code.");
     } finally {
       setIsLoading(false);
     }
@@ -82,40 +119,38 @@ function TikTokVerification() {
   const handleVerifyBio = async () => {
     setIsLoading(true);
     try {
-      await verifyBio({ tiktokUsername });
-      toast.success("TikTok account verified!");
-      setStep("success");
-    } catch (error) {
-      toast.error("Verification failed. Make sure the code is in your bio and try again.");
-      console.error(error);
+      const result = await verifyBio({
+        tiktokUsername: profile?.tiktokUsername || tiktokUsername.trim(),
+      });
+      if (result.success) {
+        toast.success("Verification started! This may take a few moments...");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Verification failed.");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const resetProcess = () => {
-    setStep("username");
-    setTiktokUsername("");
-    setVerificationCode("");
   };
 
   const renderContent = () => {
     switch (step) {
       case "username":
         return (
-          <form onSubmit={handleUsernameSubmit} className="space-y-4">
+          <form
+            onSubmit={(e) => void handleUsernameSubmit(e)}
+            className="space-y-4"
+          >
             <div className="space-y-2">
-              <Label htmlFor="tiktok-username">TikTok Username</Label>
+              <Label htmlFor="username">TikTok Username</Label>
               <div className="relative">
-                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <AtSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="tiktok-username"
+                  id="username"
                   type="text"
                   value={tiktokUsername}
                   onChange={(e) => setTiktokUsername(e.target.value)}
                   placeholder="yourusername"
                   className="pl-9"
-                  required
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -133,20 +168,23 @@ function TikTokVerification() {
           <div className="space-y-4">
             <Alert>
               <Info className="h-4 w-4" />
-              <AlertTitle>Ready to verify @{tiktokUsername}?</AlertTitle>
+              <AlertTitle>
+                Ready to verify @
+                {profile?.tiktokUsername || tiktokUsername.trim()}?
+              </AlertTitle>
               <AlertDescription>
-                We'll generate a unique code for you to add to your TikTok bio temporarily.
+                We'll generate a unique code for you to add to your TikTok bio
+                temporarily.
               </AlertDescription>
             </Alert>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep("username")} className="flex-1">
-                Back
-              </Button>
-              <Button onClick={() => { void handleGenerateCode(); }} disabled={isLoading} className="flex-1">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Generate Code
-              </Button>
-            </div>
+            <Button
+              onClick={() => void handleGenerateCode()}
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Generate Code
+            </Button>
           </div>
         );
 
@@ -160,14 +198,18 @@ function TikTokVerification() {
                 <div className="bg-background/50 dark:bg-background/80 rounded-lg p-3 my-3">
                   <div className="flex items-center justify-between">
                     <code className="text-lg font-mono text-foreground tracking-wider">
-                      {verificationCode}
+                      {profile?.tiktokVerificationCode}
                     </code>
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => {
-                        void navigator.clipboard.writeText(verificationCode);
-                        toast.success("Code copied to clipboard!");
+                        if (profile?.tiktokVerificationCode) {
+                          void navigator.clipboard.writeText(
+                            profile.tiktokVerificationCode
+                          );
+                          toast.success("Code copied to clipboard!");
+                        }
                       }}
                     >
                       <Copy className="h-4 w-4" />
@@ -184,47 +226,22 @@ function TikTokVerification() {
             </Alert>
             <div className="text-center">
               <a
-                href={`https://www.tiktok.com/@${tiktokUsername}`}
+                href={`https://www.tiktok.com/@${profile?.tiktokUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-primary hover:underline"
               >
-                Open @{tiktokUsername} on TikTok →
+                Open @{profile?.tiktokUsername} on TikTok →
               </a>
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={resetProcess} className="flex-1">
-                Start Over
-              </Button>
-              <Button onClick={() => setStep("verify")} className="flex-1">
-                I've Added the Code
-              </Button>
-            </div>
-          </div>
-        );
-
-      case "verify":
-        return (
-          <div className="space-y-4">
-            <Alert>
-              <Search className="h-4 w-4" />
-              <AlertTitle>Ready to verify?</AlertTitle>
-              <AlertDescription>
-                We'll now check your TikTok bio for the verification code:{" "}
-                <code className="bg-muted px-2 py-1 rounded text-foreground font-mono">
-                  {verificationCode}
-                </code>
-              </AlertDescription>
-            </Alert>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep("bio")} className="flex-1">
-                Back
-              </Button>
-              <Button onClick={() => { void handleVerifyBio(); }} disabled={isLoading} className="flex-1">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Verify Now
-              </Button>
-            </div>
+            <Button
+              onClick={() => void handleVerifyBio()}
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Verify Now
+            </Button>
           </div>
         );
 

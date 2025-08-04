@@ -81,7 +81,7 @@ export function CreatorDashboard() {
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Creator Dashboard</h1>
 
-      {!stats.tiktokVerified && <TikTokVerification />}
+      <TikTokVerification />
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard

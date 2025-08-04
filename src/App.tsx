@@ -1,3 +1,4 @@
+import { Toaster } from "@/components/ui/sonner";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
@@ -59,6 +60,7 @@ function AuthenticatedApp() {
           <Route path="/campaign/:campaignId" element={<CampaignDetails />} />
           <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
+        <Toaster />
       </main>
     </>
   );

@@ -1,14 +1,19 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation, mutation, query } from "./_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  mutation,
+  query,
+} from "./_generated/server";
 
 // Get current user's profile
 export const getCurrentProfile = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
-    console.log(userId);
+
     if (!userId) return null;
 
     const profile = await ctx.db
@@ -17,6 +22,17 @@ export const getCurrentProfile = query({
       .unique();
 
     return profile;
+  },
+});
+
+// Internal helper to get profile by user ID
+export const getProfileByUserId = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("profiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .unique();
   },
 });
 
@@ -89,99 +105,185 @@ export const generateTikTokVerificationCode = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    const profile = await ctx.db
+    // Validate username format
+    if (!isValidTikTokUsername(args.tiktokUsername)) {
+      throw new Error(
+        "Invalid TikTok username format. Username should only contain letters, numbers, underscores, and periods."
+      );
+    }
+
+    // Check if user already has a verified TikTok account
+    const existingProfile = await ctx.db
       .query("profiles")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!profile || profile.userType !== "creator") {
-      throw new Error("Only creators can verify TikTok accounts");
+    if (existingProfile?.tiktokVerified) {
+      throw new Error("TikTok account already verified");
     }
 
-    // Generate random verification code
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let code = "CLIP";
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    // Check if this TikTok username is already verified by another user
+    const existingTikTokProfile = await ctx.db
+      .query("profiles")
+      .filter((q) => q.eq(q.field("tiktokUsername"), args.tiktokUsername))
+      .filter((q) => q.eq(q.field("tiktokVerified"), true))
+      .unique();
+
+    if (existingTikTokProfile && existingTikTokProfile.userId !== userId) {
+      throw new Error(
+        "This TikTok username is already verified by another user"
+      );
     }
 
-    await ctx.db.patch(profile._id, {
-      tiktokUsername: args.tiktokUsername,
-      tiktokVerificationCode: code,
-      verificationCodeGeneratedAt: Date.now(),
-      tiktokVerified: false,
-    });
+    // Generate a unique verification code
+    const verificationCode = `CLIPPIN${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const now = Date.now();
 
-    return { verificationCode: code };
+    // Create or update profile with verification code
+    if (existingProfile) {
+      await ctx.db.patch(existingProfile._id, {
+        tiktokUsername: args.tiktokUsername,
+        tiktokVerificationCode: verificationCode,
+        verificationCodeGeneratedAt: now,
+        tiktokVerificationError: undefined, // Clear any previous errors
+      });
+    } else {
+      await ctx.db.insert("profiles", {
+        userId,
+        userType: "creator", // Default to creator for TikTok verification
+        tiktokUsername: args.tiktokUsername,
+        tiktokVerificationCode: verificationCode,
+        verificationCodeGeneratedAt: now,
+      });
+    }
+
+    return { verificationCode };
   },
 });
 
-// Verify TikTok account by checking bio
+// Verify TikTok account by checking bio - triggers the verification process
 export const verifyTikTokBio = mutation({
   args: { tiktokUsername: v.string() },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
+    // Get the user's profile
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!profile || profile.userType !== "creator") {
-      throw new Error("Only creators can verify TikTok accounts");
+    if (!profile) {
+      throw new Error("Profile not found");
     }
 
     if (!profile.tiktokVerificationCode) {
       throw new Error(
-        "No verification code generated. Please start the verification process."
+        "No verification code found. Please generate a code first."
       );
     }
 
-    // Check if verification code is still valid (expires after 1 hour)
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    if (
-      !profile.verificationCodeGeneratedAt ||
-      profile.verificationCodeGeneratedAt < oneHourAgo
-    ) {
+    // Check if verification code is expired (1 hour)
+    const codeAge = Date.now() - (profile.verificationCodeGeneratedAt || 0);
+    const oneHour = 60 * 60 * 1000;
+    if (codeAge > oneHour) {
       throw new Error(
-        "Verification code has expired. Please generate a new one."
+        "Verification code has expired. Please generate a new code."
       );
     }
 
-    // Validate username format
-    if (!isValidTikTokUsername(args.tiktokUsername)) {
-      throw new Error("Invalid TikTok username format");
-    }
-
-    // Schedule TikTok bio verification
-    const bioCheck = await ctx.scheduler.runAfter(
-      0,
-      internal.tiktokVerification.checkTikTokBioForCode,
-      {
-        username: args.tiktokUsername,
-        verificationCode: profile.tiktokVerificationCode,
-      }
-    );
-
-    // For now, simulate the check with high success rate for demo
-    const success = Math.random() > 0.15; // 85% success rate
-    if (!success) {
+    if (profile.tiktokUsername !== args.tiktokUsername) {
       throw new Error(
-        "Verification code not found in your TikTok bio. Please make sure you've added it correctly and try again."
+        "TikTok username doesn't match the one used to generate the code"
       );
     }
 
-    // Mark as verified and clean up verification data
-    await ctx.db.patch(profile._id, {
-      tiktokUsername: args.tiktokUsername,
-      tiktokVerified: true,
-      tiktokVerificationCode: undefined,
-      verificationCodeGeneratedAt: undefined,
-      verifiedAt: Date.now(),
-    });
+    try {
+      // Schedule the verification action
+      await ctx.scheduler.runAfter(
+        0,
+        internal.profiles.completeTikTokVerification,
+        {
+          userId,
+          username: args.tiktokUsername,
+          verificationCode: profile.tiktokVerificationCode,
+          profileId: profile._id,
+        }
+      );
 
-    return { success: true };
+      return { success: true, message: "Verification started" };
+    } catch {
+      throw new Error("Failed to start verification process");
+    }
+  },
+});
+
+// Internal action to perform the actual TikTok verification
+export const completeTikTokVerification = internalAction({
+  args: {
+    userId: v.id("users"),
+    username: v.string(),
+    verificationCode: v.string(),
+    profileId: v.id("profiles"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Call the TikTok verification API
+      const verificationResult = await ctx.runAction(
+        internal.tiktokVerification.checkTikTokBioForCode,
+        {
+          username: args.username,
+          verificationCode: args.verificationCode,
+        }
+      );
+
+      // Update the profile with the verification result
+      await ctx.runMutation(internal.profiles.updateVerificationResult, {
+        profileId: args.profileId,
+        verified: verificationResult.found,
+        error: verificationResult.error,
+        bio: verificationResult.bio,
+      });
+    } catch {
+      // Update profile with error
+      await ctx.runMutation(internal.profiles.updateVerificationResult, {
+        profileId: args.profileId,
+        verified: false,
+        error:
+          "Verification failed due to an unexpected error. Please try again.",
+      });
+    }
+  },
+});
+
+// Update profile with verification result
+export const updateVerificationResult = internalMutation({
+  args: {
+    profileId: v.id("profiles"),
+    verified: v.boolean(),
+    error: v.optional(v.string()),
+    bio: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (args.verified) {
+      // Mark as verified and clear any previous errors
+      await ctx.db.patch(args.profileId, {
+        tiktokVerified: true,
+        tiktokVerificationCode: undefined,
+        verificationCodeGeneratedAt: undefined,
+        tiktokVerificationError: undefined,
+        verifiedAt: Date.now(),
+      });
+    } else {
+      // Clear verification code, mark as not verified, and store error message
+      await ctx.db.patch(args.profileId, {
+        tiktokVerificationCode: undefined,
+        verificationCodeGeneratedAt: undefined,
+        tiktokVerified: false,
+        tiktokVerificationError: args.error || "Code not found in bio",
+      });
+    }
   },
 });
 
@@ -310,21 +412,25 @@ export const updateStripeCustomerId = internalMutation({
 
 // Helper function to validate TikTok username format
 function isValidTikTokUsername(username: string): boolean {
-  const trimmed = username.trim();
+  // Remove @ if present
+  const cleanUsername = username.replace(/^@/, "");
 
-  if (trimmed.length < 2 || trimmed.length > 24) {
+  // Check length (2-24 characters)
+  if (cleanUsername.length < 2 || cleanUsername.length > 24) {
     return false;
   }
 
-  if (!/^[a-zA-Z0-9._]+$/.test(trimmed)) {
+  // Check for valid characters (letters, numbers, periods, underscores)
+  // TikTok usernames can contain letters, numbers, periods, and underscores
+  // They cannot start or end with a period
+  // They cannot have consecutive periods
+  const validPattern = /^[a-zA-Z0-9][a-zA-Z0-9._]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
+  if (!validPattern.test(cleanUsername)) {
     return false;
   }
 
-  if (trimmed.startsWith(".") || trimmed.endsWith(".")) {
-    return false;
-  }
-
-  if (trimmed.includes("..")) {
+  // Check for consecutive periods
+  if (cleanUsername.includes("..")) {
     return false;
   }
 

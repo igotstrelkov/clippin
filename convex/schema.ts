@@ -15,6 +15,7 @@ const applicationTables = {
     tiktokVerificationCode: v.optional(v.string()),
     verificationCodeGeneratedAt: v.optional(v.number()),
     verifiedAt: v.optional(v.number()),
+    tiktokVerificationError: v.optional(v.string()),
     totalEarnings: v.optional(v.number()),
     totalSubmissions: v.optional(v.number()),
     // Brand fields
@@ -114,7 +115,7 @@ const applicationTables = {
     submissionId: v.id("submissions"),
     viewCount: v.number(),
     timestamp: v.number(),
-    source: v.string(), // "tiktok_api", "manual_refresh", "system"
+    source: v.string(), // "tiktok_api", "manual_refresh", "system", "tiktok_api_batch"
     metadata: v.optional(v.object({})), // Additional tracking data
   })
     .index("by_submission_id", ["submissionId"])
