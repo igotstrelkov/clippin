@@ -115,7 +115,7 @@ const applicationTables = {
     submissionId: v.id("submissions"),
     viewCount: v.number(),
     timestamp: v.number(),
-    source: v.string(), // "tiktok_api", "manual_refresh", "system", "tiktok_api_batch"
+    source: v.string(), // "tiktok_api", "manual_refresh", "system"
     metadata: v.optional(v.object({})), // Additional tracking data
   })
     .index("by_submission_id", ["submissionId"])

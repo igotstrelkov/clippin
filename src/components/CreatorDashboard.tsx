@@ -24,7 +24,7 @@ import {
   ListChecks,
   TrendingUp,
 } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { PayoutRequestModal } from "./PayoutRequestModal";
@@ -271,7 +271,7 @@ function SubmissionsSection({
   );
 }
 
-function StatCard({
+const StatCard = memo(({
   icon: Icon,
   title,
   value,
@@ -279,7 +279,7 @@ function StatCard({
   icon: React.ElementType;
   title: string;
   value: string;
-}) {
+}) => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -291,7 +291,7 @@ function StatCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 function DashboardSkeleton() {
   return (

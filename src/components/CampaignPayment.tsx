@@ -51,7 +51,7 @@ function PaymentForm({
     try {
       // Create payment intent
       const { clientSecret } = await createPaymentIntent({
-        campaignId: campaignId as any,
+        campaignId: campaignId,
         amount: Math.round((amount + amount * 0.029 + 0.3) * 100), // Total amount including fees in cents
       });
 

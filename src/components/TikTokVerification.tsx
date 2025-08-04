@@ -42,12 +42,6 @@ function TikTokVerification() {
 
   const step = getStep();
 
-  // Show success toast when verification completes
-  // useEffect(() => {
-  //   if (profile?.tiktokVerified && !profile.tiktokVerificationCode) {
-  //     toast.success("TikTok account verified successfully!");
-  //   }
-  // }, [profile?.tiktokVerified, profile?.tiktokVerificationCode]);
 
   // Show error toast when verification fails
   useEffect(() => {
@@ -90,8 +84,8 @@ function TikTokVerification() {
     try {
       await generateCode({ tiktokUsername: username });
       toast.success("Verification code generated successfully!");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to generate code.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to generate code.");
     } finally {
       setIsLoading(false);
     }
@@ -109,8 +103,8 @@ function TikTokVerification() {
         tiktokUsername: profile?.tiktokUsername || tiktokUsername.trim(),
       });
       toast.success("Verification code generated successfully!");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to generate code.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to generate code.");
     } finally {
       setIsLoading(false);
     }
@@ -125,8 +119,8 @@ function TikTokVerification() {
       if (result.success) {
         toast.success("Verification started! This may take a few moments...");
       }
-    } catch (error: any) {
-      toast.error(error?.message || "Verification failed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Verification failed.");
     } finally {
       setIsLoading(false);
     }

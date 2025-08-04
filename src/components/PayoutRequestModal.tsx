@@ -78,7 +78,7 @@ export function PayoutRequestModal({
       await processPayout({
         creatorId: profile.userId,
         amount: selectedEarnings,
-        submissionIds: selectedSubmissions as any[],
+        submissionIds: selectedSubmissions,
       });
       toast.success("Payout processed successfully!");
       onClose();

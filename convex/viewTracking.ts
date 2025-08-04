@@ -3,6 +3,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
+import { logger } from "./logger";
 
 // Mock TikTok API for development (replace with real API in production)
 class TikTokViewTracker {
@@ -67,7 +68,11 @@ export const getInitialViewCount = internalAction({
 
       return { viewCount };
     } catch (error) {
-      console.warn("Failed to get initial view count:", error);
+      logger.warn("Failed to get initial view count", {
+        submissionId: args.submissionId,
+        tiktokUrl: args.tiktokUrl,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       return { viewCount: 0 };
     }
   },
@@ -130,14 +135,19 @@ export const updateAllViewCounts = internalAction({
           updatedCount++;
         }
       } catch (error) {
-        console.error(`Failed to update views for ${submission._id}:`, error);
+        logger.error("Failed to update views for submission", {
+          submissionId: submission._id,
+          error: error instanceof Error ? error : new Error(String(error))
+        });
         errorCount++;
       }
     }
 
-    console.log(
-      `View tracking completed: ${updatedCount} updated, ${errorCount} errors`
-    );
+    logger.info("View tracking completed", {
+      updatedCount,
+      errorCount,
+      totalProcessed: submissions.length
+    });
     return { updatedCount, errorCount, totalProcessed: submissions.length };
   },
 });
@@ -222,7 +232,10 @@ export const cleanupOldRecords = internalAction({
       deletedCount++;
     }
 
-    console.log(`Cleaned up ${deletedCount} old view tracking records`);
+    logger.info("View tracking cleanup completed", {
+      deletedCount,
+      beforeTimestamp: thirtyDaysAgo
+    });
     return { deletedCount };
   },
 });

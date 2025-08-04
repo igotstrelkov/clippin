@@ -57,7 +57,10 @@ export function ProfileSetup() {
       const { storageId } = await result.json();
       return storageId;
     } catch (error) {
-      console.error("Logo upload error:", error);
+      // Log error for debugging (replace with proper error tracking in production)
+      if (process.env.NODE_ENV === "development") {
+        console.error("Logo upload error:", error);
+      }
       throw new Error("Failed to upload logo");
     }
   };

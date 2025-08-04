@@ -1,7 +1,9 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query } from "./_generated/server";
+import { logger } from "./logger";
 
 // Submit to campaign
 export const submitToCampaign = mutation({
@@ -129,7 +131,11 @@ export const submitToCampaign = mutation({
         );
       }
     } catch (error) {
-      console.error("Failed to schedule submission notification:", error);
+      logger.error("Failed to schedule submission notification", {
+        submissionId,
+        campaignId: campaign._id,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
     }
 
     return submissionId;
@@ -235,7 +241,7 @@ export const updateSubmissionStatus = mutation({
       }
     }
 
-    const updates: any = {
+    const updates: Partial<Doc<"submissions">> = {
       status: args.status,
     };
 
@@ -296,7 +302,10 @@ export const updateSubmissionStatus = mutation({
         }
       }
     } catch (error) {
-      console.error("Failed to send notification email:", error);
+      logger.error("Failed to send notification email", {
+        submissionId: args.submissionId,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
     }
 
     return submission;

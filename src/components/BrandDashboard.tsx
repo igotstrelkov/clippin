@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMutation, useQuery } from "convex/react";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { CreateCampaignModal } from "./CreateCampaignModal";
@@ -213,7 +213,6 @@ export function BrandDashboard() {
         <TabsList>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
-          {/* <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="campaigns">
@@ -261,11 +260,6 @@ export function BrandDashboard() {
                           >
                             Edit Campaign
                           </DropdownMenuItem>
-                          {/* <DropdownMenuItem
-                            onClick={() => setReviewingCampaign(campaign)}
-                          >
-                            View Submissions
-                          </DropdownMenuItem> */}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
@@ -611,7 +605,7 @@ export function BrandDashboard() {
   );
 }
 
-function StatCard({
+const StatCard = memo(({
   icon: Icon,
   title,
   value,
@@ -619,7 +613,7 @@ function StatCard({
   icon: React.ElementType;
   title: string;
   value: string;
-}) {
+}) => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -631,7 +625,7 @@ function StatCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 function DashboardSkeleton() {
   return (

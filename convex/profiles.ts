@@ -56,7 +56,7 @@ export const updateProfile = mutation({
     //tiktokUsername: v.optional(v.string()),
     // Brand fields
     companyName: v.optional(v.string()),
-    companyLogo: v.optional(v.string()),
+    companyLogo: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -70,9 +70,8 @@ export const updateProfile = mutation({
     const profileData = {
       userType: args.userType,
       creatorName: args.creatorName,
-      //tiktokUsername: args.tiktokUsername,
       companyName: args.companyName,
-      companyLogo: args.companyLogo ? (args.companyLogo as any) : undefined,
+      companyLogo: args.companyLogo,
     };
 
     if (existingProfile) {

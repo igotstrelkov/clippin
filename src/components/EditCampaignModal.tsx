@@ -316,7 +316,7 @@ export function EditCampaignModal({
               <Select
                 value={formData.status}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, status: value as any })
+                  setFormData({ ...formData, status: value as "draft" | "active" | "paused" | "completed" })
                 }
               >
                 <SelectTrigger id="status">

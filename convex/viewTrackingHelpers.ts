@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { internalMutation, internalQuery, query } from "./_generated/server";
+import { logger } from "./logger";
 
 // Get all active submissions that need view tracking
 export const getActiveSubmissions = internalQuery({
@@ -33,7 +34,7 @@ function calculateEarnings(
 
 // Helper function to process earnings updates and related database changes
 async function processEarningsUpdate(
-  ctx: { db: any },
+  ctx: { db: { query: any; patch: any } },
   submission: Doc<"submissions">,
   campaign: Doc<"campaigns">,
   newViewCount: number
@@ -60,7 +61,7 @@ async function processEarningsUpdate(
   
   // Prepare updates
   const submissionUpdates = { earnings: newEarnings };
-  const campaignUpdates: any = { remainingBudget: newRemainingBudget };
+  const campaignUpdates: Partial<Doc<"campaigns">> = { remainingBudget: newRemainingBudget };
   
   // Mark campaign as completed if budget is exhausted
   if (newRemainingBudget === 0 && campaign.status === "active") {
@@ -70,8 +71,7 @@ async function processEarningsUpdate(
   // Update creator's total earnings in their profile
   const creatorProfile = await ctx.db
     .query("profiles")
-    // @ts-expect-error - Convex query builder type inference
-    .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
+    .withIndex("by_user_id", (q: any) => q.eq("userId", submission.creatorId))
     .unique();
   
   if (creatorProfile) {
@@ -105,7 +105,7 @@ export const updateSubmissionViews = internalMutation({
     }
 
     // Prepare submission updates
-    const submissionUpdates: any = {
+    const submissionUpdates: Partial<Doc<"submissions">> = {
       viewCount: args.viewCount,
       lastViewUpdate: Date.now(),
     };
@@ -116,7 +116,7 @@ export const updateSubmissionViews = internalMutation({
 
     // Prepare campaign updates
     const viewDelta = args.viewCount - args.previousViews;
-    const campaignUpdates: any = {
+    const campaignUpdates: Partial<Doc<"campaigns">> = {
       totalViews: (campaign.totalViews || 0) + viewDelta,
     };
 
@@ -190,7 +190,10 @@ export const markThresholdMet = internalMutation({
     const campaign = await ctx.db.get(submission.campaignId);
     if (campaign) {
       // Could trigger email notification here
-      console.log(`Submission ${args.submissionId} reached 1K views threshold`);
+      logger.info("Submission reached 1K views threshold", {
+        submissionId: args.submissionId,
+        campaignId: campaign._id,
+      });
     }
   },
 });

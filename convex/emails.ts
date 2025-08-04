@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { Resend } from "resend";
 import { internalAction } from "./_generated/server";
+import { logger } from "./logger";
 
 const resend = new Resend(process.env.CONVEX_RESEND_API_KEY);
 
@@ -75,7 +76,10 @@ export const sendApprovalNotification = internalAction({
 
       return { success: true, messageId: data?.id };
     } catch (error) {
-      console.error("Email sending failed:", error);
+      logger.error("Email sending failed", {
+        templateType: "approval_notification",
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Failed to send approval notification email");
     }
   },
@@ -153,7 +157,10 @@ export const sendRejectionNotification = internalAction({
 
       return { success: true, messageId: data?.id };
     } catch (error) {
-      console.error("Email sending failed:", error);
+      logger.error("Email sending failed", {
+        templateType: "approval_notification",
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Failed to send rejection notification email");
     }
   },
@@ -255,7 +262,10 @@ export const sendPayoutConfirmation = internalAction({
 
       return { success: true, messageId: data?.id };
     } catch (error) {
-      console.error("Email sending failed:", error);
+      logger.error("Email sending failed", {
+        templateType: "approval_notification",
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Failed to send payout confirmation email");
     }
   },
@@ -331,7 +341,10 @@ export const sendSubmissionNotification = internalAction({
 
       return { success: true, messageId: data?.id };
     } catch (error) {
-      console.error("Email sending failed:", error);
+      logger.error("Email sending failed", {
+        templateType: "approval_notification",
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Failed to send submission notification email");
     }
   },
@@ -416,7 +429,10 @@ export const sendCampaignCompletionNotification = internalAction({
 
       return { success: true, messageId: data?.id };
     } catch (error) {
-      console.error("Email sending failed:", error);
+      logger.error("Email sending failed", {
+        templateType: "approval_notification",
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Failed to send campaign completion notification email");
     }
   },

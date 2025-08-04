@@ -54,7 +54,10 @@ export function StripeConnectOnboarding() {
       const status = await getAccountStatus();
       setConnectStatus(status);
     } catch (error) {
-      console.error("Failed to check account status:", error);
+      // Log error for debugging (replace with proper error tracking in production)
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to check account status:", error);
+      }
     }
   };
 

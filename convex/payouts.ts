@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import Stripe from "stripe";
 import { internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
+import { logger } from "./logger";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-06-30.basil",
@@ -53,7 +54,10 @@ export const createStripeConnectAccount = action({
 
       return { accountId: account.id };
     } catch (error) {
-      console.error("Failed to create Stripe Connect account:", error);
+      logger.error("Failed to create Stripe Connect account", {
+        userId,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Failed to create payment account. Please try again.");
     }
   },
@@ -89,7 +93,10 @@ export const createConnectOnboardingLink = action({
 
       return { url: accountLink.url };
     } catch (error) {
-      console.error("Failed to create onboarding link:", error);
+      logger.error("Failed to create onboarding link", {
+        userId,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Failed to create onboarding link. Please try again.");
     }
   },
@@ -138,7 +145,10 @@ export const getConnectAccountStatus = action({
         payoutsEnabled: account.payouts_enabled,
       };
     } catch (error) {
-      console.error("Failed to retrieve account status:", error);
+      logger.error("Failed to retrieve account status", {
+        userId,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       return { hasAccount: false, isComplete: false };
     }
   },
@@ -224,7 +234,11 @@ export const processPayout = action({
 
       return { success: true, payoutId, transferId: transfer.id };
     } catch (error) {
-      console.error("Stripe transfer failed:", error);
+      logger.error("Stripe transfer failed", {
+        creatorId: args.creatorId,
+        amount: args.amount,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
 
       // Create failed payout record
       await ctx.runMutation(internal.payoutHelpers.createPaymentRecord, {
@@ -287,7 +301,10 @@ export const sendPayoutNotification = internalAction({
         totalSubmissions: args.submissionIds.length,
       });
     } catch (error) {
-      console.error("Failed to send payout confirmation email:", error);
+      logger.error("Failed to send payout confirmation email", {
+        creatorId: args.creatorId,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
     }
   },
 });
@@ -318,7 +335,11 @@ export const createCampaignPaymentIntent = action({
         paymentIntentId: paymentIntent.id,
       };
     } catch (error) {
-      console.error("Failed to create payment intent:", error);
+      logger.error("Failed to create payment intent", {
+        campaignId: args.campaignId,
+        amount: args.amount,
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Failed to create payment intent");
     }
   },
@@ -381,20 +402,26 @@ export const handleWebhook = internalAction({
           const account = event.data.object;
           if (account.metadata?.userId) {
             // Could update account status in database if needed
-            console.log(
-              `Connect account ${account.id} updated for user ${account.metadata.userId}`
-            );
+            logger.info("Connect account updated", {
+              accountId: account.id,
+              userId: account.metadata.userId
+            });
           }
           break;
         }
 
         default:
-          console.log(`Unhandled event type: ${event.type}`);
+          logger.warn("Unhandled Stripe webhook event", {
+            eventType: event.type,
+            eventId: event.id
+          });
       }
 
       return { success: true };
     } catch (error) {
-      console.error("Webhook error:", error);
+      logger.error("Stripe webhook error", {
+        error: error instanceof Error ? error : new Error(String(error))
+      });
       throw new Error("Webhook processing failed");
     }
   },
