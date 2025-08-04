@@ -79,6 +79,8 @@ export function BrandDashboard() {
   );
   const deleteCampaign = useMutation(api.campaigns.deleteCampaign);
 
+  const profile = useQuery(api.profiles.getCurrentProfile);
+
   const handleDelete = async () => {
     if (!deletingCampaignId) return;
     try {
@@ -122,10 +124,11 @@ export function BrandDashboard() {
       });
   };
 
-  const { activeCampaigns, stats } = useMemo(() => {
+  const { activeCampaigns, draftCampaigns, stats } = useMemo(() => {
     if (!campaigns) {
       return {
         activeCampaigns: [],
+        draftCampaigns: [],
         stats: {
           totalSpent: 0,
           totalViews: 0,
@@ -135,6 +138,7 @@ export function BrandDashboard() {
       };
     }
     const active = campaigns.filter((c) => c.status === "active");
+    const draft = campaigns.filter((c) => c.status === "draft");
 
     const totalSpent = campaigns.reduce(
       (sum, c) => sum + (c.totalBudget - c.remainingBudget),
@@ -152,6 +156,7 @@ export function BrandDashboard() {
     const avgCpm = totalViews > 0 ? (totalSpent / totalViews) * 1000 : 0;
     return {
       activeCampaigns: active,
+      draftCampaigns: draft,
       stats: { totalSpent, totalViews, totalSubmissions, avgCpm },
     };
   }, [campaigns]);
@@ -217,11 +222,21 @@ export function BrandDashboard() {
                 Campaign Management
               </h2>
               <p className="text-muted-foreground mb-6">
-                Monitor and manage your active campaigns
+                Monitor and manage your campaigns
               </p>
+            </div>
 
-              {/* Campaign Cards */}
-              <div className="space-y-4">
+            <Tabs defaultValue="active" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="active">
+                  Active ({activeCampaigns.length})
+                </TabsTrigger>
+                <TabsTrigger value="draft">
+                  Draft ({draftCampaigns.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="active" className="space-y-4">
                 {activeCampaigns.map((campaign) => (
                   <Card key={campaign._id} className="p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -230,7 +245,7 @@ export function BrandDashboard() {
                         <h3 className="text-lg font-semibold">
                           {campaign.title}
                         </h3>
-                        <Badge variant="secondary">Fashion</Badge>
+                        <Badge variant="secondary">{campaign.category}</Badge>
                         <Badge variant="outline">{campaign.status}</Badge>
                       </div>
                       <DropdownMenu>
@@ -360,8 +375,93 @@ export function BrandDashboard() {
                     </p>
                   </div>
                 )}
-              </div>
-            </div>
+              </TabsContent>
+
+              <TabsContent value="draft" className="space-y-4">
+                {draftCampaigns.map((campaign) => (
+                  <Card key={campaign._id} className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                        <h3 className="text-lg font-semibold">
+                          {campaign.title}
+                        </h3>
+                        <Badge variant="secondary">{campaign.category}</Badge>
+                        <Badge variant="outline">{campaign.status}</Badge>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => setEditingCampaign(campaign)}
+                          >
+                            Edit Campaign
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeletingCampaignId(campaign._id)}
+                          >
+                            Delete Campaign
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-6 mb-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Budget Allocated
+                        </p>
+                        <p className="text-lg font-semibold">
+                          ${(campaign.totalBudget / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Status</p>
+                        <p className="text-lg font-semibold text-gray-600">
+                          Draft
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Created</p>
+                        <p className="text-lg font-semibold">
+                          {new Date(
+                            campaign._creationTime
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Action</p>
+                        <Button
+                          size="sm"
+                          onClick={() => setEditingCampaign(campaign)}
+                          className="mt-1"
+                        >
+                          Complete Setup
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+
+                {draftCampaigns.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Package className="mx-auto h-12 w-12" />
+                    <h3 className="mt-4 text-lg font-medium">
+                      No Draft Campaigns
+                    </h3>
+                    <p className="mt-1 text-sm">
+                      Draft campaigns will appear here.
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </TabsContent>
 
@@ -405,6 +505,7 @@ export function BrandDashboard() {
                           submission={submission}
                           onApprove={handleApprove}
                           onReject={handleReject}
+                          profile={profile}
                         />
                       ))}
                       {pendingSubmissions.length === 0 && (
@@ -422,6 +523,7 @@ export function BrandDashboard() {
                           submission={submission}
                           onApprove={handleApprove}
                           onReject={handleReject}
+                          profile={profile}
                         />
                       ))}
                       {reviewedSubmissions.length === 0 && (

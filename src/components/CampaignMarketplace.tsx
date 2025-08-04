@@ -11,18 +11,16 @@ import {
 import { useQuery } from "convex/react";
 import { DollarSign, Search, SearchX, Target } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
 import { CampaignCard } from "./CampaignCard";
 import { CampaignCardSkeleton } from "./CampaignCardSkeleton";
-import { CampaignModal } from "./CampaignModal";
 
 export function CampaignMarketplace() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"newest" | "budget" | "cpm">("newest");
-  const [selectedCampaignId, setSelectedCampaignId] =
-    useState<Id<"campaigns"> | null>(null);
 
   const campaigns = useQuery(api.campaigns.getActiveCampaigns);
 
@@ -195,7 +193,9 @@ export function CampaignMarketplace() {
             <CampaignCard
               key={campaign._id}
               campaign={campaign}
-              onClick={() => setSelectedCampaignId(campaign._id)}
+              onClick={() => {
+                void navigate(`/campaign/${campaign._id}`);
+              }}
             />
           ))}
         </div>
@@ -211,14 +211,6 @@ export function CampaignMarketplace() {
             </p>
           </CardContent>
         </Card>
-      )}
-
-      {/* Campaign Modal */}
-      {selectedCampaignId && (
-        <CampaignModal
-          campaignId={selectedCampaignId}
-          onClose={() => setSelectedCampaignId(null)}
-        />
       )}
     </div>
   );

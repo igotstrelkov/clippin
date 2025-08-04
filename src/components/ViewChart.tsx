@@ -41,9 +41,9 @@ export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
   }
 
   const chartData = [...viewHistory].reverse().map((item) => ({
-    date: new Date(item.timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
+    date: new Date(item.timestamp).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "numeric",
     }),
     viewCount: item.viewCount,
     source: item.source,

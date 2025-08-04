@@ -21,6 +21,7 @@ import { Loader2, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
+import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
 
 interface PayoutRequestModalProps {
   isOpen: boolean;
@@ -95,6 +96,7 @@ export function PayoutRequestModal({
         <DialogHeader>
           <DialogTitle>Request Payout</DialogTitle>
         </DialogHeader>
+        <StripeConnectOnboarding />
 
         <div className="max-h-[60vh] overflow-y-auto pr-4">
           {pendingEarnings === undefined ? (

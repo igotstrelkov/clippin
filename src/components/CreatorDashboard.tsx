@@ -1,5 +1,4 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,15 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
 import { useQuery } from "convex/react";
 import {
   AlertTriangle,
@@ -37,7 +27,7 @@ import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { PayoutRequestModal } from "./PayoutRequestModal";
-import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
+import { SubmissionCard } from "./SubmissionCard";
 import TikTokVerification from "./TikTokVerification";
 import { ViewChart } from "./ViewChart";
 import { ViewTracker } from "./ViewTracker";
@@ -92,7 +82,6 @@ export function CreatorDashboard() {
       <h1 className="text-3xl font-bold">Creator Dashboard</h1>
 
       {!stats.tiktokVerified && <TikTokVerification />}
-      <StripeConnectOnboarding />
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -245,79 +234,41 @@ function SubmissionsSection({
   submissions: SubmissionWithCampaign[] | undefined;
   onExpand: (s: SubmissionWithCampaign) => void;
 }) {
+  const profile = useQuery(api.profiles.getCurrentProfile);
   return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Campaign</TableHead>
-            <TableHead>Submitted</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Views</TableHead>
-            {/* <TableHead>Link</TableHead> */}
-            <TableHead className="text-right">Earnings</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {submissions && submissions.length > 0 ? (
-            submissions.map((s) => (
-              <TableRow
-                key={s._id}
-                onClick={() => onExpand(s)}
-                className="cursor-pointer hover:bg-muted/50"
-              >
-                <TableCell className="font-medium">
-                  {s.campaignTitle ?? "Unknown Campaign"}
-                </TableCell>
-                <TableCell>
-                  {new Date(s._creationTime).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      s.status === "approved"
-                        ? "default"
-                        : s.status === "rejected"
-                          ? "destructive"
-                          : "outline"
-                    }
-                  >
-                    {s.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{s.viewCount?.toLocaleString() ?? "—"}</TableCell>
-                {/* <TableCell>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <a
-                      href={s.tiktokUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline font-semibold"
-                    >
-                      View Post
-                    </a>
-                  </Button>
-                </TableCell> */}
-                <TableCell className="text-right font-medium">
-                  {`$${s.potentialEarnings.toFixed(2)}`}
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
-                No submissions yet.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </Card>
+    <div className="space-y-4">
+      {submissions && submissions.length > 0 ? (
+        submissions.map((s) => {
+          // Convert SubmissionWithCampaign to Submission type for SubmissionCard
+          const submissionForCard = {
+            _id: s._id,
+            status: s.status,
+            creatorName: "You", // This is the creator's own dashboard
+            campaignTitle: s.campaignTitle || "Unknown Campaign",
+            submittedAt: s._creationTime,
+            viewCount: s.viewCount,
+            potentialEarnings: s.potentialEarnings,
+            tiktokUrl: s.tiktokUrl || "",
+            rejectionReason: s.rejectionReason,
+          };
+
+          return (
+            <SubmissionCard
+              key={s._id}
+              submission={submissionForCard}
+              onExpand={() => onExpand(s)}
+              profile={profile}
+            />
+          );
+        })
+      ) : (
+        <Card className="p-12">
+          <div className="text-center text-muted-foreground">
+            No submissions yet.
+          </div>
+        </Card>
+      )}
+    </div>
   );
 }
 

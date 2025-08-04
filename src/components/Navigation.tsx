@@ -8,20 +8,19 @@ import {
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { Link, useLocation } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { SignOutButton } from "../SignOutButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 
-interface NavigationProps {
-  currentView: "marketplace" | "dashboard";
-  onViewChange: (view: "marketplace" | "dashboard") => void;
-}
-
-export function Navigation({ currentView, onViewChange }: NavigationProps) {
+export function Navigation() {
   const { resolvedTheme } = useTheme();
   const [logoSrc, setLogoSrc] = useState("/logo-white.png"); // Default logo
   const profile = useQuery(api.profiles.getCurrentProfile);
+  const location = useLocation();
+  
+  const currentView = location.pathname.startsWith('/dashboard') ? 'dashboard' : 'marketplace';
 
   useEffect(() => {
     if (resolvedTheme) {
@@ -44,16 +43,16 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
             <div className="flex space-x-2">
               <Button
                 variant={currentView === "marketplace" ? "secondary" : "ghost"}
-                onClick={() => onViewChange("marketplace")}
+                asChild
               >
-                Marketplace
+                <Link to="/marketplace">Marketplace</Link>
               </Button>
               <Authenticated>
                 <Button
                   variant={currentView === "dashboard" ? "secondary" : "ghost"}
-                  onClick={() => onViewChange("dashboard")}
+                  asChild
                 >
-                  Dashboard
+                  <Link to="/dashboard">Dashboard</Link>
                 </Button>
               </Authenticated>
             </div>
@@ -97,7 +96,9 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
             </Authenticated>
 
             <Unauthenticated>
-              <Button onClick={() => onViewChange("dashboard")}>Sign In</Button>
+              <Button asChild>
+                <Link to="/dashboard">Sign In</Link>
+              </Button>
             </Unauthenticated>
           </div>
         </div>
