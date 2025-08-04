@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { CreateCampaignModal } from "./CreateCampaignModal";
 import { EditCampaignModal } from "./EditCampaignModal";
-import { SubmissionsReviewModal } from "./SubmissionsReviewModal";
 
 import {
   AlertDialog,
@@ -67,9 +66,7 @@ type Campaign = {
 export function BrandDashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
-  const [reviewingCampaign, setReviewingCampaign] = useState<Campaign | null>(
-    null
-  );
+
   const [deletingCampaignId, setDeletingCampaignId] =
     useState<Id<"campaigns"> | null>(null);
 
@@ -109,11 +106,14 @@ export function BrandDashboard() {
       });
   };
 
-  const handleReject = (submissionId: Id<"submissions">) => {
+  const handleReject = (
+    submissionId: Id<"submissions">,
+    rejectionReason: string
+  ) => {
     updateSubmissionStatus({
       submissionId,
       status: "rejected",
-      rejectionReason: "Not specified",
+      rejectionReason,
     })
       .then(() => {
         toast.success("Submission rejected successfully");
@@ -332,26 +332,7 @@ export function BrandDashboard() {
                           100
                         }
                       />
-                      {/* <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full"
-                          style={{
-                            width: `${Math.round(((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) * 100)}%`,
-                          }}
-                        ></div>
-                      </div> */}
                     </div>
-
-                    {(campaign.totalSubmissions || 0) >
-                      (campaign.approvedSubmissions || 0) && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                        <p className="text-sm text-yellow-800">
-                          {(campaign.totalSubmissions || 0) -
-                            (campaign.approvedSubmissions || 0)}{" "}
-                          submissions pending review
-                        </p>
-                      </div>
-                    )}
                   </Card>
                 ))}
 
@@ -570,12 +551,6 @@ export function BrandDashboard() {
           onSuccess={() => setEditingCampaign(null)}
         />
       )}
-      {reviewingCampaign && (
-        <SubmissionsReviewModal
-          campaignId={reviewingCampaign._id}
-          onClose={() => setReviewingCampaign(null)}
-        />
-      )}
 
       <AlertDialog
         open={!!deletingCampaignId}
@@ -605,27 +580,29 @@ export function BrandDashboard() {
   );
 }
 
-const StatCard = memo(({
-  icon: Icon,
-  title,
-  value,
-}: {
-  icon: React.ElementType;
-  title: string;
-  value: string;
-}) => {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-    </Card>
-  );
-});
+const StatCard = memo(
+  ({
+    icon: Icon,
+    title,
+    value,
+  }: {
+    icon: React.ElementType;
+    title: string;
+    value: string;
+  }) => {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{value}</div>
+        </CardContent>
+      </Card>
+    );
+  }
+);
 
 function DashboardSkeleton() {
   return (

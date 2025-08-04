@@ -19,6 +19,7 @@ import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
 import type * as logger from "../logger.js";
+import type * as optimizedQueries from "../optimizedQueries.js";
 import type * as payoutHelpers from "../payoutHelpers.js";
 import type * as payouts from "../payouts.js";
 import type * as profiles from "../profiles.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   emails: typeof emails;
   http: typeof http;
   logger: typeof logger;
+  optimizedQueries: typeof optimizedQueries;
   payoutHelpers: typeof payoutHelpers;
   payouts: typeof payouts;
   profiles: typeof profiles;

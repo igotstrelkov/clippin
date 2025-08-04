@@ -8,10 +8,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useDebounce } from "@/hooks/useDebounce";
+import { CAMPAIGN_CATEGORIES, SORT_OPTIONS, UI_CONFIG } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { DollarSign, Search, SearchX, Target } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { CampaignCard } from "./CampaignCard";
@@ -24,43 +26,35 @@ export function CampaignMarketplace() {
   const [sortBy, setSortBy] = useState<"newest" | "budget" | "cpm">("newest");
 
   const campaigns = useQuery(api.campaigns.getActiveCampaigns);
+  const debouncedSearchQuery = useDebounce(
+    searchQuery,
+    UI_CONFIG.SEARCH_DEBOUNCE_MS
+  );
 
-  const filteredCampaigns = campaigns
-    ? campaigns.filter(
-        (campaign) =>
-          (categoryFilter === "all" || campaign.category === categoryFilter) &&
-          (searchQuery === "" ||
-            campaign.title.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : [];
+  const sortedCampaigns = useMemo(() => {
+    if (!campaigns) return [];
 
-  const sortedCampaigns = filteredCampaigns.sort((a, b) => {
-    switch (sortBy) {
-      case "budget":
-        return b.totalBudget - a.totalBudget;
-      case "cpm":
-        return b.cpmRate - a.cpmRate;
-      case "newest":
-      default:
-        return b._creationTime - a._creationTime;
-    }
-  });
+    const filteredCampaigns = campaigns.filter(
+      (campaign) =>
+        (categoryFilter === "all" || campaign.category === categoryFilter) &&
+        (debouncedSearchQuery === "" ||
+          campaign.title
+            .toLowerCase()
+            .includes(debouncedSearchQuery.toLowerCase()))
+    );
 
-  const categories = [
-    { value: "all", label: "All Categories" },
-    { value: "lifestyle", label: "Lifestyle" },
-    { value: "fashion", label: "Fashion" },
-    { value: "beauty", label: "Beauty" },
-    { value: "fitness", label: "Fitness" },
-    { value: "food", label: "Food" },
-    { value: "travel", label: "Travel" },
-    { value: "tech", label: "Technology" },
-    { value: "gaming", label: "Gaming" },
-    { value: "music", label: "Music" },
-    { value: "comedy", label: "Comedy" },
-    { value: "education", label: "Education" },
-    { value: "business", label: "Business" },
-  ];
+    return filteredCampaigns.sort((a, b) => {
+      switch (sortBy) {
+        case "budget":
+          return b.totalBudget - a.totalBudget;
+        case "cpm":
+          return b.cpmRate - a.cpmRate;
+        case "newest":
+        default:
+          return b._creationTime - a._creationTime;
+      }
+    });
+  }, [campaigns, categoryFilter, debouncedSearchQuery, sortBy]);
 
   const totalBudget =
     campaigns?.reduce((sum, c) => sum + c.totalBudget, 0) ?? 0;
@@ -151,7 +145,7 @@ export function CampaignMarketplace() {
                   <SelectValue placeholder="Filter by category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
+                  {CAMPAIGN_CATEGORIES.map((category) => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
                     </SelectItem>
@@ -171,9 +165,11 @@ export function CampaignMarketplace() {
                   <SelectValue placeholder="Sort campaigns" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="budget">Highest Budget</SelectItem>
-                  <SelectItem value="cpm">Highest CPM</SelectItem>
+                  {SORT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -208,7 +204,7 @@ export function CampaignMarketplace() {
             <p className="text-muted-foreground">
               {categoryFilter === "all"
                 ? "No active campaigns are available right now."
-                : `No campaigns were found in the "${categories.find((c) => c.value === categoryFilter)?.label}" category.`}
+                : `No campaigns were found in the "${CAMPAIGN_CATEGORIES.find((c) => c.value === categoryFilter)?.label}" category.`}
             </p>
           </CardContent>
         </Card>

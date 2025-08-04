@@ -35,15 +35,15 @@ export const submitToCampaign = mutation({
     if (campaign.status !== "active") throw new Error("Campaign is not active");
 
     // Check if user already submitted to this campaign
-    const existingSubmission = await ctx.db
-      .query("submissions")
-      .withIndex("by_campaign_id", (q) => q.eq("campaignId", args.campaignId))
-      .filter((q) => q.eq(q.field("creatorId"), userId))
-      .first();
+    // const existingSubmission = await ctx.db
+    //   .query("submissions")
+    //   .withIndex("by_campaign_id", (q) => q.eq("campaignId", args.campaignId))
+    //   .filter((q) => q.eq(q.field("creatorId"), userId))
+    //   .first();
 
-    if (existingSubmission) {
-      throw new Error("You have already submitted to this campaign");
-    }
+    // if (existingSubmission) {
+    //   throw new Error("You have already submitted to this campaign");
+    // }
 
     // Validate TikTok URL format
     if (!isValidTikTokUrl(args.tiktokUrl.trim())) {
@@ -134,7 +134,7 @@ export const submitToCampaign = mutation({
       logger.error("Failed to schedule submission notification", {
         submissionId,
         campaignId: campaign._id,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
     }
 
@@ -304,7 +304,7 @@ export const updateSubmissionStatus = mutation({
     } catch (error) {
       logger.error("Failed to send notification email", {
         submissionId: args.submissionId,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
     }
 
@@ -361,7 +361,9 @@ export const getBrandSubmissions = query({
           submissions.map(async (submission) => {
             const creatorProfile = await ctx.db
               .query("profiles")
-              .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
+              .withIndex("by_user_id", (q) =>
+                q.eq("userId", submission.creatorId)
+              )
               .unique();
 
             return {
@@ -376,7 +378,8 @@ export const getBrandSubmissions = query({
       })
     );
 
-    return allSubmissions.flat().sort((a, b) => b._creationTime - a._creationTime);
+    return allSubmissions
+      .flat()
+      .sort((a, b) => b._creationTime - a._creationTime);
   },
 });
-
