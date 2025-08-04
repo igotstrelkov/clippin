@@ -129,7 +129,7 @@ export function StripeConnectOnboarding() {
                 <li>Government-issued ID</li>
                 <li>Bank account information</li>
                 <li>Tax information (SSN or EIN)</li>
-                <li>Business details (if applicable)</li>
+                {/* <li>Business details (if applicable)</li> */}
               </ul>
             </AlertDescription>
           </Alert>

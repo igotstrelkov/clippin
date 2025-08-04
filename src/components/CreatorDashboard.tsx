@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import {
   AlertTriangle,
@@ -86,12 +87,12 @@ export function CreatorDashboard() {
         <StatCard
           icon={DollarSign}
           title="Total Earnings"
-          value={`$${(stats.totalEarnings / 100).toLocaleString()}`}
+          value={`${formatCurrency(stats.totalEarnings / 100)}`}
         />
         {/* <StatCard
           icon={Wallet}
           title="Pending Payout"
-          value={`$${((pendingEarnings?.totalPending || 0) / 100).toLocaleString()}`}
+          value={`${formatCurrency((pendingEarnings?.totalPending || 0) / 100)}`}
         /> */}
         <StatCard
           icon={ListChecks}
@@ -106,7 +107,7 @@ export function CreatorDashboard() {
         <StatCard
           icon={TrendingUp}
           title="Earnings (24h)"
-          value={`$${(stats.recent24hEarnings / 100).toLocaleString()}`}
+          value={`${formatCurrency(stats.recent24hEarnings / 100)}`}
         />
       </div>
 
@@ -138,7 +139,7 @@ export function CreatorDashboard() {
             </CardHeader>
             <CardContent className="text-center">
               <div className="text-4xl font-bold">
-                ${(pendingEarnings?.totalPending / 100 || 0).toLocaleString()}
+                {formatCurrency(pendingEarnings?.totalPending / 100 || 0)}
               </div>
               <div className="text-sm text-muted-foreground mb-4">
                 Ready to withdraw

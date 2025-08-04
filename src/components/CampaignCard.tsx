@@ -1,4 +1,3 @@
-import { Id } from "../../convex/_generated/dataModel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { formatCurrency } from "@/lib/utils";
+import { Id } from "../../convex/_generated/dataModel";
 
 interface Campaign {
   _id: Id<"campaigns">;
@@ -32,7 +33,8 @@ interface CampaignCardProps {
 export function CampaignCard({ campaign, onClick }: CampaignCardProps) {
   const budgetUsedPercentage =
     campaign.totalBudget > 0
-      ? ((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) *
+      ? ((campaign.totalBudget - campaign.remainingBudget) /
+          campaign.totalBudget) *
         100
       : 0;
 
@@ -65,13 +67,13 @@ export function CampaignCard({ campaign, onClick }: CampaignCardProps) {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-secondary p-3 rounded-lg">
             <div className="text-lg font-bold text-primary">
-              ${(campaign.cpmRate / 100).toFixed(2)}
+              {formatCurrency(campaign.cpmRate / 100)}
             </div>
             <div className="text-xs text-muted-foreground">per 1,000 views</div>
           </div>
           <div className="bg-secondary p-3 rounded-lg">
             <div className="text-lg font-bold">
-              ${(campaign.maxPayoutPerSubmission / 100).toLocaleString()}
+              {formatCurrency(campaign.maxPayoutPerSubmission / 100)}
             </div>
             <div className="text-xs text-muted-foreground">max payout</div>
           </div>
@@ -88,9 +90,13 @@ export function CampaignCard({ campaign, onClick }: CampaignCardProps) {
           <Progress value={budgetUsedPercentage} />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>
-              ${((campaign.totalBudget - campaign.remainingBudget) / 100).toLocaleString()}
+              {formatCurrency(
+                (campaign.totalBudget - campaign.remainingBudget) / 100
+              )}
             </span>
-            <span>${(campaign.remainingBudget / 100).toLocaleString()} Remaining</span>
+            <span>
+              {formatCurrency(campaign.remainingBudget / 100)} Remaining
+            </span>
           </div>
         </div>
       </CardFooter>

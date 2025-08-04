@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
 import { Loader2, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -37,7 +38,7 @@ export function PayoutRequestModal({
 
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
   const processPayout = useAction(api.payouts.processPayout);
-  const user = useQuery(api.auth.loggedInUser);
+  const profile = useQuery(api.profiles.getCurrentProfile);
 
   useEffect(() => {
     // Reset selection when modal is closed or earnings data changes
@@ -70,12 +71,12 @@ export function PayoutRequestModal({
   };
 
   const handleRequestPayout = async () => {
-    if (!user || selectedSubmissions.length === 0) return;
+    if (!profile || selectedSubmissions.length === 0) return;
 
     setLoading(true);
     try {
       await processPayout({
-        creatorId: user._id,
+        creatorId: profile.userId,
         amount: selectedEarnings,
         submissionIds: selectedSubmissions as any[],
       });
@@ -98,82 +99,90 @@ export function PayoutRequestModal({
         </DialogHeader>
         <StripeConnectOnboarding />
 
-        <div className="max-h-[60vh] overflow-y-auto pr-4">
-          {pendingEarnings === undefined ? (
-            <div className="flex justify-center items-center h-48">
-              <Loader2 className="h-8 w-8 animate-spin" />
+        {profile?.stripeConnectAccountId && (
+          <>
+            <div className="max-h-[60vh] overflow-y-auto pr-4">
+              {pendingEarnings === undefined ? (
+                <div className="flex justify-center items-center h-48">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : pendingEarnings.submissions.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={
+                            pendingEarnings.submissions.length > 0 &&
+                            selectedSubmissions.length ===
+                              pendingEarnings.submissions.length
+                          }
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </TableHead>
+                      <TableHead>Campaign</TableHead>
+                      <TableHead>Submitted</TableHead>
+                      <TableHead className="text-right">Pending</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingEarnings.submissions.map((s) => (
+                      <TableRow key={s._id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedSubmissions.includes(s._id)}
+                            onCheckedChange={() =>
+                              handleSubmissionToggle(s._id)
+                            }
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {s.campaignTitle}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(s.submittedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency((s.pendingAmount || 0) / 100)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Wallet className="mx-auto h-12 w-12" />
+                  <h3 className="mt-4 text-lg font-medium">
+                    No Pending Payouts
+                  </h3>
+                  <p className="mt-1 text-sm">
+                    Approved submissions with earnings will appear here.
+                  </p>
+                </div>
+              )}
             </div>
-          ) : pendingEarnings.submissions.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={
-                        pendingEarnings.submissions.length > 0 &&
-                        selectedSubmissions.length ===
-                          pendingEarnings.submissions.length
-                      }
-                      onCheckedChange={handleSelectAll}
-                    />
-                  </TableHead>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead className="text-right">Pending</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingEarnings.submissions.map((s) => (
-                  <TableRow key={s._id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedSubmissions.includes(s._id)}
-                        onCheckedChange={() => handleSubmissionToggle(s._id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {s.campaignTitle}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(s.submittedAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${((s.pendingAmount || 0) / 100).toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Wallet className="mx-auto h-12 w-12" />
-              <h3 className="mt-4 text-lg font-medium">No Pending Payouts</h3>
-              <p className="mt-1 text-sm">
-                Approved submissions with earnings will appear here.
-              </p>
-            </div>
-          )}
-        </div>
-        <DialogFooter className="sm:justify-between items-center pt-4 border-t">
-          <div className="text-lg font-semibold">
-            Total:{" "}
-            <span className="font-mono text-primary">
-              ${(selectedEarnings / 100).toLocaleString()}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              onClick={() => void handleRequestPayout()}
-              disabled={loading || selectedEarnings === 0}
-            >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Request Payout
-            </Button>
-          </div>
-        </DialogFooter>
+            <DialogFooter className="sm:justify-between items-center pt-4 border-t">
+              <div className="text-lg font-semibold">
+                Total:{" "}
+                <span className="font-mono text-primary">
+                  {formatCurrency(selectedEarnings / 100)}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button
+                  onClick={() => void handleRequestPayout()}
+                  disabled={loading || selectedEarnings === 0}
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Request Payout
+                </Button>
+              </div>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

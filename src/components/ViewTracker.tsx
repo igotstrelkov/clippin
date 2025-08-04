@@ -2,7 +2,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAction, useQuery } from "convex/react";
-import { ArrowDown, ArrowUp, Eye, Info, RefreshCw } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Eye,
+  Info,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -33,9 +40,9 @@ export function ViewTracker({
       const result = await refreshViews({ submissionId });
       const change = result.viewCount - result.previousViews;
       if (change > 0) {
-        toast.success(`Views updated: +${change.toLocaleString()} new views!`);
+        toast.success(`Views updated: +${change.toFixed(2)} new views!`);
       } else if (change < 0) {
-        toast.info(`Views updated: ${change.toLocaleString()} change`);
+        toast.info(`Views updated: ${change.toFixed(2)} change`);
       } else {
         toast.info("Views updated: No change");
       }
@@ -48,7 +55,15 @@ export function ViewTracker({
     }
   };
 
-  if (!viewHistory || viewHistory.length === 0) {
+  if (viewHistory == undefined) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center h-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (viewHistory.length === 0) {
     return (
       <Card className={compact ? "p-2" : "p-4"}>
         <div className="flex flex-col items-center justify-center text-center text-muted-foreground space-y-2">
@@ -186,9 +201,9 @@ export function ViewTracker({
                         {item.source.replace("_", " ")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-medium">{item.viewCount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-medium">{item.viewCount.toFixed(2)}</TableCell>
                     <TableCell className={`text-right ${change > 0 ? "text-green-500" : change < 0 ? "text-red-500" : "text-muted-foreground"}`}>
-                      {change > 0 ? "+" : ""}{change.toLocaleString()}
+                      {change > 0 ? "+" : ""}{change.toFixed(2)}
                     </TableCell>
                   </TableRow>
                 );

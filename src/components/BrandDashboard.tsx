@@ -37,6 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatCurrency } from "@/lib/utils";
 import {
   DollarSign,
   Eye,
@@ -189,7 +190,7 @@ export function BrandDashboard() {
         <StatCard
           icon={DollarSign}
           title="Total Spent"
-          value={`$${(stats.totalSpent / 100).toLocaleString()}`}
+          value={formatCurrency(stats.totalSpent / 100)}
         />
         <StatCard
           icon={Eye}
@@ -204,7 +205,7 @@ export function BrandDashboard() {
         <StatCard
           icon={DollarSign}
           title="Avg CPM"
-          value={`$${(stats.avgCpm / 100).toFixed(2)}`}
+          value={formatCurrency(stats.avgCpm / 100)}
         />
       </div>
 
@@ -282,18 +283,17 @@ export function BrandDashboard() {
                           Budget Used
                         </p>
                         <p className="text-lg font-semibold">
-                          $
-                          {(
+                          {formatCurrency(
                             (campaign.totalBudget - campaign.remainingBudget) /
-                            100
-                          ).toLocaleString()}{" "}
-                          / ${(campaign.totalBudget / 100).toLocaleString()}
+                              100
+                          )}{" "}
+                          / {formatCurrency(campaign.totalBudget / 100)}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Views</p>
                         <p className="text-lg font-semibold">
-                          {(campaign.totalViews || 0).toLocaleString()}
+                          {campaign.totalViews || 0}
                         </p>
                       </div>
                       <div>
@@ -308,16 +308,13 @@ export function BrandDashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">CPM</p>
                         <p className="text-lg font-semibold">
-                          $
-                          {campaign.totalViews && campaign.totalViews > 0
-                            ? (
-                                (((campaign.totalBudget -
-                                  campaign.remainingBudget) /
-                                  campaign.totalViews) *
-                                  1000) /
-                                100
-                              ).toFixed(2)
-                            : "0.00"}
+                          {formatCurrency(
+                            (((campaign.totalBudget -
+                              campaign.remainingBudget) /
+                              (campaign.totalViews || 0)) *
+                              1000) /
+                              100
+                          )}
                         </p>
                       </div>
                     </div>
@@ -418,7 +415,7 @@ export function BrandDashboard() {
                           Budget Allocated
                         </p>
                         <p className="text-lg font-semibold">
-                          ${(campaign.totalBudget / 100).toLocaleString()}
+                          {formatCurrency(campaign.totalBudget / 100)}
                         </p>
                       </div>
                       <div>
@@ -440,9 +437,8 @@ export function BrandDashboard() {
                         <Button
                           size="sm"
                           onClick={() => setEditingCampaign(campaign)}
-                          className="mt-1"
                         >
-                          Complete Setup
+                          Complete Payment
                         </Button>
                       </div>
                     </div>

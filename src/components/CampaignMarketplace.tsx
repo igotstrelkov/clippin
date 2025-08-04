@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { DollarSign, Search, SearchX, Target } from "lucide-react";
 import { useState } from "react";
@@ -106,7 +107,7 @@ export function CampaignMarketplace() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ${(totalBudget / 100).toLocaleString()}
+              {formatCurrency(totalBudget / 100)}
             </div>
           </CardContent>
         </Card>
@@ -119,7 +120,7 @@ export function CampaignMarketplace() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ${(avgCpm / 100).toFixed(2)}
+              {formatCurrency(avgCpm / 100)}
             </div>
           </CardContent>
         </Card>

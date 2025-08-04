@@ -1,6 +1,6 @@
-import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
+import { internalAction } from "./_generated/server";
 
 const resend = new Resend(process.env.CONVEX_RESEND_API_KEY);
 
@@ -40,11 +40,11 @@ export const sendApprovalNotification = internalAction({
               <h3 style="margin-top: 0; color: #a855f7;">Performance Summary</h3>
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <span>Views:</span>
-                <strong>${args.viewCount.toLocaleString()}</strong>
+                <strong>${args.viewCount.toFixed(2)}</strong>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <span>Earnings:</span>
-                <strong style="color: #16a34a;">$${args.earnings.toFixed(2)}</strong>
+                <strong style="color: #16a34a;">${formatCurrency(args.earnings)}</strong>
               </div>
             </div>
             
@@ -68,7 +68,9 @@ export const sendApprovalNotification = internalAction({
       });
 
       if (error) {
-        throw new Error(`Failed to send approval notification: ${JSON.stringify(error)}`);
+        throw new Error(
+          `Failed to send approval notification: ${JSON.stringify(error)}`
+        );
       }
 
       return { success: true, messageId: data?.id };
@@ -144,7 +146,9 @@ export const sendRejectionNotification = internalAction({
       });
 
       if (error) {
-        throw new Error(`Failed to send rejection notification: ${JSON.stringify(error)}`);
+        throw new Error(
+          `Failed to send rejection notification: ${JSON.stringify(error)}`
+        );
       }
 
       return { success: true, messageId: data?.id };
@@ -211,14 +215,18 @@ export const sendPayoutConfirmation = internalAction({
               </div>
             </div>
             
-            ${args.campaignTitles.length > 0 ? `
+            ${
+              args.campaignTitles.length > 0
+                ? `
               <div style="background-color: #374151; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h4 style="margin-top: 0; color: #a855f7;">Campaigns Included:</h4>
                 <ul style="margin: 0; padding-left: 20px;">
-                  ${args.campaignTitles.map(title => `<li style="margin-bottom: 5px;">${title}</li>`).join('')}
+                  ${args.campaignTitles.map((title) => `<li style="margin-bottom: 5px;">${title}</li>`).join("")}
                 </ul>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
             
             <p style="font-size: 16px; line-height: 1.6;">
               The funds should appear in your account within 2-3 business days. Thank you for being part of the Clippin community!
@@ -240,7 +248,9 @@ export const sendPayoutConfirmation = internalAction({
       });
 
       if (error) {
-        throw new Error(`Failed to send payout confirmation: ${JSON.stringify(error)}`);
+        throw new Error(
+          `Failed to send payout confirmation: ${JSON.stringify(error)}`
+        );
       }
 
       return { success: true, messageId: data?.id };
@@ -314,7 +324,9 @@ export const sendSubmissionNotification = internalAction({
       });
 
       if (error) {
-        throw new Error(`Failed to send submission notification: ${JSON.stringify(error)}`);
+        throw new Error(
+          `Failed to send submission notification: ${JSON.stringify(error)}`
+        );
       }
 
       return { success: true, messageId: data?.id };
@@ -361,11 +373,11 @@ export const sendCampaignCompletionNotification = internalAction({
               <h3 style="margin-top: 0; color: #a855f7;">Campaign Results</h3>
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <span>Total Views:</span>
-                <strong style="color: #3b82f6;">${args.totalViews.toLocaleString()}</strong>
+                <strong style="color: #3b82f6;">${args.totalViews.toFixed(2)}</strong>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <span>Total Spent:</span>
-                <strong style="color: #16a34a;">$${args.totalSpent.toFixed(2)}</strong>
+                <strong style="color: #16a34a;">${formatCurrency(args.totalSpent)}</strong>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <span>Approved Submissions:</span>
@@ -373,7 +385,7 @@ export const sendCampaignCompletionNotification = internalAction({
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <span>Effective CPM:</span>
-                <strong>${args.totalViews > 0 ? `$${((args.totalSpent / args.totalViews) * 1000).toFixed(2)}` : '$0.00'}</strong>
+                <strong>${args.totalViews > 0 ? `${formatCurrency((args.totalSpent / args.totalViews) * 1000)}` : "0.00"}</strong>
               </div>
             </div>
             
@@ -397,7 +409,9 @@ export const sendCampaignCompletionNotification = internalAction({
       });
 
       if (error) {
-        throw new Error(`Failed to send campaign completion notification: ${JSON.stringify(error)}`);
+        throw new Error(
+          `Failed to send campaign completion notification: ${JSON.stringify(error)}`
+        );
       }
 
       return { success: true, messageId: data?.id };
@@ -407,3 +421,26 @@ export const sendCampaignCompletionNotification = internalAction({
     }
   },
 });
+
+export const formatCurrency = (
+  value: number | undefined | null,
+  isPercentage = false,
+  defaultValue = "-",
+  currency = "EUR"
+): string => {
+  if (value === undefined || value === null) return defaultValue;
+
+  if (isPercentage) {
+    return `${value.toFixed(2)}%`;
+  }
+
+  const absValue = Math.abs(value);
+  const formatted = new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(absValue);
+
+  return formatted;
+};

@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { formatCurrency } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import {
   AlertTriangle,
@@ -297,7 +298,7 @@ function SubmissionsTable({
                   </Badge>
                 </TableCell>
                 <TableCell className="font-mono">
-                  ${sub.potentialEarnings.toLocaleString()}
+                  {formatCurrency(sub.potentialEarnings)}
                 </TableCell>
                 <TableCell>
                   {new Date(sub.submittedAt).toLocaleDateString()}

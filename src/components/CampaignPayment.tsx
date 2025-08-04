@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { formatCurrency } from "@/lib/utils";
 import {
   CardElement,
   Elements,
@@ -6,13 +10,10 @@ import {
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useAction } from "convex/react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
 
 const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
@@ -84,24 +85,29 @@ function PaymentForm({
           <CardTitle>Payment Summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Campaign Budget</span>
-              <span className="font-bold text-lg">${amount.toFixed(2)}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">Campaign Budget</span>
+            <span className="font-bold text-lg">{formatCurrency(amount)}</span>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Processing Fee:</span>
+              <span>{formatCurrency(amount * 0.029 + 0.3)}</span>
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Processing Fee:</span>
-                <span>${(amount * 0.029 + 0.3).toFixed(2)}</span>
-              </div>
-              <div className="border-t pt-2 flex justify-between font-bold">
-                <span>Total Charge:</span>
-                <span>${(amount + amount * 0.029 + 0.3).toFixed(2)}</span>
-              </div>
+            <div className="border-t pt-2 flex justify-between font-bold">
+              <span>Total Charge:</span>
+              <span>{formatCurrency(amount + amount * 0.029 + 0.3)}</span>
             </div>
+          </div>
         </CardContent>
       </Card>
 
-      <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
+      <form
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+        className="space-y-4"
+      >
         <div className="space-y-2">
           <Label htmlFor="card-element">Payment Information</Label>
           <div className="border rounded-md p-3">
@@ -118,12 +124,11 @@ function PaymentForm({
           >
             Cancel
           </Button>
-          <Button
-            type="submit"
-            disabled={!stripe || loading}
-          >
+          <Button type="submit" disabled={!stripe || loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? "Processing..." : `Pay $${(amount + amount * 0.029 + 0.3).toFixed(2)}`}
+            {loading
+              ? "Processing..."
+              : `Pay ${formatCurrency(amount + amount * 0.029 + 0.3)}`}
           </Button>
         </div>
       </form>

@@ -1,22 +1,37 @@
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
+import {
+  CheckCircle,
+  DollarSign,
+  Info,
+  Loader2,
+  Percent,
+  Target,
+  Video,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { SignInForm } from "../SignInForm";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, DollarSign, Info, Loader2, Percent, Target, Video } from "lucide-react";
 
 interface CampaignModalProps {
   campaignId: Id<"campaigns">;
@@ -60,7 +75,9 @@ export function CampaignModal({ campaignId, onClose }: CampaignModalProps) {
   };
 
   const budgetUsedPercentage = campaign
-    ? ((campaign.totalBudget - campaign.remainingBudget) / campaign.totalBudget) * 100
+    ? ((campaign.totalBudget - campaign.remainingBudget) /
+        campaign.totalBudget) *
+      100
     : 0;
 
   const canSubmit = profile?.userType === "creator" && profile?.tiktokVerified;
@@ -76,12 +93,21 @@ export function CampaignModal({ campaignId, onClose }: CampaignModalProps) {
               <div className="flex items-start gap-4">
                 <Avatar className="w-16 h-16 border">
                   <AvatarImage src={campaign.brandLogo ?? ""} />
-                  <AvatarFallback>{campaign.brandName.charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback>
+                    {campaign.brandName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <DialogTitle className="text-2xl mb-1">{campaign.title}</DialogTitle>
+                  <DialogTitle className="text-2xl mb-1">
+                    {campaign.title}
+                  </DialogTitle>
                   <DialogDescription className="flex items-center gap-4">
-                    <span>by <span className="font-semibold">{campaign.brandName}</span></span>
+                    <span>
+                      by{" "}
+                      <span className="font-semibold">
+                        {campaign.brandName}
+                      </span>
+                    </span>
                     <Badge variant="secondary">{campaign.category}</Badge>
                   </DialogDescription>
                 </div>
@@ -89,20 +115,43 @@ export function CampaignModal({ campaignId, onClose }: CampaignModalProps) {
             </DialogHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-6">
-              <StatCard icon={DollarSign} title="CPM Rate" value={`$${(campaign.cpmRate / 100).toFixed(2)}`} description="per 1,000 views" />
-              <StatCard icon={Target} title="Max Payout" value={`$${(campaign.maxPayoutPerSubmission / 100).toLocaleString()}`} description="per submission" />
-              <StatCard icon={Percent} title="Budget Used" value={`${budgetUsedPercentage.toFixed(1)}%`} progress={budgetUsedPercentage} />
+              <StatCard
+                icon={DollarSign}
+                title="CPM Rate"
+                value={`${formatCurrency(campaign.cpmRate / 100)}`}
+                description="per 1,000 views"
+              />
+              <StatCard
+                icon={Target}
+                title="Max Payout"
+                value={`${formatCurrency(campaign.maxPayoutPerSubmission / 100)}`}
+                description="per submission"
+              />
+              <StatCard
+                icon={Percent}
+                title="Budget Used"
+                value={`${budgetUsedPercentage.toFixed(1)}%`}
+                progress={budgetUsedPercentage}
+              />
             </div>
 
             <div className="space-y-6">
               <Card>
-                <CardHeader><CardTitle>Description</CardTitle></CardHeader>
-                <CardContent><p className="text-muted-foreground">{campaign.description}</p></CardContent>
+                <CardHeader>
+                  <CardTitle>Description</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    {campaign.description}
+                  </p>
+                </CardContent>
               </Card>
 
               {campaign.requirements.length > 0 && (
                 <Card>
-                  <CardHeader><CardTitle>Requirements</CardTitle></CardHeader>
+                  <CardHeader>
+                    <CardTitle>Requirements</CardTitle>
+                  </CardHeader>
                   <CardContent>
                     <ul className="space-y-3">
                       {campaign.requirements.map((req, index) => (
@@ -117,11 +166,18 @@ export function CampaignModal({ campaignId, onClose }: CampaignModalProps) {
               )}
 
               <Card>
-                <CardHeader><CardTitle>Submit Your Video</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>Submit Your Video</CardTitle>
+                </CardHeader>
                 <CardContent>
                   {profile ? (
                     canSubmit ? (
-                      <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
+                      <form
+                        onSubmit={(e) => {
+                          void handleSubmit(e);
+                        }}
+                        className="space-y-4"
+                      >
                         <div>
                           <Label htmlFor="tiktokUrl">TikTok Post URL</Label>
                           <div className="flex gap-2 mt-1">
@@ -134,7 +190,9 @@ export function CampaignModal({ campaignId, onClose }: CampaignModalProps) {
                               required
                             />
                             <Button type="submit" disabled={isSubmitting}>
-                              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              {isSubmitting && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              )}
                               Submit
                             </Button>
                           </div>
@@ -176,7 +234,13 @@ export function CampaignModal({ campaignId, onClose }: CampaignModalProps) {
   );
 }
 
-function StatCard({ icon: Icon, title, value, description, progress }: {
+function StatCard({
+  icon: Icon,
+  title,
+  value,
+  description,
+  progress,
+}: {
   icon: React.ElementType;
   title: string;
   value: string;
@@ -186,13 +250,19 @@ function StatCard({ icon: Icon, title, value, description, progress }: {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
         <Icon className="w-4 h-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        {description && <p className="text-xs text-muted-foreground">{description}</p>}
-        {progress !== undefined && <Progress value={progress} className="mt-2 h-2" />}
+        {description && (
+          <p className="text-xs text-muted-foreground">{description}</p>
+        )}
+        {progress !== undefined && (
+          <Progress value={progress} className="mt-2 h-2" />
+        )}
       </CardContent>
     </Card>
   );

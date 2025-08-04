@@ -63,6 +63,7 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <Authenticated>
               {profile && (
                 <DropdownMenu>
@@ -97,7 +98,6 @@ export function Navigation() {
                 </DropdownMenu>
               )}
             </Authenticated>
-            <ThemeToggle />
 
             <Unauthenticated>
               <Button asChild>

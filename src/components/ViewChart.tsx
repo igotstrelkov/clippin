@@ -4,7 +4,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { useQuery } from "convex/react";
-import { Info } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -27,7 +27,15 @@ export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
     limit: 48, // Last 48 data points
   });
 
-  if (!viewHistory || viewHistory.length < 2) {
+  if (viewHistory == undefined) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center h-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (viewHistory.length < 2) {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center h-full">
         <Info className="h-8 w-8 text-muted-foreground" />

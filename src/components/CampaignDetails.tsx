@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { formatCurrency } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import {
   ArrowLeft,
@@ -130,13 +131,13 @@ export function CampaignDetails() {
         <StatCard
           icon={DollarSign}
           title="CPM Rate"
-          value={`$${(campaign.cpmRate / 100).toFixed(2)}`}
+          value={`${formatCurrency(campaign.cpmRate / 100)}`}
           description="per 1,000 views"
         />
         <StatCard
           icon={Target}
           title="Max Payout"
-          value={`$${(campaign.maxPayoutPerSubmission / 100).toLocaleString()}`}
+          value={`${formatCurrency(campaign.maxPayoutPerSubmission / 100)}`}
           description="per submission"
         />
         <StatCard

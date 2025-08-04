@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils";
 import {
   AlertTriangle,
   CheckCircle,
@@ -114,7 +115,7 @@ export function SubmissionCard({
                   {userType === "brand" ? "Est. Cost" : "Est. Earnings"}
                 </p>
                 <p className="font-bold text-lg">
-                  ${submission.potentialEarnings.toFixed(2)}
+                  {formatCurrency(submission.potentialEarnings)}
                 </p>
               </div>
               <div className="text-center">
@@ -127,7 +128,7 @@ export function SubmissionCard({
                     className="flex items-center gap-1"
                   >
                     <ExternalLink className="w-3 h-3" />
-                    View
+                    Open
                   </a>
                 </Button>
               </div>
