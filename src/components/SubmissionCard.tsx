@@ -25,12 +25,11 @@ import { ViewChart } from "./ViewChart";
 // Using Pick to only require the fields we actually use in the component
 type Submission = Pick<
   Doc<"submissions">,
-  "_id" | "status" | "viewCount" | "tiktokUrl" | "rejectionReason"
+  "_id" | "status" | "viewCount" | "tiktokUrl" | "rejectionReason" | "earnings"
 > & {
   creatorName: string;
   campaignTitle: string;
   submittedAt: number;
-  potentialEarnings: number;
 };
 
 export function SubmissionCard({
@@ -115,7 +114,7 @@ export function SubmissionCard({
                   {userType === "brand" ? "Est. Cost" : "Est. Earnings"}
                 </p>
                 <p className="font-bold text-lg">
-                  {formatCurrency(submission.potentialEarnings)}
+                  {formatCurrency((submission.earnings || 0) / 100)}
                 </p>
               </div>
               <div className="text-center">

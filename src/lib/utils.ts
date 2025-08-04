@@ -7,17 +7,9 @@ export function cn(...inputs: ClassValue[]) {
 
 export const formatCurrency = (
   value: number | undefined | null,
-  isPercentage = false,
-  defaultValue = "-",
   currency = "EUR"
 ): string => {
-  if (value === undefined || value === null) return defaultValue;
-
-  if (isPercentage) {
-    return `${value.toFixed(2)}%`;
-  }
-
-  const absValue = Math.abs(value);
+  const absValue = !value ? 0 : Math.abs(value);
   const formatted = new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency,

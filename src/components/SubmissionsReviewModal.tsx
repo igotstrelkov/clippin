@@ -63,7 +63,7 @@ type Submission = {
   tiktokUrl: string;
   status: "pending" | "approved" | "rejected";
   hasReachedThreshold: boolean;
-  potentialEarnings: number;
+
   submittedAt: number;
   earnings?: number;
   rejectionReason?: string;
@@ -298,7 +298,7 @@ function SubmissionsTable({
                   </Badge>
                 </TableCell>
                 <TableCell className="font-mono">
-                  {formatCurrency(sub.potentialEarnings)}
+                  {formatCurrency((sub.earnings || 0) / 100)}
                 </TableCell>
                 <TableCell>
                   {new Date(sub.submittedAt).toLocaleDateString()}

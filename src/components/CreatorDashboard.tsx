@@ -36,7 +36,6 @@ import { ViewChart } from "./ViewChart";
 
 export type SubmissionWithCampaign = Doc<"submissions"> & {
   campaignTitle: string | undefined;
-  potentialEarnings: number;
   status: "approved" | "rejected" | "pending";
   rejectionReason?: string;
   earnings?: number;
@@ -247,7 +246,7 @@ function SubmissionsSection({
             campaignTitle: s.campaignTitle || "Unknown Campaign",
             submittedAt: s._creationTime,
             viewCount: s.viewCount,
-            potentialEarnings: s.potentialEarnings,
+            earnings: s.earnings,
             tiktokUrl: s.tiktokUrl || "",
             rejectionReason: s.rejectionReason,
           };

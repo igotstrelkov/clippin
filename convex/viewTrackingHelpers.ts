@@ -292,7 +292,6 @@ export const getSubmissionStats = query({
     campaign: Doc<"campaigns"> | null;
     recentHistory: Doc<"viewTracking">[];
     hasReachedThreshold: boolean;
-    potentialEarnings: number;
   } | null> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
@@ -333,13 +332,6 @@ export const getSubmissionStats = query({
       campaign,
       recentHistory,
       hasReachedThreshold: (submission.viewCount || 0) >= 1000,
-      potentialEarnings: campaign
-        ? Math.min(
-            Math.floor((submission.viewCount || 0) / 1000) *
-              (campaign.cpmRate / 100),
-            campaign.maxPayoutPerSubmission / 100
-          )
-        : 0,
     };
   },
 });

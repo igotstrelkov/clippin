@@ -154,18 +154,10 @@ export const getCreatorSubmissions = query({
       submissions.map(async (s) => {
         const campaign = await ctx.db.get(s.campaignId);
 
-        const potentialEarnings = campaign
-          ? Math.min(
-              Math.floor((s.viewCount || 0) / 1000) * (campaign.cpmRate / 100),
-              campaign.maxPayoutPerSubmission / 100
-            )
-          : 0;
-
         return {
           ...s,
           campaignTitle: campaign?.title,
           hasReachedThreshold: (s.viewCount || 0) >= 1000,
-          potentialEarnings,
         };
       })
     );
@@ -200,19 +192,11 @@ export const getCampaignSubmissions = query({
           .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
           .unique();
 
-        // Calculate potential earnings
-        const potentialEarnings = Math.min(
-          Math.floor((submission.viewCount || 0) / 1000) *
-            (campaign.cpmRate / 100),
-          campaign.maxPayoutPerSubmission / 100
-        );
-
         return {
           ...submission,
           creatorName: creatorProfile?.creatorName || "Unknown Creator",
           tiktokUsername: creatorProfile?.tiktokUsername,
           hasReachedThreshold: (submission.viewCount || 0) >= 1000,
-          potentialEarnings,
         };
       })
     );
@@ -371,18 +355,12 @@ export const getBrandSubmissions = query({
               .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
               .unique();
 
-            const potentialEarnings = Math.min(
-              Math.floor((submission.viewCount || 0) / 1000) * (campaign.cpmRate / 100),
-              campaign.maxPayoutPerSubmission / 100
-            );
-
             return {
               ...submission,
               campaignTitle: campaign.title,
               creatorName: creatorProfile?.creatorName || "Unknown Creator",
               tiktokUsername: creatorProfile?.tiktokUsername,
               hasReachedThreshold: (submission.viewCount || 0) >= 1000,
-              potentialEarnings,
             };
           })
         );

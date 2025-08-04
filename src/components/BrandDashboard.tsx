@@ -213,7 +213,7 @@ export function BrandDashboard() {
         <TabsList>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          {/* <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="campaigns">
