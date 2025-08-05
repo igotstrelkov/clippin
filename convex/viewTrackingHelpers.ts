@@ -44,43 +44,46 @@ async function processEarningsUpdate(
     campaign.cpmRate,
     campaign.maxPayoutPerSubmission
   );
-  
+
   const currentEarnings = submission.earnings || 0;
   const earningsDelta = newEarnings - currentEarnings;
-  
+
   // Only proceed if earnings actually changed
   if (earningsDelta === 0) {
     return null;
   }
-  
+
   // Calculate new campaign budget
   const newRemainingBudget = Math.max(
     0,
     campaign.remainingBudget - earningsDelta
   );
-  
+
   // Prepare updates
   const submissionUpdates = { earnings: newEarnings };
-  const campaignUpdates: Partial<Doc<"campaigns">> = { remainingBudget: newRemainingBudget };
-  
+  const campaignUpdates: Partial<Doc<"campaigns">> = {
+    remainingBudget: newRemainingBudget,
+  };
+
   // Mark campaign as completed if budget is exhausted
   if (newRemainingBudget === 0 && campaign.status === "active") {
     campaignUpdates.status = "completed";
   }
-  
+
   // Update creator's total earnings in their profile
   const creatorProfile = await ctx.db
     .query("profiles")
     .withIndex("by_user_id", (q: any) => q.eq("userId", submission.creatorId))
     .unique();
-  
+
   if (creatorProfile) {
-    const newTotalEarnings = (creatorProfile.totalEarnings || 0) + earningsDelta;
+    const newTotalEarnings =
+      (creatorProfile.totalEarnings || 0) + earningsDelta;
     await ctx.db.patch(creatorProfile._id, {
       totalEarnings: Math.max(0, newTotalEarnings), // Ensure non-negative
     });
   }
-  
+
   return { submissionUpdates, campaignUpdates };
 }
 
@@ -121,14 +124,14 @@ export const updateSubmissionViews = internalMutation({
     };
 
     // Handle earnings and budget updates for approved submissions
-    if (submission.status === "approved" && args.viewCount !== (submission.viewCount || 0)) {
+    if (args.viewCount !== (submission.viewCount || 0)) {
       const earningsUpdate = await processEarningsUpdate(
         ctx,
         submission,
         campaign,
         args.viewCount
       );
-      
+
       if (earningsUpdate) {
         Object.assign(submissionUpdates, earningsUpdate.submissionUpdates);
         Object.assign(campaignUpdates, earningsUpdate.campaignUpdates);
@@ -171,8 +174,6 @@ export const updateLastApiCall = internalMutation({
     });
   },
 });
-
-
 
 // Mark submission as having reached 1K view threshold
 export const markThresholdMet = internalMutation({

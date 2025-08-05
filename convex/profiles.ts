@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import {
   internalAction,
   internalMutation,
+  internalQuery,
   mutation,
   query,
 } from "./_generated/server";
@@ -219,7 +220,7 @@ export const verifyTikTokBio = mutation({
 });
 
 // Verification if post username matches the verified username
-export const verifyPost = mutation({
+export const verifyPost = internalQuery({
   args: { postUrl: v.string() },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -248,28 +249,19 @@ export const verifyPost = mutation({
     const urlMatch = args.postUrl.match(tiktokUrlPattern);
 
     if (!urlMatch) {
-      return {
-        found: false,
-        error:
-          "Invalid TikTok post URL format. Please provide a valid TikTok video URL.",
-      };
+      return false;
     }
 
-    let creatorUsername = "";
-    let found = false;
+    let isVerified = false;
 
-    // If no creator found through patterns, try URL extraction as final fallback
-
-    const urlCreator = urlMatch[2]; // Extract from URL pattern match
-    if (urlCreator) {
-      creatorUsername = urlCreator.toLowerCase();
-      found = creatorUsername === profile.tiktokUsername.toLowerCase();
+    // URL extraction as final fallback
+    const usernameFromUrl = urlMatch[2]; // Extract from URL pattern match
+    if (usernameFromUrl) {
+      isVerified =
+        usernameFromUrl.toLowerCase() === profile.tiktokUsername.toLowerCase();
     }
 
-    return {
-      found,
-      creatorUsername,
-    };
+    return isVerified;
   },
 });
 

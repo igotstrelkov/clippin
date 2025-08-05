@@ -18,7 +18,6 @@ import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { PayoutRequestModal } from "./creator-dashboard/PayoutRequestModal";
@@ -33,6 +32,7 @@ import { ViewChart } from "./ViewChart";
 
 export type SubmissionWithCampaign = Doc<"submissions"> & {
   campaignTitle: string | undefined;
+  brandName: string | undefined;
   status: "approved" | "rejected" | "pending";
   rejectionReason?: string;
   earnings?: number;
@@ -50,6 +50,7 @@ export function CreatorDashboard() {
     api.submissions.getCreatorSubmissions
   );
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
+  const profile = useQuery(api.profiles.getCurrentProfile);
 
   if (creatorStats === undefined) {
     return <LoadingSpinner />;
@@ -70,7 +71,25 @@ export function CreatorDashboard() {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Creator Dashboard</h1>
+      {!profile?.tiktokVerified && (
+        <Alert variant="destructive">
+          <div className="flex justify-between items-center">
+            <div>
+              <AlertTitle>TikTok account not verified</AlertTitle>
 
+              <AlertDescription>
+                Please verify your TikTok account to connect with brands.
+              </AlertDescription>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => setShowTikTokModal(true)}
+            >
+              Verify
+            </Button>
+          </div>
+        </Alert>
+      )}
       <CreatorStats stats={creatorStats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -119,7 +138,7 @@ export function CreatorDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
@@ -131,14 +150,14 @@ export function CreatorDashboard() {
               >
                 Verify TikTok Account
               </Button>
-              {/* <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full">
                 Edit Profile
               </Button>
               <Button variant="outline" className="w-full">
                 Help & Support
-              </Button> */}
+              </Button>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </div>
 
@@ -213,7 +232,6 @@ function SubmissionsSection({
   submissions: SubmissionWithCampaign[] | undefined;
   onExpand: (s: SubmissionWithCampaign) => void;
 }) {
-  const navigate = useNavigate();
   const profile = useQuery(api.profiles.getCurrentProfile);
   return (
     <div className="space-y-4">
@@ -223,8 +241,8 @@ function SubmissionsSection({
           const submissionForCard = {
             _id: s._id,
             status: s.status,
-            creatorName: "You", // This is the creator's own dashboard
-            campaignTitle: s.campaignTitle || "Unknown Campaign",
+            creatorName: s.campaignTitle || "Unknown Campaign", // This is the creator's own dashboard
+            campaignTitle: `by ${s.brandName}`,
             submittedAt: s._creationTime,
             viewCount: s.viewCount,
             earnings: s.earnings,

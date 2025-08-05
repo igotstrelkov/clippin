@@ -11,8 +11,11 @@ import { useMutation, useQuery } from "convex/react";
 import {
   ArrowLeft,
   CheckCircle,
+  Copy,
   DollarSign,
+  ExternalLink,
   Info,
+  Link,
   Percent,
   Target,
   Video,
@@ -56,12 +59,14 @@ export function CampaignDetails() {
 
     setIsSubmitting(true);
     try {
-      await submitToCampaign({
+      const response = await submitToCampaign({
         campaignId: campaignId as Id<"campaigns">,
         tiktokUrl: url,
       });
-      toast.success("Submission successful! Awaiting brand approval.");
-      void navigate("/marketplace");
+      toast.success(response.message);
+      if (response.success) {
+        void navigate("/marketplace");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit");
     } finally {
@@ -166,6 +171,59 @@ export function CampaignDetails() {
                   <li key={index} className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="text-muted-foreground">{req}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {campaign.assetLinks.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Asset Links</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {campaign.assetLinks.map((link, index) => (
+                  <li
+                    key={index}
+                    className="group flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <Link className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground flex-1 font-mono break-all">
+                      {link}
+                    </span>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          void navigator.clipboard
+                            .writeText(link)
+                            .catch((err) => {
+                              console.error(
+                                "Failed to copy to clipboard:",
+                                err
+                              );
+                            });
+                          toast.success("Link copied to clipboard");
+                        }}
+                        title="Copy to clipboard"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => window.open(link, "_blank")}
+                        title="Open in new tab"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>

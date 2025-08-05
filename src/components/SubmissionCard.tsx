@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getRelativeTime } from "@/lib/utils";
 import {
   AlertTriangle,
   CheckCircle,
@@ -89,17 +89,6 @@ export const SubmissionCard = memo(
         default:
           return null;
       }
-    };
-
-    const getRelativeTime = (timestamp: number) => {
-      const now = Date.now();
-      const diff = now - timestamp;
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-
-      if (days > 0) return `${days} day${days > 1 ? "s" : ""} ago`;
-      if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
-      return "Just now";
     };
 
     return (

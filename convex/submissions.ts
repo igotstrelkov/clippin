@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { logger } from "./logger";
 
@@ -22,17 +22,42 @@ export const submitToCampaign = mutation({
       .unique();
 
     if (!profile || profile.userType !== "creator") {
-      throw new Error("Only creators can submit to campaigns");
+      return {
+        success: false,
+        message: "Only creators can submit to campaigns",
+      };
     }
 
     if (!profile.tiktokVerified) {
-      throw new Error("Please verify your TikTok account first");
+      return {
+        success: false,
+        message: "Please verify your TikTok account first",
+      };
+    }
+
+    const isPostVerified = await ctx.runQuery(internal.profiles.verifyPost, {
+      postUrl: args.tiktokUrl,
+    });
+
+    if (!isPostVerified) {
+      return {
+        success: false,
+        message: "Post does not belong to your verified TikTok account",
+      };
     }
 
     // Verify campaign exists and is active
     const campaign = await ctx.db.get(args.campaignId);
-    if (!campaign) throw new Error("Campaign not found");
-    if (campaign.status !== "active") throw new Error("Campaign is not active");
+    if (!campaign)
+      return {
+        success: false,
+        message: "Campaign not found",
+      };
+    if (campaign.status !== "active")
+      return {
+        success: false,
+        message: "Campaign is not active",
+      };
 
     // Check if user already submitted to this campaign
     // const existingSubmission = await ctx.db
@@ -47,7 +72,7 @@ export const submitToCampaign = mutation({
 
     // Validate TikTok URL format
     if (!isValidTikTokUrl(args.tiktokUrl.trim())) {
-      throw new Error("Please provide a valid TikTok URL");
+      return { success: false, message: "Please provide a valid TikTok URL" };
     }
 
     // Check if this exact URL was already submitted to any campaign
@@ -57,9 +82,10 @@ export const submitToCampaign = mutation({
       .first();
 
     if (existingUrlSubmission) {
-      throw new Error(
-        "This TikTok video has already been submitted to a campaign"
-      );
+      return {
+        success: false,
+        message: "This TikTok video has already been submitted to a campaign",
+      };
     }
 
     // Initial view count will be fetched after submission creation
@@ -138,7 +164,10 @@ export const submitToCampaign = mutation({
       });
     }
 
-    return submissionId;
+    return {
+      success: true,
+      message: "Submission successful! Awaiting brand approval.",
+    };
   },
 });
 
@@ -159,11 +188,18 @@ export const getCreatorSubmissions = query({
     const submissionsWithCampaigns = await Promise.all(
       submissions.map(async (s) => {
         const campaign = await ctx.db.get(s.campaignId);
+        const brandProfile = await ctx.db
+          .query("profiles")
+          .withIndex("by_user_id", (q) =>
+            q.eq("userId", campaign?.brandId as Id<"users">)
+          )
+          .unique();
 
         return {
           ...s,
           campaignTitle: campaign?.title,
           hasReachedThreshold: (s.viewCount || 0) >= 1000,
+          brandName: brandProfile?.companyName,
         };
       })
     );
@@ -233,13 +269,13 @@ export const updateSubmissionStatus = mutation({
     }
 
     // For approval, check if submission meets minimum requirements
-    if (args.status === "approved") {
-      if ((submission.viewCount || 0) < 1000) {
-        throw new Error(
-          "Submission must have at least 1,000 views to be approved"
-        );
-      }
-    }
+    // if (args.status === "approved") {
+    //   if ((submission.viewCount || 0) < 1000) {
+    //     throw new Error(
+    //       "Submission must have at least 1,000 views to be approved"
+    //     );
+    //   }
+    // }
 
     const updates: Partial<Doc<"submissions">> = {
       status: args.status,
@@ -247,7 +283,6 @@ export const updateSubmissionStatus = mutation({
 
     if (args.status === "approved") {
       updates.approvedAt = Date.now();
-      updates.earnings = 0; // Earnings start at 0 and are updated by view tracking
 
       // Update campaign's approved submission count
       await ctx.db.patch(submission.campaignId, {
