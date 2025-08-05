@@ -1,9 +1,16 @@
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen } from "lucide-react";
 import { memo } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { SubmissionCard } from "../SubmissionCard";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { EmptyState } from "../ui/empty-state";
 
 interface SubmissionsListProps {
   pendingSubmissions: any[];
@@ -29,73 +36,70 @@ export const SubmissionsList = memo(
 
     return (
       <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Recent Submissions</h2>
-          <p className="text-muted-foreground mb-6">
-            Review and approve creator submissions
-          </p>
-
-          <Tabs defaultValue="pending" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="pending">
-                Pending ({pendingSubmissions.length})
-              </TabsTrigger>
-              <TabsTrigger value="reviewed">
-                Reviewed ({reviewedSubmissions.length})
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="pending">
-              <div className="space-y-4 mt-4">
-                {pendingSubmissions.map((submission) => (
-                  <SubmissionCard
-                    key={submission._id}
-                    submission={submission}
-                    onApprove={onApprove}
-                    onReject={onReject}
-                    userType={userType}
-                  />
-                ))}
-                {pendingSubmissions.length === 0 && (
-                  <div className="text-center py-10 text-muted-foreground">
-                    <FolderOpen className="mx-auto h-12 w-12" />
-                    <h3 className="mt-4 text-lg font-medium">
-                      No Pending Submissions
-                    </h3>
-                    <p className="mt-1 text-sm">
-                      Your pending submissions will appear here.
-                    </p>
-                  </div>
-                )}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Recent Submissions</CardTitle>
+                <CardDescription>
+                  Review and approve creator submissions
+                </CardDescription>
               </div>
-            </TabsContent>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="pending" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="pending">
+                  Pending ({pendingSubmissions.length})
+                </TabsTrigger>
+                <TabsTrigger value="reviewed">
+                  Reviewed ({reviewedSubmissions.length})
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="reviewed">
-              <div className="space-y-4 mt-4">
-                {reviewedSubmissions.map((submission) => (
-                  <SubmissionCard
-                    key={submission._id}
-                    submission={submission}
-                    onApprove={onApprove}
-                    onReject={onReject}
-                    userType={userType}
-                  />
-                ))}
-                {reviewedSubmissions.length === 0 && (
-                  <div className="text-center py-10 text-muted-foreground">
-                    <FolderOpen className="mx-auto h-12 w-12" />
-                    <h3 className="mt-4 text-lg font-medium">
-                      No Reviewed Submissions
-                    </h3>
-                    <p className="mt-1 text-sm">
-                      Your reviewed submissions will appear here.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+              <TabsContent value="pending">
+                <div className="space-y-4 mt-4">
+                  {pendingSubmissions.map((submission) => (
+                    <SubmissionCard
+                      key={submission._id}
+                      submission={submission}
+                      onApprove={onApprove}
+                      onReject={onReject}
+                      userType={userType}
+                    />
+                  ))}
+                  {pendingSubmissions.length === 0 && (
+                    <EmptyState
+                      title="No Pending Submissions"
+                      description="Your pending submissions will appear here."
+                    />
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="reviewed">
+                <div className="space-y-4 mt-4">
+                  {reviewedSubmissions.map((submission) => (
+                    <SubmissionCard
+                      key={submission._id}
+                      submission={submission}
+                      onApprove={onApprove}
+                      onReject={onReject}
+                      userType={userType}
+                    />
+                  ))}
+                  {reviewedSubmissions.length === 0 && (
+                    <EmptyState
+                      title="No Reviewed Submissions"
+                      description="Your reviewed submissions will appear here."
+                    />
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     );
   }

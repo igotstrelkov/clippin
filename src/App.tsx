@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { Authenticated, Unauthenticated } from "convex/react";
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import React, { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { SignInForm } from "./components/auth/SignInForm";
 import { Navigation } from "./components/Navigation";
 import { ThemeProvider } from "./components/theme-provider";
@@ -39,13 +39,25 @@ function App() {
             <AuthenticatedApp />
           </Authenticated>
           <Unauthenticated>
-            <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
-              <SignInForm />
-            </div>
+            <UnauthenticatedApp />
           </Unauthenticated>
         </div>
       </BrowserRouter>
     </ThemeProvider>
+  );
+}
+
+function UnauthenticatedApp() {
+  const navigate = useNavigate();
+
+  const handleAuthSuccess = () => {
+    void navigate("/dashboard");
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
+      <SignInForm onSuccess={handleAuthSuccess} />
+    </div>
   );
 }
 
@@ -57,9 +69,9 @@ function AuthenticatedApp() {
         <Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/marketplace" element={<CampaignMarketplace />} />
             <Route path="/campaign/:campaignId" element={<CampaignDetails />} />
-            <Route path="/dashboard" element={<Dashboard />} />
           </Routes>
         </Suspense>
         <Toaster />

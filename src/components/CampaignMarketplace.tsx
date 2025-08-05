@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { CampaignCard } from "./campaign-marketplace/CampaignCard";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { EmptyState } from "./ui/empty-state";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
 export function CampaignMarketplace() {
@@ -225,6 +226,10 @@ export function CampaignMarketplace() {
                       ?.label
                   }" category.`}
             </p>
+            <EmptyState
+              title="No Draft Campaigns"
+              description="Draft campaigns will appear here."
+            />
           </CardContent>
         </Card>
       )}

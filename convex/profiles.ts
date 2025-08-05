@@ -218,6 +218,61 @@ export const verifyTikTokBio = mutation({
   },
 });
 
+// Verification if post username matches the verified username
+export const verifyPost = mutation({
+  args: { postUrl: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Get the user's profile
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (!profile) {
+      throw new Error("Profile not found");
+    }
+
+    if (!profile.tiktokUsername || !profile.tiktokVerified) {
+      throw new Error(
+        "No verified tiktok username found. Please verify your tiktok username first."
+      );
+    }
+
+    // Validate the post URL format
+    const tiktokUrlPattern =
+      /^https:\/\/(www\.)?tiktok\.com\/@([^/]+)\/video\/(\d+)/;
+
+    const urlMatch = args.postUrl.match(tiktokUrlPattern);
+
+    if (!urlMatch) {
+      return {
+        found: false,
+        error:
+          "Invalid TikTok post URL format. Please provide a valid TikTok video URL.",
+      };
+    }
+
+    let creatorUsername = "";
+    let found = false;
+
+    // If no creator found through patterns, try URL extraction as final fallback
+
+    const urlCreator = urlMatch[2]; // Extract from URL pattern match
+    if (urlCreator) {
+      creatorUsername = urlCreator.toLowerCase();
+      found = creatorUsername === profile.tiktokUsername.toLowerCase();
+    }
+
+    return {
+      found,
+      creatorUsername,
+    };
+  },
+});
+
 // Internal action to perform the actual TikTok verification
 export const completeTikTokVerification = internalAction({
   args: {

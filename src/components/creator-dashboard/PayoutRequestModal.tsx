@@ -18,11 +18,11 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
-import { Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import { EmptyState } from "../ui/empty-state";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
 
@@ -154,15 +154,10 @@ export function PayoutRequestModal({
                   </TableBody>
                 </Table>
               ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Wallet className="mx-auto h-12 w-12" />
-                  <h3 className="mt-4 text-lg font-medium">
-                    No Pending Payouts
-                  </h3>
-                  <p className="mt-1 text-sm">
-                    Approved submissions with earnings will appear here.
-                  </p>
-                </div>
+                <EmptyState
+                  title="No Pending Payouts"
+                  description="Approved submissions with earnings will appear here."
+                />
               )}
             </div>
             <DialogFooter className="sm:justify-between items-center pt-4 border-t">

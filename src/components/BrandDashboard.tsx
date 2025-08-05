@@ -8,16 +8,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation, useQuery } from "convex/react";
-import { AlertTriangle, PlusCircle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { CampaignList } from "./brand-dashboard/CampaignList";
-import { CreateCampaignModal } from "./brand-dashboard/CreateCampaignModal";
 import { EditCampaignModal } from "./brand-dashboard/EditCampaignModal";
 import { SubmissionsList } from "./creator-dashboard/SubmissionsList";
 import { BrandStats } from "./DashboardStats";
@@ -41,7 +39,6 @@ export function BrandDashboard() {
     return { pendingSubmissions: pending, reviewedSubmissions: reviewed };
   }, [submissions]);
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [deletingCampaignId, setDeletingCampaignId] =
     useState<Id<"campaigns"> | null>(null);
@@ -128,10 +125,10 @@ export function BrandDashboard() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Brand Dashboard</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
+        {/* <Button onClick={() => setShowCreateModal(true)}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Create Campaign
-        </Button>
+        </Button> */}
       </div>
 
       <BrandStats
@@ -165,14 +162,6 @@ export function BrandDashboard() {
           />
         </TabsContent>
       </Tabs>
-
-      {showCreateModal && (
-        <CreateCampaignModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => setShowCreateModal(false)}
-        />
-      )}
 
       {editingCampaign && (
         <EditCampaignModal

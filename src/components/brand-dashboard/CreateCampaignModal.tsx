@@ -157,7 +157,7 @@ export function CreateCampaignModal({
 
       setDraftCampaignId(campaignId);
       setStep("payment");
-      toast.success("Campaign details saved! Proceed to payment.");
+      toast.success("Campaign saved in draft!");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to create campaign"
@@ -189,8 +189,6 @@ export function CreateCampaignModal({
     });
     onClose();
   };
-
-  const handleBackToForm = () => setStep("form");
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -470,7 +468,7 @@ export function CreateCampaignModal({
                   campaignId={draftCampaignId!}
                   amount={formData.totalBudget}
                   onSuccess={handlePaymentSuccess}
-                  onCancel={handleBackToForm}
+                  onCancel={handleClose}
                 />
               </div>
             </div>

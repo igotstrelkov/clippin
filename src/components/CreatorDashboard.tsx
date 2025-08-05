@@ -16,14 +16,16 @@ import {
 } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "convex/react";
-import { AlertTriangle, FolderOpen } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { PayoutRequestModal } from "./creator-dashboard/PayoutRequestModal";
 import TikTokVerification from "./creator-dashboard/TikTokVerification";
 import { CreatorStats } from "./DashboardStats";
 import { SubmissionCard } from "./SubmissionCard";
+import { EmptyState } from "./ui/empty-state";
 import { LoadingSpinner } from "./ui/loading-spinner";
 import { ViewChart } from "./ViewChart";
 
@@ -211,6 +213,7 @@ function SubmissionsSection({
   submissions: SubmissionWithCampaign[] | undefined;
   onExpand: (s: SubmissionWithCampaign) => void;
 }) {
+  const navigate = useNavigate();
   const profile = useQuery(api.profiles.getCurrentProfile);
   return (
     <div className="space-y-4">
@@ -240,11 +243,17 @@ function SubmissionsSection({
         })
       ) : (
         <Card className="p-12">
-          <div className="text-center py-10 text-muted-foreground">
-            <FolderOpen className="mx-auto h-12 w-12" />
-            <h3 className="mt-4 text-lg font-medium">No Submissions</h3>
-            <p className="mt-1 text-sm">Your submissions will appear here.</p>
-          </div>
+          <EmptyState
+            title="No Submissions"
+            description="Your submissions will appear here."
+          />
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => void navigate("/marketplace")}
+          >
+            View Marketplace
+          </Button>
         </Card>
       )}
     </div>
