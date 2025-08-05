@@ -18,7 +18,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/utils";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
+import {
+  CheckCircle,
+  Clock,
+  MoreHorizontal,
+  PauseCircle,
+  PlayCircle,
+  PlusCircle,
+} from "lucide-react";
 import { memo, useState } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { CreateCampaignModal } from "./CreateCampaignModal";
@@ -42,6 +49,7 @@ interface Campaign {
 interface CampaignListProps {
   activeCampaigns: Campaign[];
   draftCampaigns: Campaign[];
+  completedCampaigns: Campaign[];
   onEdit: (campaign: Campaign) => void;
   onDelete: (campaignId: Id<"campaigns">) => void;
 }
@@ -50,6 +58,7 @@ export const CampaignList = memo(
   ({
     activeCampaigns,
     draftCampaigns,
+    completedCampaigns,
     onEdit,
     onDelete,
   }: CampaignListProps) => {
@@ -74,12 +83,15 @@ export const CampaignList = memo(
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="active" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="active">
                   Active ({activeCampaigns.length})
                 </TabsTrigger>
                 <TabsTrigger value="draft">
                   Draft ({draftCampaigns.length})
+                </TabsTrigger>
+                <TabsTrigger value="completed">
+                  Completed ({completedCampaigns.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -103,11 +115,12 @@ export const CampaignList = memo(
 
               <TabsContent value="draft" className="space-y-4">
                 {draftCampaigns.map((campaign) => (
-                  <DraftCampaignCard
+                  <NonActiveCampaignCard
                     key={campaign._id}
                     campaign={campaign}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    draft={true}
                   />
                 ))}
 
@@ -115,6 +128,24 @@ export const CampaignList = memo(
                   <EmptyState
                     title="No Draft Campaigns"
                     description="Draft campaigns will appear here."
+                  />
+                )}
+              </TabsContent>
+
+              <TabsContent value="completed" className="space-y-4">
+                {completedCampaigns.map((campaign) => (
+                  <NonActiveCampaignCard
+                    key={campaign._id}
+                    campaign={campaign}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                  />
+                ))}
+
+                {completedCampaigns.length === 0 && (
+                  <EmptyState
+                    title="No Completed Campaigns"
+                    description="Completed campaigns will appear here."
                   />
                 )}
               </TabsContent>
@@ -156,14 +187,15 @@ const ActiveCampaignCard = memo(
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div>
-              <h3 className="text-lg font-semibold">{campaign.title}</h3>
-              <p className="text-sm text-muted-foreground">
-                {campaign.category}
-              </p>
+              <div className="flex items-center gap-2">
+                {getStatusIcon(campaign.status)}
+                <h3 className="text-lg font-semibold">{campaign.title}</h3>
+
+                <Badge variant="secondary">{campaign.category}</Badge>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="default">Active</Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -226,29 +258,47 @@ const ActiveCampaignCard = memo(
 
 ActiveCampaignCard.displayName = "ActiveCampaignCard";
 
-const DraftCampaignCard = memo(
+const getStatusIcon = (status: "draft" | "active" | "completed" | "paused") => {
+  switch (status) {
+    case "draft":
+      return <Clock className="w-4 h-4 text-gray-500" />;
+    case "active":
+      return <PlayCircle className="w-4 h-4 text-blue-500" />;
+    case "paused":
+      return <PauseCircle className="w-4 h-4 text-yellow-500" />;
+    case "completed":
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
+    default:
+      return null;
+  }
+};
+
+const NonActiveCampaignCard = memo(
   ({
     campaign,
     onEdit,
     onDelete,
+    draft,
   }: {
     campaign: Campaign;
     onEdit: (campaign: Campaign) => void;
     onDelete: (campaignId: Id<"campaigns">) => void;
+    draft?: boolean;
   }) => {
     return (
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div>
-              <h3 className="text-lg font-semibold">{campaign.title}</h3>
-              <p className="text-sm text-muted-foreground">
-                {campaign.category}
-              </p>
+              <div className="flex items-center gap-2">
+                {getStatusIcon(campaign.status)}
+                <h3 className="text-lg font-semibold">{campaign.title}</h3>
+
+                <Badge variant="secondary">{campaign.category}</Badge>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">Draft</Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -256,9 +306,11 @@ const DraftCampaignCard = memo(
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(campaign)}>
-                  Complete Payment
-                </DropdownMenuItem>
+                {draft && (
+                  <DropdownMenuItem onClick={() => onEdit(campaign)}>
+                    Complete Payment
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => onDelete(campaign._id)}
@@ -295,4 +347,4 @@ const DraftCampaignCard = memo(
   }
 );
 
-DraftCampaignCard.displayName = "DraftCampaignCard";
+NonActiveCampaignCard.displayName = "NonActiveCampaignCard";

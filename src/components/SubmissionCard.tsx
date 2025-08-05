@@ -81,7 +81,7 @@ export const SubmissionCard = memo(
     const getStatusIcon = () => {
       switch (submission.status) {
         case "pending":
-          return <Clock className="w-4 h-4 text-blue-500" />;
+          return <Clock className="w-4 h-4 text-gray-500" />;
         case "approved":
           return <CheckCircle className="w-4 h-4 text-green-500" />;
         case "rejected":

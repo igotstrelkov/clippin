@@ -122,9 +122,9 @@ export function ProfileSetup() {
       </CardHeader>
       <CardContent>
         {!userType ? (
-          <div className="space-y-4">
+          <div className="space-y-4 mt-6">
             <h3 className="text-xl font-semibold text-center mb-6">
-              Choose your account type:
+              Choose Your Account Type
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card
@@ -165,24 +165,26 @@ export function ProfileSetup() {
 
             {userType === "creator" ? (
               <div className="grid gap-2">
-                <Label htmlFor="creator-name">Display Name *</Label>
+                <Label htmlFor="creator-name">Display Name</Label>
                 <Input
                   id="creator-name"
                   type="text"
                   value={creatorName}
                   onChange={(e) => setCreatorName(e.target.value)}
+                  placeholder="Enter your display name"
                   required
                 />
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="company-name">Company Name *</Label>
+                  <Label htmlFor="company-name">Company Name</Label>
                   <Input
                     id="company-name"
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Enter your company name"
                     required
                   />
                 </div>
@@ -220,11 +222,7 @@ export function ProfileSetup() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className={`flex-1 ${userType === "creator" ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
-              >
+              <Button type="submit" disabled={loading}>
                 {loading && <LoadingSpinner size="sm" centered={false} />}
                 {loading ? "Creating Profile..." : "Complete Setup"}
               </Button>

@@ -146,6 +146,7 @@ export function BrandDashboard() {
           <CampaignList
             activeCampaigns={brandStats.activeCampaigns}
             draftCampaigns={brandStats.draftCampaigns}
+            completedCampaigns={brandStats.completedCampaigns}
             onEdit={onCampaignEdit}
             onDelete={onCampaignDelete}
           />

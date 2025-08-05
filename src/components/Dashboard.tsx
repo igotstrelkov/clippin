@@ -15,14 +15,14 @@ export function Dashboard() {
   if (!profile) {
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
+        {/* <div className="text-center mb-8">
           <h1 className="text-3xl font-bold tracking-tight mb-2">
             Welcome to Clippin!
           </h1>
           <p className="text-muted-foreground">
             Let's set up your profile to get started
           </p>
-        </div>
+        </div> */}
         <ProfileSetup />
       </div>
     );

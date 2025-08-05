@@ -291,8 +291,14 @@ export const getBrandStats = query({
       .collect();
 
     // Separate active and draft campaigns
-    const activeCampaigns = campaigns.filter((c) => c.status === "active");
+    const activeCampaigns = campaigns.filter(
+      (c) => c.status === "active" || c.status === "paused"
+    );
     const draftCampaigns = campaigns.filter((c) => c.status === "draft");
+
+    const completedCampaigns = campaigns.filter(
+      (c) => c.status === "completed"
+    );
 
     // Calculate aggregated stats
     const totalSpent = campaigns.reduce(
@@ -312,6 +318,7 @@ export const getBrandStats = query({
     return {
       activeCampaigns,
       draftCampaigns,
+      completedCampaigns,
       stats: {
         totalSpent,
         totalViews,
