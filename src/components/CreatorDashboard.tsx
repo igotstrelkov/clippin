@@ -47,24 +47,13 @@ export function CreatorDashboard() {
   const [expandedSubmission, setExpandedSubmission] =
     useState<SubmissionWithCampaign | null>(null);
 
-  const stats = useQuery(api.profiles.getCreatorStats);
+  const creatorStats = useQuery(api.profiles.getCreatorStats);
   const submissions: SubmissionWithCampaign[] | undefined = useQuery(
     api.submissions.getCreatorSubmissions
   );
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
-  // const payouts = useQuery(api.payoutHelpers.getCreatorPayouts);
 
-  // const isLoading =
-  //   stats === undefined ||
-  //   submissions === undefined ||
-  //   pendingEarnings === undefined ||
-  //   payouts === undefined;
-
-  // if (isLoading) {
-  //   return <DashboardSkeleton />;
-  // }
-
-  if (stats === undefined) {
+  if (creatorStats === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -72,13 +61,13 @@ export function CreatorDashboard() {
     );
   }
 
-  if (!stats) {
+  if (!creatorStats) {
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Error Loading Dashboard</AlertTitle>
         <AlertDescription>
-          Could not load your stats. Please refresh the page.
+          Could not load your creatorStats. Please refresh the page.
         </AlertDescription>
       </Alert>
     );
@@ -94,27 +83,22 @@ export function CreatorDashboard() {
         <StatCard
           icon={DollarSign}
           title="Total Earnings"
-          value={`${formatCurrency(stats.totalEarnings / 100)}`}
+          value={`${formatCurrency(creatorStats.totalEarnings / 100)}`}
         />
-        {/* <StatCard
-          icon={Wallet}
-          title="Pending Payout"
-          value={`${formatCurrency((pendingEarnings?.totalPending || 0) / 100)}`}
-        /> */}
         <StatCard
           icon={ListChecks}
           title="Total Submissions"
-          value={stats.totalSubmissions.toLocaleString()}
+          value={creatorStats.totalSubmissions.toLocaleString()}
         />
         <StatCard
           icon={Eye}
           title="Views (24h)"
-          value={stats.recent24hViews.toLocaleString()}
+          value={creatorStats.recent24hViews.toLocaleString()}
         />
         <StatCard
           icon={TrendingUp}
           title="Earnings (24h)"
-          value={`${formatCurrency(stats.recent24hEarnings / 100)}`}
+          value={`${formatCurrency(creatorStats.recent24hEarnings / 100)}`}
         />
       </div>
 

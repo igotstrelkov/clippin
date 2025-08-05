@@ -60,7 +60,7 @@ function AuthenticatedApp() {
       <main className="container mx-auto px-4 py-8">
         <Suspense fallback={<RouteLoader />}>
           <Routes>
-            <Route path="/" element={<Navigate to="/marketplace" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/marketplace" element={<CampaignMarketplace />} />
             <Route path="/campaign/:campaignId" element={<CampaignDetails />} />
             <Route path="/dashboard" element={<Dashboard />} />

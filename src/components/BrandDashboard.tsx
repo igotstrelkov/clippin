@@ -10,50 +10,60 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle } from "lucide-react";
-import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { AlertTriangle, Loader2, PlusCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import {
-  useBrandDashboard,
-  useCampaignActions,
-  useSubmissionActions,
-} from "../hooks/useBrandDashboard";
 import { CreateCampaignModal } from "./CreateCampaignModal";
-import { AnalyticsDashboard } from "./dashboard/AnalyticsDashboard";
 import { CampaignList } from "./dashboard/CampaignList";
 import { CampaignStats } from "./dashboard/CampaignStats";
-import { DashboardSkeleton } from "./dashboard/DashboardSkeleton";
 import { SubmissionsList } from "./dashboard/SubmissionsList";
 import { EditCampaignModal } from "./EditCampaignModal";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 export function BrandDashboard() {
-  const {
-    dashboardData,
-    pendingSubmissions,
-    reviewedSubmissions,
-    profile,
-    isLoading,
-    hasError,
-  } = useBrandDashboard();
+  const brandStats = useQuery(api.campaigns.getBrandStats);
+  const submissions = useQuery(api.submissions.getBrandSubmissions);
+  const profile = useQuery(api.profiles.getCurrentProfile);
+  const deleteCampaign = useMutation(api.campaigns.deleteCampaign);
+  const updateSubmissionStatus = useMutation(
+    api.submissions.updateSubmissionStatus
+  );
 
-  const { handleDelete } = useCampaignActions();
-  const { handleApprove, handleReject } = useSubmissionActions();
+  const { pendingSubmissions, reviewedSubmissions } = useMemo(() => {
+    if (!submissions)
+      return { pendingSubmissions: [], reviewedSubmissions: [] };
+    const pending = submissions.filter((s) => s.status === "pending");
+    const reviewed = submissions.filter((s) => s.status !== "pending");
+    return { pendingSubmissions: pending, reviewedSubmissions: reviewed };
+  }, [submissions]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [deletingCampaignId, setDeletingCampaignId] =
     useState<Id<"campaigns"> | null>(null);
 
-  // Show loading or error states
-  if (isLoading || hasError) {
-    return <DashboardSkeleton isLoading={isLoading} hasError={hasError} />;
+  if (brandStats === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  if (!dashboardData) {
-    return <DashboardSkeleton isLoading={false} hasError={true} />;
+  if (!brandStats) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error Loading Dashboard</AlertTitle>
+        <AlertDescription>
+          Could not load your creatorStats. Please refresh the page.
+        </AlertDescription>
+      </Alert>
+    );
   }
-
-  const { activeCampaigns, draftCampaigns, stats } = dashboardData;
 
   const onCampaignEdit = (campaign: any) => {
     setEditingCampaign(campaign);
@@ -63,11 +73,57 @@ export function BrandDashboard() {
     setDeletingCampaignId(campaignId);
   };
 
+  const handleDelete = async (campaignId: Id<"campaigns">) => {
+    try {
+      await deleteCampaign({ campaignId });
+      toast.success("Campaign deleted successfully");
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete campaign"
+      );
+      return false;
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deletingCampaignId) return;
     const success = await handleDelete(deletingCampaignId);
     if (success) {
       setDeletingCampaignId(null);
+    }
+  };
+
+  const handleApprove = async (submissionId: Id<"submissions">) => {
+    try {
+      await updateSubmissionStatus({ submissionId, status: "approved" });
+      toast.success("Submission approved successfully");
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to approve submission"
+      );
+      return false;
+    }
+  };
+
+  const handleReject = async (
+    submissionId: Id<"submissions">,
+    rejectionReason: string
+  ) => {
+    try {
+      await updateSubmissionStatus({
+        submissionId,
+        status: "rejected",
+        rejectionReason,
+      });
+      toast.success("Submission rejected successfully");
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to reject submission"
+      );
+      return false;
     }
   };
 
@@ -82,8 +138,8 @@ export function BrandDashboard() {
       </div>
 
       <CampaignStats
-        stats={stats}
-        activeCampaignsCount={activeCampaigns.length}
+        stats={brandStats.stats}
+        activeCampaignsCount={brandStats.activeCampaigns.length}
       />
 
       <Tabs defaultValue="campaigns">
@@ -95,8 +151,8 @@ export function BrandDashboard() {
 
         <TabsContent value="campaigns">
           <CampaignList
-            activeCampaigns={activeCampaigns}
-            draftCampaigns={draftCampaigns}
+            activeCampaigns={brandStats.activeCampaigns}
+            draftCampaigns={brandStats.draftCampaigns}
             onEdit={onCampaignEdit}
             onDelete={onCampaignDelete}
           />
@@ -113,9 +169,9 @@ export function BrandDashboard() {
           />
         </TabsContent>
 
-        <TabsContent value="analytics">
+        {/* <TabsContent value="analytics">
           <AnalyticsDashboard />
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
 
       {showCreateModal && (

@@ -278,7 +278,7 @@ export const getCampaignSubmissions = query({
 });
 
 // Get brand dashboard stats (optimized for dashboard)
-export const getBrandDashboardStats = query({
+export const getBrandStats = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
@@ -356,13 +356,11 @@ export const getMarketplaceStats = query({
     );
 
     // Calculate aggregated marketplace stats
-    const totalBudget = campaigns.reduce(
-      (sum, c) => sum + c.totalBudget,
-      0
-    );
-    const avgCpm = campaigns.length > 0
-      ? campaigns.reduce((sum, c) => sum + c.cpmRate, 0) / campaigns.length
-      : 0;
+    const totalBudget = campaigns.reduce((sum, c) => sum + c.totalBudget, 0);
+    const avgCpm =
+      campaigns.length > 0
+        ? campaigns.reduce((sum, c) => sum + c.cpmRate, 0) / campaigns.length
+        : 0;
 
     return {
       campaigns: campaignsWithBrands,
