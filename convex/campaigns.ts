@@ -12,7 +12,7 @@ export const createDraftCampaign = mutation({
     cpmRate: v.number(),
     maxPayoutPerSubmission: v.number(),
     endDate: v.optional(v.number()),
-    youtubeAssetUrl: v.string(),
+    assetLinks: v.array(v.string()),
     requirements: v.array(v.string()),
   },
   handler: async (ctx, args) => {
@@ -55,7 +55,7 @@ export const createDraftCampaign = mutation({
       cpmRate: args.cpmRate,
       maxPayoutPerSubmission: args.maxPayoutPerSubmission,
       endDate: args.endDate,
-      youtubeAssetUrl: args.youtubeAssetUrl.trim(),
+      assetLinks: args.assetLinks,
       requirements: args.requirements.filter((req) => req.trim().length > 0),
       status: "draft", // Start as draft until payment is completed
       totalViews: 0,
@@ -178,7 +178,7 @@ export const updateCampaign = mutation({
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     endDate: v.optional(v.number()),
-    youtubeAssetUrl: v.optional(v.string()),
+    assetLinks: v.optional(v.array(v.string())),
     requirements: v.optional(v.array(v.string())),
     status: v.optional(
       v.union(v.literal("active"), v.literal("paused"), v.literal("completed"))
@@ -200,8 +200,7 @@ export const updateCampaign = mutation({
     if (args.description !== undefined) updates.description = args.description;
     if (args.category !== undefined) updates.category = args.category;
     if (args.endDate !== undefined) updates.endDate = args.endDate;
-    if (args.youtubeAssetUrl !== undefined)
-      updates.youtubeAssetUrl = args.youtubeAssetUrl;
+    if (args.assetLinks !== undefined) updates.assetLinks = args.assetLinks;
     if (args.requirements !== undefined)
       updates.requirements = args.requirements;
     if (args.status !== undefined) updates.status = args.status;
@@ -232,15 +231,13 @@ export const deleteCampaign = mutation({
       .collect();
 
     if (submissions.length > 0) {
-      throw new Error("Cannot delete campaign with existing submissions");
+      return { success: false, message: "Campaign has existing submissions" };
     }
 
     await ctx.db.delete(args.campaignId);
-    return { success: true };
+    return { success: true, message: "Campaign deleted successfully" };
   },
 });
-
-
 
 // Get campaign submissions for brand review
 export const getCampaignSubmissions = query({
@@ -277,5 +274,103 @@ export const getCampaignSubmissions = query({
     );
 
     return submissionsWithCreators;
+  },
+});
+
+// Get brand dashboard stats (optimized for dashboard)
+export const getBrandDashboardStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Get all campaigns for this brand
+    const campaigns = await ctx.db
+      .query("campaigns")
+      .withIndex("by_brand_id", (q) => q.eq("brandId", userId))
+      .collect();
+
+    // Separate active and draft campaigns
+    const activeCampaigns = campaigns.filter((c) => c.status === "active");
+    const draftCampaigns = campaigns.filter((c) => c.status === "draft");
+
+    // Calculate aggregated stats
+    const totalSpent = campaigns.reduce(
+      (sum, c) => sum + (c.totalBudget - c.remainingBudget),
+      0
+    );
+    const totalViews = campaigns.reduce(
+      (sum, c) => sum + (c.totalViews || 0),
+      0
+    );
+    const totalSubmissions = campaigns.reduce(
+      (sum, c) => sum + (c.totalSubmissions || 0),
+      0
+    );
+    const avgCpm = totalViews > 0 ? (totalSpent / totalViews) * 1000 : 0;
+
+    return {
+      activeCampaigns,
+      draftCampaigns,
+      stats: {
+        totalSpent,
+        totalViews,
+        totalSubmissions,
+        avgCpm,
+      },
+    };
+  },
+});
+
+// Get marketplace stats (optimized for marketplace)
+export const getMarketplaceStats = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get all active campaigns
+    const campaigns = await ctx.db
+      .query("campaigns")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .order("desc")
+      .collect();
+
+    // Get brand info for each campaign
+    const campaignsWithBrands = await Promise.all(
+      campaigns.map(async (campaign) => {
+        const brandProfile = await ctx.db
+          .query("profiles")
+          .withIndex("by_user_id", (q) => q.eq("userId", campaign.brandId))
+          .unique();
+
+        // Get logo URL if available
+        let logoUrl = null;
+        if (brandProfile?.companyLogo) {
+          logoUrl = await ctx.storage.getUrl(brandProfile.companyLogo);
+        }
+
+        return {
+          ...campaign,
+          brandName: brandProfile?.companyName || "Unknown Brand",
+          brandLogo: logoUrl,
+        };
+      })
+    );
+
+    // Calculate aggregated marketplace stats
+    const totalBudget = campaigns.reduce(
+      (sum, c) => sum + c.totalBudget,
+      0
+    );
+    const avgCpm = campaigns.length > 0
+      ? campaigns.reduce((sum, c) => sum + c.cpmRate, 0) / campaigns.length
+      : 0;
+
+    return {
+      campaigns: campaignsWithBrands,
+      stats: {
+        totalBudget,
+        avgCpm,
+        activeCampaignsCount: campaigns.length,
+      },
+    };
   },
 });

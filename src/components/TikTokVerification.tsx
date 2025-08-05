@@ -61,12 +61,12 @@ function TikTokVerification() {
           </CardTitle>
           <CardDescription>@{profile.tiktokUsername}</CardDescription>
         </CardHeader>
-        <CardContent className="text-center">
+        {/* <CardContent className="text-center">
           <p className="text-muted-foreground">
             Your TikTok account has been successfully verified. You can now
             submit to campaigns.
           </p>
-        </CardContent>
+        </CardContent> */}
       </Card>
     );
   }

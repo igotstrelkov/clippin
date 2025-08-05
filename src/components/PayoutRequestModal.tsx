@@ -22,6 +22,7 @@ import { Loader2, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
 
 interface PayoutRequestModalProps {
@@ -34,7 +35,7 @@ export function PayoutRequestModal({
   onClose,
 }: PayoutRequestModalProps) {
   const [loading, setLoading] = useState(false);
-  const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
+  const [selectedSubmissions, setSelectedSubmissions] = useState<Id<"submissions">[]>([]);
 
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
   const processPayout = useAction(api.payouts.processPayout);
@@ -47,7 +48,7 @@ export function PayoutRequestModal({
     }
   }, [isOpen, pendingEarnings]);
 
-  const handleSubmissionToggle = (submissionId: string) => {
+  const handleSubmissionToggle = (submissionId: Id<"submissions">) => {
     setSelectedSubmissions((prev) =>
       prev.includes(submissionId)
         ? prev.filter((id) => id !== submissionId)

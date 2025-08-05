@@ -1,18 +1,26 @@
 import { Toaster } from "@/components/ui/sonner";
-import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { Authenticated, Unauthenticated } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { api } from "../convex/_generated/api";
 import { SignInForm } from "./SignInForm";
 import { Navigation } from "./components/Navigation";
-import { ProfileSetup } from "./components/ProfileSetup";
 import { ThemeProvider } from "./components/theme-provider";
 
 // Lazy load heavy components
-const CampaignDetails = lazy(() => import("./components/CampaignDetails").then(m => ({ default: m.CampaignDetails })));
-const CampaignMarketplace = lazy(() => import("./components/CampaignMarketplace").then(m => ({ default: m.CampaignMarketplace })));
-const Dashboard = lazy(() => import("./components/Dashboard").then(m => ({ default: m.Dashboard })));
+const CampaignDetails = lazy(() =>
+  import("./components/CampaignDetails").then((m) => ({
+    default: m.CampaignDetails,
+  }))
+);
+const CampaignMarketplace = lazy(() =>
+  import("./components/CampaignMarketplace").then((m) => ({
+    default: m.CampaignMarketplace,
+  }))
+);
+const Dashboard = lazy(() =>
+  import("./components/Dashboard").then((m) => ({ default: m.Dashboard }))
+);
 
 // Loading component for suspense
 const RouteLoader = () => (
@@ -46,20 +54,6 @@ function App() {
 }
 
 function AuthenticatedApp() {
-  const profile = useQuery(api.profiles.getCurrentProfile);
-
-  if (profile === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return <ProfileSetup />;
-  }
-
   return (
     <>
       <Navigation />

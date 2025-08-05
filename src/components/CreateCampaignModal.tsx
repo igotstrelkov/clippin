@@ -20,11 +20,20 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "convex/react";
-import { Info, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import {
+  ChevronDownIcon,
+  Info,
+  Loader2,
+  PlusCircle,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 import { CampaignPayment } from "./CampaignPayment";
+import { Calendar } from "./ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 interface CreateCampaignModalProps {
   isOpen: boolean;
@@ -40,7 +49,7 @@ interface CampaignFormData {
   cpmRate: number;
   maxPayoutPerSubmission: number;
   endDate: string;
-  youtubeAssetUrl: string;
+  assetLinks: string[];
   requirements: string[];
 }
 
@@ -49,9 +58,12 @@ export function CreateCampaignModal({
   onClose,
   onSuccess,
 }: CreateCampaignModalProps) {
+  const [open, setOpen] = useState(false);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [step, setStep] = useState<"form" | "payment">("form");
   const [loading, setLoading] = useState(false);
-  const [draftCampaignId, setDraftCampaignId] = useState<string | null>(null);
+  const [draftCampaignId, setDraftCampaignId] =
+    useState<Id<"campaigns"> | null>(null);
   const [formData, setFormData] = useState<CampaignFormData>({
     title: "",
     description: "",
@@ -60,7 +72,7 @@ export function CreateCampaignModal({
     cpmRate: 5,
     maxPayoutPerSubmission: 100,
     endDate: "",
-    youtubeAssetUrl: "",
+    assetLinks: [""],
     requirements: [""],
   });
 
@@ -82,6 +94,23 @@ export function CreateCampaignModal({
         (_, i) => i !== index
       );
       setFormData({ ...formData, requirements: newRequirements });
+    }
+  };
+
+  const handleAssetLinkChange = (index: number, value: string) => {
+    const newAssetLinks = [...formData.assetLinks];
+    newAssetLinks[index] = value;
+    setFormData({ ...formData, assetLinks: newAssetLinks });
+  };
+
+  const addAssetLink = () => {
+    setFormData({ ...formData, assetLinks: [...formData.assetLinks, ""] });
+  };
+
+  const removeAssetLink = (index: number) => {
+    if (formData.assetLinks.length > 1) {
+      const newAssetLinks = formData.assetLinks.filter((_, i) => i !== index);
+      setFormData({ ...formData, assetLinks: newAssetLinks });
     }
   };
 
@@ -108,12 +137,10 @@ export function CreateCampaignModal({
       return;
     }
     if (
-      formData.youtubeAssetUrl &&
-      !/^(https|http):\/\/(www\.)?youtube\.com\/watch\?v=/.test(
-        formData.youtubeAssetUrl
-      )
+      formData.assetLinks.length === 0 ||
+      formData.assetLinks.some((url) => !url.trim())
     ) {
-      toast.error("Please provide a valid YouTube watch URL");
+      toast.error("Please provide a valid asset link");
       return;
     }
 
@@ -128,10 +155,8 @@ export function CreateCampaignModal({
         maxPayoutPerSubmission: Math.round(
           formData.maxPayoutPerSubmission * 100
         ),
-        endDate: formData.endDate
-          ? new Date(formData.endDate).getTime()
-          : undefined,
-        youtubeAssetUrl: formData.youtubeAssetUrl,
+        endDate: endDate ? new Date(endDate).getTime() : undefined,
+        assetLinks: formData.assetLinks.filter((req) => req.trim()),
         requirements: formData.requirements.filter((req) => req.trim()),
       });
 
@@ -164,7 +189,7 @@ export function CreateCampaignModal({
       cpmRate: 5,
       maxPayoutPerSubmission: 100,
       endDate: "",
-      youtubeAssetUrl: "",
+      assetLinks: [""],
       requirements: [""],
     });
     onClose();
@@ -199,6 +224,7 @@ export function CreateCampaignModal({
                       setFormData({ ...formData, title: e.target.value })
                     }
                     required
+                    placeholder="Enter campaign title"
                   />
                 </div>
                 <div className="space-y-2">
@@ -235,6 +261,7 @@ export function CreateCampaignModal({
                     setFormData({ ...formData, description: e.target.value })
                   }
                   required
+                  placeholder="Enter campaign description"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -253,6 +280,7 @@ export function CreateCampaignModal({
                     min="50"
                     step="10"
                     required
+                    placeholder="Enter campaign budget"
                   />
                 </div>
                 <div className="space-y-2">
@@ -270,6 +298,7 @@ export function CreateCampaignModal({
                     min="1"
                     step="0.5"
                     required
+                    placeholder="Enter campaign cpm rate"
                   />
                 </div>
                 <div className="space-y-2">
@@ -289,38 +318,90 @@ export function CreateCampaignModal({
                     min="1"
                     step="1"
                     required
+                    placeholder="Enter campaign max payout per submission"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="endDate">End Date (Optional)</Label>
-                  <Input
+                  {/* <Input
                     id="endDate"
                     type="date"
                     value={formData.endDate}
                     onChange={(e) =>
                       setFormData({ ...formData, endDate: e.target.value })
                     }
-                  />
+                    placeholder="Enter campaign end date"
+                  /> */}
+                  <div className="relative flex gap-2">
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          id="endDate"
+                          className="w-48 justify-between font-normal"
+                        >
+                          {endDate
+                            ? endDate.toLocaleDateString()
+                            : "Select date"}
+                          <ChevronDownIcon />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-auto overflow-hidden p-0"
+                        align="start"
+                      >
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          captionLayout="dropdown"
+                          onSelect={(date) => {
+                            setEndDate(date);
+                            setOpen(false);
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Asset Links</Label>
                 <div className="space-y-2">
-                  <Label htmlFor="youtubeAssetUrl">
-                    YouTube Asset URL (Optional)
-                  </Label>
-                  <Input
-                    id="youtubeAssetUrl"
-                    type="url"
-                    value={formData.youtubeAssetUrl}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        youtubeAssetUrl: e.target.value,
-                      })
-                    }
-                    placeholder="https://www.youtube.com/watch?v=..."
-                  />
+                  {formData.assetLinks.map((req, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        type="text"
+                        value={req}
+                        onChange={(e) =>
+                          handleAssetLinkChange(index, e.target.value)
+                        }
+                        required
+                        placeholder="https://drive.google.com/drive/folders/123456"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeAssetLink(index)}
+                        disabled={formData.assetLinks.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addAssetLink}
+                  className="mt-2"
+                >
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Add Asset Link
+                </Button>
               </div>
               <div className="space-y-2">
                 <Label>Requirements</Label>
@@ -334,6 +415,7 @@ export function CreateCampaignModal({
                           handleRequirementChange(index, e.target.value)
                         }
                         required
+                        placeholder="Must tag @clippin int the description"
                       />
                       <Button
                         type="button"

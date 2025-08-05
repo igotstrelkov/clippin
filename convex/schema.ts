@@ -39,7 +39,7 @@ const applicationTables = {
     cpmRate: v.number(), // Cost per 1000 views
     maxPayoutPerSubmission: v.number(),
     endDate: v.optional(v.number()),
-    youtubeAssetUrl: v.string(),
+    assetLinks: v.array(v.string()),
     requirements: v.array(v.string()),
     status: v.union(
       v.literal("draft"),

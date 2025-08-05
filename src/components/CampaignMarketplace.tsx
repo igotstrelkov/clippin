@@ -8,60 +8,55 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useDebounce } from "@/hooks/useDebounce";
-import { CAMPAIGN_CATEGORIES, SORT_OPTIONS, UI_CONFIG } from "@/lib/constants";
+import { CAMPAIGN_CATEGORIES, SORT_OPTIONS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
-import { useQuery } from "convex/react";
-import { DollarSign, Search, SearchX, Target } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  DollarSign,
+  Loader2,
+  Search,
+  SearchX,
+  Target,
+} from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../convex/_generated/api";
+import { useMarketplace } from "../hooks/useMarketplace";
 import { CampaignCard } from "./CampaignCard";
-import { CampaignCardSkeleton } from "./CampaignCardSkeleton";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 export function CampaignMarketplace() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"newest" | "budget" | "cpm">("newest");
+  const [sortBy, setSortBy] = useState<
+    "newest" | "budget" | "cpm"
+  >("newest");
 
-  const campaigns = useQuery(api.campaigns.getActiveCampaigns);
-  const debouncedSearchQuery = useDebounce(
+  const { campaigns, stats, isLoading, hasError } = useMarketplace(
     searchQuery,
-    UI_CONFIG.SEARCH_DEBOUNCE_MS
+    categoryFilter,
+    sortBy
   );
 
-  const sortedCampaigns = useMemo(() => {
-    if (!campaigns) return [];
-
-    const filteredCampaigns = campaigns.filter(
-      (campaign) =>
-        (categoryFilter === "all" || campaign.category === categoryFilter) &&
-        (debouncedSearchQuery === "" ||
-          campaign.title
-            .toLowerCase()
-            .includes(debouncedSearchQuery.toLowerCase()))
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
+  }
 
-    return filteredCampaigns.sort((a, b) => {
-      switch (sortBy) {
-        case "budget":
-          return b.totalBudget - a.totalBudget;
-        case "cpm":
-          return b.cpmRate - a.cpmRate;
-        case "newest":
-        default:
-          return b._creationTime - a._creationTime;
-      }
-    });
-  }, [campaigns, categoryFilter, debouncedSearchQuery, sortBy]);
-
-  const totalBudget =
-    campaigns?.reduce((sum, c) => sum + c.totalBudget, 0) ?? 0;
-  const avgCpm =
-    campaigns && campaigns.length > 0
-      ? campaigns.reduce((sum, c) => sum + c.cpmRate, 0) / campaigns.length
-      : 0;
+  if (hasError) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error Loading Campaigns</AlertTitle>
+        <AlertDescription>
+          Could not load campaigns. Please refresh the page.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -88,7 +83,7 @@ export function CampaignMarketplace() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {campaigns?.length ?? "..."}
+              {stats.activeCampaignsCount}
             </div>
           </CardContent>
         </Card>
@@ -101,7 +96,7 @@ export function CampaignMarketplace() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {formatCurrency(totalBudget / 100)}
+              {formatCurrency(stats.totalBudget / 100)}
             </div>
           </CardContent>
         </Card>
@@ -114,7 +109,7 @@ export function CampaignMarketplace() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {formatCurrency(avgCpm / 100)}
+              {formatCurrency(stats.avgCpm / 100)}
             </div>
           </CardContent>
         </Card>
@@ -178,15 +173,9 @@ export function CampaignMarketplace() {
       </Card>
 
       {/* Campaign Grid */}
-      {!campaigns ? (
+      {campaigns.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <CampaignCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : sortedCampaigns.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedCampaigns.map((campaign) => (
+          {campaigns.map((campaign) => (
             <CampaignCard
               key={campaign._id}
               campaign={campaign}
@@ -204,7 +193,10 @@ export function CampaignMarketplace() {
             <p className="text-muted-foreground">
               {categoryFilter === "all"
                 ? "No active campaigns are available right now."
-                : `No campaigns were found in the "${CAMPAIGN_CATEGORIES.find((c) => c.value === categoryFilter)?.label}" category.`}
+                : `No campaigns were found in the "${
+                    CAMPAIGN_CATEGORIES.find((c) => c.value === categoryFilter)
+                      ?.label
+                  }" category.`}
             </p>
           </CardContent>
         </Card>

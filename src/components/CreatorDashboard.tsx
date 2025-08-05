@@ -14,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import {
@@ -22,6 +21,7 @@ import {
   DollarSign,
   Eye,
   ListChecks,
+  Loader2,
   TrendingUp,
 } from "lucide-react";
 import { memo, useState } from "react";
@@ -52,16 +52,24 @@ export function CreatorDashboard() {
     api.submissions.getCreatorSubmissions
   );
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
-  const payouts = useQuery(api.payoutHelpers.getCreatorPayouts);
+  // const payouts = useQuery(api.payoutHelpers.getCreatorPayouts);
 
-  const isLoading =
-    stats === undefined ||
-    submissions === undefined ||
-    pendingEarnings === undefined ||
-    payouts === undefined;
+  // const isLoading =
+  //   stats === undefined ||
+  //   submissions === undefined ||
+  //   pendingEarnings === undefined ||
+  //   payouts === undefined;
 
-  if (isLoading) {
-    return <DashboardSkeleton />;
+  // if (isLoading) {
+  //   return <DashboardSkeleton />;
+  // }
+
+  if (stats === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   if (!stats) {
@@ -138,7 +146,7 @@ export function CreatorDashboard() {
             </CardHeader>
             <CardContent className="text-center">
               <div className="text-4xl font-bold">
-                {formatCurrency(pendingEarnings?.totalPending / 100 || 0)}
+                {formatCurrency((pendingEarnings?.totalPending || 0) / 100)}
               </div>
               <div className="text-sm text-muted-foreground mb-4">
                 Ready to withdraw
@@ -271,64 +279,66 @@ function SubmissionsSection({
   );
 }
 
-const StatCard = memo(({
-  icon: Icon,
-  title,
-  value,
-}: {
-  icon: React.ElementType;
-  title: string;
-  value: string;
-}) => {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-    </Card>
-  );
-});
+const StatCard = memo(
+  ({
+    icon: Icon,
+    title,
+    value,
+  }: {
+    icon: React.ElementType;
+    title: string;
+    value: string;
+  }) => {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{value}</div>
+        </CardContent>
+      </Card>
+    );
+  }
+);
 
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-8 animate-pulse">
-      <Skeleton className="h-9 w-72" />
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
-      <div className="space-y-4">
-        <div className="flex space-x-2 border-b">
-          <Skeleton className="h-10 w-1/2" />
-          <Skeleton className="h-10 w-1/2" />
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="flex justify-between items-center p-2">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                  <Skeleton className="h-6 w-20" />
-                  <Skeleton className="h-5 w-16" />
-                  <Skeleton className="h-8 w-8" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
+// function DashboardSkeleton() {
+//   return (
+//     <div className="space-y-8 animate-pulse">
+//       <Skeleton className="h-9 w-72" />
+//       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+//         {[...Array(5)].map((_, i) => (
+//           <Skeleton key={i} className="h-24" />
+//         ))}
+//       </div>
+//       <div className="space-y-4">
+//         <div className="flex space-x-2 border-b">
+//           <Skeleton className="h-10 w-1/2" />
+//           <Skeleton className="h-10 w-1/2" />
+//         </div>
+//         <Card>
+//           <CardHeader>
+//             <Skeleton className="h-6 w-48" />
+//             <Skeleton className="h-4 w-64" />
+//           </CardHeader>
+//           <CardContent>
+//             <div className="space-y-2">
+//               {[...Array(3)].map((_, i) => (
+//                 <div key={i} className="flex justify-between items-center p-2">
+//                   <div className="space-y-2">
+//                     <Skeleton className="h-4 w-32" />
+//                     <Skeleton className="h-3 w-24" />
+//                   </div>
+//                   <Skeleton className="h-6 w-20" />
+//                   <Skeleton className="h-5 w-16" />
+//                   <Skeleton className="h-8 w-8" />
+//                 </div>
+//               ))}
+//             </div>
+//           </CardContent>
+//         </Card>
+//       </div>
+//     </div>
+//   );
+// }

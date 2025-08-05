@@ -45,13 +45,17 @@ export function Navigation() {
           <div className="flex items-center space-x-8">
             <img src={logoSrc} alt="Clippin" width={130} />
             <div className="flex space-x-2">
-              <Button
-                variant={currentView === "marketplace" ? "secondary" : "ghost"}
-                asChild
-              >
-                <Link to="/marketplace">Marketplace</Link>
-              </Button>
               <Authenticated>
+                {profile?.userType === "creator" && (
+                  <Button
+                    variant={
+                      currentView === "marketplace" ? "secondary" : "ghost"
+                    }
+                    asChild
+                  >
+                    <Link to="/marketplace">Marketplace</Link>
+                  </Button>
+                )}
                 <Button
                   variant={currentView === "dashboard" ? "secondary" : "ghost"}
                   asChild

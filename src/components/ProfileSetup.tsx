@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMutation } from "convex/react";
-import { ArrowLeft, Building, Upload, User, Loader2 } from "lucide-react";
+import { ArrowLeft, Building, Loader2, Upload, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 
 export function ProfileSetup() {
   const [userType, setUserType] = useState<"creator" | "brand" | null>(null);
@@ -39,7 +40,7 @@ export function ProfileSetup() {
     }
   };
 
-  const uploadLogo = async (): Promise<string | undefined> => {
+  const uploadLogo = async (): Promise<Id<"_storage"> | undefined> => {
     if (!selectedLogo) return undefined;
 
     try {
@@ -70,7 +71,7 @@ export function ProfileSetup() {
 
     setLoading(true);
     try {
-      let logoStorageId: string | undefined;
+      let logoStorageId: Id<"_storage"> | undefined;
 
       if (userType === "brand" && selectedLogo) {
         logoStorageId = await uploadLogo();
@@ -148,7 +149,13 @@ export function ProfileSetup() {
             </div>
           </div>
         ) : (
-          <form onSubmit={(e) => { e.preventDefault(); void handleSave(); }} className="space-y-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSave();
+            }}
+            className="space-y-6"
+          >
             <div className="text-center mb-6">
               <h3 className="text-xl font-semibold">
                 Complete your {userType} profile
@@ -215,7 +222,7 @@ export function ProfileSetup() {
               <Button
                 type="submit"
                 disabled={loading}
-                className={`flex-1 ${userType === 'creator' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                className={`flex-1 ${userType === "creator" ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {loading ? "Creating Profile..." : "Complete Setup"}

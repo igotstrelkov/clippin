@@ -1,6 +1,6 @@
-import { query, internalMutation, internalQuery } from "./_generated/server";
-import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { v } from "convex/values";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 
 // Get creator's payout history
 export const getCreatorPayouts = query({
@@ -48,10 +48,10 @@ export const getPendingEarnings = query({
         const earnings = submission.earnings || 0;
         const paidOut = submission.paidOutAmount || 0;
         const pending = Math.max(0, earnings - paidOut);
-        
+
         return {
           ...submission,
-          campaignTitle: campaign?.title || "Unknown Campaign",
+          campaignTitle: campaign?.title || "",
           pendingAmount: pending, // Amount pending payout for this submission
           totalEarnings: earnings, // Total lifetime earnings
           paidOutAmount: paidOut, // Amount already paid out
@@ -128,7 +128,11 @@ export const createPaymentRecord = internalMutation({
     amount: v.number(),
     stripePaymentIntentId: v.optional(v.string()),
     stripeTransferId: v.optional(v.string()),
-    status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
     campaignId: v.optional(v.id("campaigns")),
     metadata: v.optional(v.object({})),
   },
@@ -185,7 +189,11 @@ export const updateCampaignPaymentStatus = internalMutation({
   args: {
     campaignId: v.id("campaigns"),
     paymentIntentId: v.string(),
-    status: v.union(v.literal("pending"), v.literal("paid"), v.literal("failed")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("failed")
+    ),
   },
   handler: async (ctx, args) => {
     const campaign = await ctx.db.get(args.campaignId);
