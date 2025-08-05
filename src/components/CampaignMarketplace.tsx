@@ -18,11 +18,12 @@ import {
   Search,
   SearchX,
   Target,
+  TrendingUp,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
-import { CampaignCard } from "./CampaignCard";
+import { CampaignCard } from "./campaign-marketplace/CampaignCard";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -131,7 +132,7 @@ export function CampaignMarketplace() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Average CPM Rate
             </CardTitle>
-            <DollarSign className="w-5 h-5 text-muted-foreground" />
+            <TrendingUp className="w-5 h-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">

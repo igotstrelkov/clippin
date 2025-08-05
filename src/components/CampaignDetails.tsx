@@ -22,7 +22,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { SignInForm } from "../SignInForm";
+import { SignInForm } from "./auth/SignInForm";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
 export function CampaignDetails() {

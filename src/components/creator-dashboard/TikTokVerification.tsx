@@ -20,8 +20,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../convex/_generated/api";
-import { LoadingSpinner } from "./ui/loading-spinner";
+import { api } from "../../../convex/_generated/api";
+import { LoadingSpinner } from "../ui/loading-spinner";
 
 function TikTokVerification() {
   const [tiktokUsername, setTiktokUsername] = useState("");

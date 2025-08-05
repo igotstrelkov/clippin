@@ -16,11 +16,11 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { CreateCampaignModal } from "./CreateCampaignModal";
-import { CampaignList } from "./dashboard/CampaignList";
-import { CampaignStats } from "./dashboard/CampaignStats";
-import { SubmissionsList } from "./dashboard/SubmissionsList";
-import { EditCampaignModal } from "./EditCampaignModal";
+import { CampaignList } from "./brand-dashboard/CampaignList";
+import { CreateCampaignModal } from "./brand-dashboard/CreateCampaignModal";
+import { EditCampaignModal } from "./brand-dashboard/EditCampaignModal";
+import { SubmissionsList } from "./creator-dashboard/SubmissionsList";
+import { BrandStats } from "./DashboardStats";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -134,7 +134,7 @@ export function BrandDashboard() {
         </Button>
       </div>
 
-      <CampaignStats
+      <BrandStats
         stats={brandStats.stats}
         activeCampaignsCount={brandStats.activeCampaigns.length}
       />
@@ -143,7 +143,6 @@ export function BrandDashboard() {
         <TabsList>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
-          {/* <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="campaigns">
@@ -165,10 +164,6 @@ export function BrandDashboard() {
             userType={profile?.userType as "creator" | "brand"}
           />
         </TabsContent>
-
-        {/* <TabsContent value="analytics">
-          <AnalyticsDashboard />
-        </TabsContent> */}
       </Tabs>
 
       {showCreateModal && (

@@ -12,9 +12,9 @@ import { loadStripe } from "@stripe/stripe-js";
 import { useAction } from "convex/react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
-import { LoadingSpinner } from "./ui/loading-spinner";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { LoadingSpinner } from "../ui/loading-spinner";
 
 const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string

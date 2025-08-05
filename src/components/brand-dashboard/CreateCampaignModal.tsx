@@ -23,12 +23,12 @@ import { useMutation } from "convex/react";
 import { ChevronDownIcon, Info, PlusCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { Calendar } from "../ui/calendar";
+import { LoadingSpinner } from "../ui/loading-spinner";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { CampaignPayment } from "./CampaignPayment";
-import { Calendar } from "./ui/calendar";
-import { LoadingSpinner } from "./ui/loading-spinner";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 interface CreateCampaignModalProps {
   isOpen: boolean;

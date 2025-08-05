@@ -57,7 +57,7 @@ export const SubmissionsList = memo(
                   />
                 ))}
                 {pendingSubmissions.length === 0 && (
-                  <div className="text-center py-12 text-muted-foreground">
+                  <div className="text-center py-10 text-muted-foreground">
                     <FolderOpen className="mx-auto h-12 w-12" />
                     <h3 className="mt-4 text-lg font-medium">
                       No Pending Submissions
@@ -82,7 +82,7 @@ export const SubmissionsList = memo(
                   />
                 ))}
                 {reviewedSubmissions.length === 0 && (
-                  <div className="text-center py-12 text-muted-foreground">
+                  <div className="text-center py-10 text-muted-foreground">
                     <FolderOpen className="mx-auto h-12 w-12" />
                     <h3 className="mt-4 text-lg font-medium">
                       No Reviewed Submissions

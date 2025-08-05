@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Authenticated, Unauthenticated } from "convex/react";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { SignInForm } from "./SignInForm";
+import { SignInForm } from "./components/auth/SignInForm";
 import { Navigation } from "./components/Navigation";
 import { ThemeProvider } from "./components/theme-provider";
 import { LoadingSpinner } from "./components/ui/loading-spinner";

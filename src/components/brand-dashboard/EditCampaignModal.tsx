@@ -28,12 +28,12 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { Calendar } from "../ui/calendar";
+import { LoadingSpinner } from "../ui/loading-spinner";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { CampaignPayment } from "./CampaignPayment";
-import { Calendar } from "./ui/calendar";
-import { LoadingSpinner } from "./ui/loading-spinner";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 // Define a more specific type for the campaign prop
 type Campaign = {

@@ -10,7 +10,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
-import { SignOutButton } from "../SignOutButton";
+import { SignOutButton } from "./auth/SignOutButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 

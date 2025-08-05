@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { DollarSign, Eye, Package, TrendingUp } from "lucide-react";
+import { DollarSign, Eye, ListChecks, Package, TrendingUp } from "lucide-react";
 import { memo } from "react";
 
-interface CampaignStatsProps {
+interface BrandStatsProps {
   stats: {
     totalSpent: number;
     totalViews: number;
@@ -13,8 +13,17 @@ interface CampaignStatsProps {
   activeCampaignsCount: number;
 }
 
-export const CampaignStats = memo(
-  ({ stats, activeCampaignsCount }: CampaignStatsProps) => {
+interface CreatorStatsProps {
+  stats: {
+    totalEarnings: number;
+    totalSubmissions: number;
+    recent24hViews: number;
+    recent24hEarnings: number;
+  };
+}
+
+export const BrandStats = memo(
+  ({ stats, activeCampaignsCount }: BrandStatsProps) => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -42,9 +51,38 @@ export const CampaignStats = memo(
   }
 );
 
-CampaignStats.displayName = "CampaignStats";
+BrandStats.displayName = "BrandStats";
 
-const StatCard = memo(
+export const CreatorStats = memo(({ stats }: CreatorStatsProps) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <StatCard
+        icon={DollarSign}
+        title="Total Earnings"
+        value={`${formatCurrency(stats.totalEarnings / 100)}`}
+      />
+      <StatCard
+        icon={ListChecks}
+        title="Total Submissions"
+        value={stats.totalSubmissions.toLocaleString()}
+      />
+      <StatCard
+        icon={Eye}
+        title="Views (24h)"
+        value={stats.recent24hViews.toLocaleString()}
+      />
+      <StatCard
+        icon={TrendingUp}
+        title="Earnings (24h)"
+        value={`${formatCurrency(stats.recent24hEarnings / 100)}`}
+      />
+    </div>
+  );
+});
+
+CreatorStats.displayName = "CreatorStats";
+
+export const StatCard = memo(
   ({
     icon: Icon,
     title,

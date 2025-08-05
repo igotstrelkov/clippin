@@ -16,21 +16,16 @@ import {
 } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "convex/react";
-import {
-  AlertTriangle,
-  DollarSign,
-  Eye,
-  ListChecks,
-  TrendingUp,
-} from "lucide-react";
-import { memo, useState } from "react";
+import { AlertTriangle, FolderOpen } from "lucide-react";
+import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
-import { PayoutRequestModal } from "./PayoutRequestModal";
+import { PayoutRequestModal } from "./creator-dashboard/PayoutRequestModal";
+import TikTokVerification from "./creator-dashboard/TikTokVerification";
+import { CreatorStats } from "./DashboardStats";
 import { SubmissionCard } from "./SubmissionCard";
-import TikTokVerification from "./TikTokVerification";
-import { ViewChart } from "./ViewChart";
 import { LoadingSpinner } from "./ui/loading-spinner";
+import { ViewChart } from "./ViewChart";
 
 // Type definitions based on Convex queries
 
@@ -74,28 +69,7 @@ export function CreatorDashboard() {
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Creator Dashboard</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={DollarSign}
-          title="Total Earnings"
-          value={`${formatCurrency(creatorStats.totalEarnings / 100)}`}
-        />
-        <StatCard
-          icon={ListChecks}
-          title="Total Submissions"
-          value={creatorStats.totalSubmissions.toLocaleString()}
-        />
-        <StatCard
-          icon={Eye}
-          title="Views (24h)"
-          value={creatorStats.recent24hViews.toLocaleString()}
-        />
-        <StatCard
-          icon={TrendingUp}
-          title="Earnings (24h)"
-          value={`${formatCurrency(creatorStats.recent24hEarnings / 100)}`}
-        />
-      </div>
+      <CreatorStats stats={creatorStats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
@@ -266,75 +240,13 @@ function SubmissionsSection({
         })
       ) : (
         <Card className="p-12">
-          <div className="text-center text-muted-foreground">
-            No submissions yet.
+          <div className="text-center py-10 text-muted-foreground">
+            <FolderOpen className="mx-auto h-12 w-12" />
+            <h3 className="mt-4 text-lg font-medium">No Submissions</h3>
+            <p className="mt-1 text-sm">Your submissions will appear here.</p>
           </div>
         </Card>
       )}
     </div>
   );
 }
-
-const StatCard = memo(
-  ({
-    icon: Icon,
-    title,
-    value,
-  }: {
-    icon: React.ElementType;
-    title: string;
-    value: string;
-  }) => {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{value}</div>
-        </CardContent>
-      </Card>
-    );
-  }
-);
-
-// function DashboardSkeleton() {
-//   return (
-//     <div className="space-y-8 animate-pulse">
-//       <Skeleton className="h-9 w-72" />
-//       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-//         {[...Array(5)].map((_, i) => (
-//           <Skeleton key={i} className="h-24" />
-//         ))}
-//       </div>
-//       <div className="space-y-4">
-//         <div className="flex space-x-2 border-b">
-//           <Skeleton className="h-10 w-1/2" />
-//           <Skeleton className="h-10 w-1/2" />
-//         </div>
-//         <Card>
-//           <CardHeader>
-//             <Skeleton className="h-6 w-48" />
-//             <Skeleton className="h-4 w-64" />
-//           </CardHeader>
-//           <CardContent>
-//             <div className="space-y-2">
-//               {[...Array(3)].map((_, i) => (
-//                 <div key={i} className="flex justify-between items-center p-2">
-//                   <div className="space-y-2">
-//                     <Skeleton className="h-4 w-32" />
-//                     <Skeleton className="h-3 w-24" />
-//                   </div>
-//                   <Skeleton className="h-6 w-20" />
-//                   <Skeleton className="h-5 w-16" />
-//                   <Skeleton className="h-8 w-8" />
-//                 </div>
-//               ))}
-//             </div>
-//           </CardContent>
-//         </Card>
-//       </div>
-//     </div>
-//   );
-// }

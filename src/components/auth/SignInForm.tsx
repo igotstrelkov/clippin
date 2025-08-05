@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { LoadingSpinner } from "./components/ui/loading-spinner";
+import { LoadingSpinner } from "../ui/loading-spinner";
 
 interface SignInFormProps {
   onSuccess?: () => void;

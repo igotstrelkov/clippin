@@ -21,10 +21,10 @@ import { useAction, useQuery } from "convex/react";
 import { Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { LoadingSpinner } from "../ui/loading-spinner";
 import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
-import { LoadingSpinner } from "./ui/loading-spinner";
 
 interface PayoutRequestModalProps {
   isOpen: boolean;
