@@ -1,6 +1,6 @@
-import { memo } from "react";
-import { Package, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LucideIcon, Package } from "lucide-react";
+import { memo } from "react";
 
 interface EmptyStateProps {
   title: string;

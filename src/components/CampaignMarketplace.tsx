@@ -16,7 +16,6 @@ import {
   AlertTriangle,
   DollarSign,
   Search,
-  SearchX,
   Target,
   TrendingUp,
 } from "lucide-react";
@@ -214,24 +213,14 @@ export function CampaignMarketplace() {
           ))}
         </div>
       ) : (
-        <Card className="text-center py-12">
-          <CardContent className="flex flex-col items-center gap-4">
-            <SearchX className="w-16 h-16 text-muted-foreground" />
-            <h3 className="text-xl font-semibold">No campaigns found</h3>
-            <p className="text-muted-foreground">
-              {categoryFilter === "all"
-                ? "No active campaigns are available right now."
-                : `No campaigns were found in the "${
-                    CAMPAIGN_CATEGORIES.find((c) => c.value === categoryFilter)
-                      ?.label
-                  }" category.`}
-            </p>
-            <EmptyState
-              title="No Draft Campaigns"
-              description="Draft campaigns will appear here."
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="No campaigns found"
+          description={
+            categoryFilter === "all"
+              ? "No active campaigns are available right now."
+              : `No campaigns were found in the "${CAMPAIGN_CATEGORIES.find((c) => c.value === categoryFilter)?.label}" category.`
+          }
+        />
       )}
     </div>
   );

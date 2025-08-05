@@ -242,19 +242,10 @@ function SubmissionsSection({
           );
         })
       ) : (
-        <Card className="p-12">
-          <EmptyState
-            title="No Submissions"
-            description="Your submissions will appear here."
-          />
-          <Button
-            variant="outline"
-            className="mt-4"
-            onClick={() => void navigate("/marketplace")}
-          >
-            View Marketplace
-          </Button>
-        </Card>
+        <EmptyState
+          title="No Submissions"
+          description="Navigate to marketplace to create your first submission."
+        />
       )}
     </div>
   );

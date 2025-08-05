@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/lib/utils";
-import { Id } from "../../convex/_generated/dataModel";
+import { Id } from "../../../convex/_generated/dataModel";
 
 interface Campaign {
   _id: Id<"campaigns">;
@@ -43,27 +43,34 @@ export function CampaignCard({ campaign, onClick }: CampaignCardProps) {
       onClick={onClick}
       className="hover:border-primary transition-colors cursor-pointer"
     >
-      <CardHeader className="flex-row gap-4 items-center">
-        <Avatar>
-          <AvatarImage src={campaign.brandLogo ?? ""} />
-          <AvatarFallback>
-            {campaign.brandName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="grid gap-1">
-          <CardTitle className="text-lg">{campaign.brandName}</CardTitle>
-          <Badge variant="outline">{campaign.category}</Badge>
+      <CardHeader className="flex-row gap-4 items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Avatar>
+            <AvatarImage src={campaign.brandLogo ?? ""} />
+            <AvatarFallback>
+              {campaign.brandName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <CardTitle className="text-lg">{campaign.title}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardDescription>{`by ${campaign.brandName}`}</CardDescription>
+              <Badge variant="secondary" className="shrink-0">
+                {campaign.category}
+              </Badge>
+            </div>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="grid gap-2">
+        {/* <div className="grid gap-2">
           <h3 className="text-xl font-semibold tracking-tight">
             {campaign.title}
           </h3>
           <CardDescription className="line-clamp-2">
             {campaign.description}
           </CardDescription>
-        </div>
+        </div> */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-secondary p-3 rounded-lg">
             <div className="text-lg font-bold text-primary">
