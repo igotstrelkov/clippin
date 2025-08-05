@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation, useQuery } from "convex/react";
-import { AlertTriangle, Loader2, PlusCircle } from "lucide-react";
+import { AlertTriangle, PlusCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -22,6 +22,7 @@ import { CampaignStats } from "./dashboard/CampaignStats";
 import { SubmissionsList } from "./dashboard/SubmissionsList";
 import { EditCampaignModal } from "./EditCampaignModal";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 export function BrandDashboard() {
   const brandStats = useQuery(api.campaigns.getBrandStats);
@@ -44,26 +45,6 @@ export function BrandDashboard() {
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [deletingCampaignId, setDeletingCampaignId] =
     useState<Id<"campaigns"> | null>(null);
-
-  if (brandStats === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!brandStats) {
-    return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Error Loading Dashboard</AlertTitle>
-        <AlertDescription>
-          Could not load your creatorStats. Please refresh the page.
-        </AlertDescription>
-      </Alert>
-    );
-  }
 
   const onCampaignEdit = (campaign: any) => {
     setEditingCampaign(campaign);
@@ -126,6 +107,22 @@ export function BrandDashboard() {
       return false;
     }
   };
+
+  if (brandStats === undefined) {
+    return <LoadingSpinner />;
+  }
+
+  if (!brandStats) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error Loading Dashboard</AlertTitle>
+        <AlertDescription>
+          Could not load your dashboard. Please refresh the page.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-8">

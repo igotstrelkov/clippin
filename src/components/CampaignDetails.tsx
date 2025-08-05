@@ -13,7 +13,6 @@ import {
   CheckCircle,
   DollarSign,
   Info,
-  Loader2,
   Percent,
   Target,
   Video,
@@ -24,6 +23,7 @@ import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { SignInForm } from "../SignInForm";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 export function CampaignDetails() {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -83,11 +83,7 @@ export function CampaignDetails() {
   }
 
   if (!campaign) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
@@ -203,7 +199,7 @@ export function CampaignDetails() {
                       />
                       <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <LoadingSpinner size="sm" centered={false} />
                         )}
                         Submit
                       </Button>

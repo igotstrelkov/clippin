@@ -2,18 +2,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAction, useQuery } from "convex/react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Eye,
-  Info,
-  Loader2,
-  RefreshCw,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, Info, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 interface ViewTrackerProps {
   submissionId: Id<"submissions">;
@@ -56,11 +50,7 @@ export function ViewTracker({
   };
 
   if (viewHistory == undefined) {
-    return (
-      <div className="flex flex-col items-center justify-center py-10 text-center h-full">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (viewHistory.length === 0) {

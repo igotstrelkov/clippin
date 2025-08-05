@@ -23,7 +23,6 @@ import { useMutation } from "convex/react";
 import {
   AlertTriangle,
   ChevronDownIcon,
-  Loader2,
   PlusCircle,
   XCircle,
 } from "lucide-react";
@@ -33,6 +32,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { CampaignPayment } from "./CampaignPayment";
 import { Calendar } from "./ui/calendar";
+import { LoadingSpinner } from "./ui/loading-spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 // Define a more specific type for the campaign prop
@@ -473,7 +473,7 @@ export function EditCampaignModal({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading && <LoadingSpinner size="sm" centered={false} />}
               {loading ? "Updating..." : "Update Campaign"}
             </Button>
           </DialogFooter>

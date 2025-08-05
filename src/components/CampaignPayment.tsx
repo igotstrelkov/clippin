@@ -10,11 +10,11 @@ import {
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useAction } from "convex/react";
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
@@ -126,7 +126,7 @@ function PaymentForm({
             Cancel
           </Button>
           <Button type="submit" disabled={!stripe || loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading && <LoadingSpinner size="sm" centered={false} />}
             {loading
               ? "Processing..."
               : `Pay ${formatCurrency(amount + amount * 0.029 + 0.3)}`}

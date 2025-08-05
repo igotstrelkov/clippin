@@ -4,7 +4,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { useQuery } from "convex/react";
-import { Info, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 interface ViewChartProps {
   submissionId: Id<"submissions">;
@@ -28,11 +29,7 @@ export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
   });
 
   if (viewHistory == undefined) {
-    return (
-      <div className="flex flex-col items-center justify-center py-10 text-center h-full">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (viewHistory.length < 2) {

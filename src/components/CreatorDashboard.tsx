@@ -21,7 +21,6 @@ import {
   DollarSign,
   Eye,
   ListChecks,
-  Loader2,
   TrendingUp,
 } from "lucide-react";
 import { memo, useState } from "react";
@@ -31,6 +30,7 @@ import { PayoutRequestModal } from "./PayoutRequestModal";
 import { SubmissionCard } from "./SubmissionCard";
 import TikTokVerification from "./TikTokVerification";
 import { ViewChart } from "./ViewChart";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 // Type definitions based on Convex queries
 
@@ -54,11 +54,7 @@ export function CreatorDashboard() {
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
 
   if (creatorStats === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!creatorStats) {
@@ -67,7 +63,7 @@ export function CreatorDashboard() {
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Error Loading Dashboard</AlertTitle>
         <AlertDescription>
-          Could not load your creatorStats. Please refresh the page.
+          Could not load your dashboard. Please refresh the page.
         </AlertDescription>
       </Alert>
     );

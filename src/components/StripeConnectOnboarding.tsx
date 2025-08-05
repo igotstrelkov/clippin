@@ -15,12 +15,12 @@ import {
   CheckCircle,
   DollarSign,
   Info,
-  Loader2,
   RefreshCw,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 interface ConnectStatus {
   hasAccount: boolean;
@@ -143,7 +143,7 @@ export function StripeConnectOnboarding() {
             disabled={loading}
             className="w-full"
           >
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading && <LoadingSpinner size="sm" centered={false} />}
             {loading ? "Creating Account..." : "Create Payment Account"}
           </Button>
         </CardContent>
@@ -191,7 +191,7 @@ export function StripeConnectOnboarding() {
             disabled={loading}
             className="w-full"
           >
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading && <LoadingSpinner size="sm" centered={false} />}
             {loading ? "Redirecting..." : "Complete Setup"}
           </Button>
         </CardContent>

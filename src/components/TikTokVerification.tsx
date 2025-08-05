@@ -17,11 +17,11 @@ import {
   Copy,
   Info,
   KeyRound,
-  Loader2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 function TikTokVerification() {
   const [tiktokUsername, setTiktokUsername] = useState("");
@@ -181,7 +181,7 @@ function TikTokVerification() {
               disabled={isLoading}
               className="w-full"
             >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <LoadingSpinner size="sm" centered={false} />}
               Generate Code
             </Button>
           </div>
@@ -238,7 +238,7 @@ function TikTokVerification() {
               disabled={isLoading}
               className="w-full"
             >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <LoadingSpinner size="sm" centered={false} />}
               Verify Now
             </Button>
           </div>

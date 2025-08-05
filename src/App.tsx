@@ -1,11 +1,11 @@
 import { Toaster } from "@/components/ui/sonner";
 import { Authenticated, Unauthenticated } from "convex/react";
-import { Loader2 } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { SignInForm } from "./SignInForm";
 import { Navigation } from "./components/Navigation";
 import { ThemeProvider } from "./components/theme-provider";
+import { LoadingSpinner } from "./components/ui/loading-spinner";
 
 // Lazy load heavy components
 const CampaignDetails = lazy(() =>
@@ -23,11 +23,7 @@ const Dashboard = lazy(() =>
 );
 
 // Loading component for suspense
-const RouteLoader = () => (
-  <div className="flex items-center justify-center min-h-[400px]">
-    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-  </div>
-);
+const RouteLoader = () => <LoadingSpinner />;
 
 function App() {
   return (

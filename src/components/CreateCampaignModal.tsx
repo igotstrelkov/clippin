@@ -20,19 +20,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "convex/react";
-import {
-  ChevronDownIcon,
-  Info,
-  Loader2,
-  PlusCircle,
-  Trash2,
-} from "lucide-react";
+import { ChevronDownIcon, Info, PlusCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { CampaignPayment } from "./CampaignPayment";
 import { Calendar } from "./ui/calendar";
+import { LoadingSpinner } from "./ui/loading-spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 interface CreateCampaignModalProps {
@@ -447,7 +442,7 @@ export function CreateCampaignModal({
                   </Button>
                 </DialogClose>
                 <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {loading && <LoadingSpinner size="sm" centered={false} />}
                   {loading ? "Processing..." : "Save & Continue"}
                 </Button>
               </DialogFooter>

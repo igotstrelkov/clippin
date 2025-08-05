@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen, Loader2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { FolderOpen } from "lucide-react";
 import { memo } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { SubmissionCard } from "../SubmissionCard";
@@ -23,11 +24,7 @@ export const SubmissionsList = memo(
     userType,
   }: SubmissionsListProps) => {
     if (isLoading) {
-      return (
-        <div className="flex justify-center items-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      );
+      return <LoadingSpinner />;
     }
 
     const totalSubmissions =

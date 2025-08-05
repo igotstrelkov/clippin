@@ -18,12 +18,13 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
-import { Loader2, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { StripeConnectOnboarding } from "./StripeConnectOnboarding";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 interface PayoutRequestModalProps {
   isOpen: boolean;
@@ -35,7 +36,9 @@ export function PayoutRequestModal({
   onClose,
 }: PayoutRequestModalProps) {
   const [loading, setLoading] = useState(false);
-  const [selectedSubmissions, setSelectedSubmissions] = useState<Id<"submissions">[]>([]);
+  const [selectedSubmissions, setSelectedSubmissions] = useState<
+    Id<"submissions">[]
+  >([]);
 
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
   const processPayout = useAction(api.payouts.processPayout);
@@ -105,7 +108,7 @@ export function PayoutRequestModal({
             <div className="max-h-[60vh] overflow-y-auto pr-4">
               {pendingEarnings === undefined ? (
                 <div className="flex justify-center items-center h-48">
-                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <LoadingSpinner />
                 </div>
               ) : pendingEarnings.submissions.length > 0 ? (
                 <Table>
@@ -177,7 +180,7 @@ export function PayoutRequestModal({
                   onClick={() => void handleRequestPayout()}
                   disabled={loading || selectedEarnings === 0}
                 >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {loading && <LoadingSpinner size="sm" centered={false} />}
                   Request Payout
                 </Button>
               </div>

@@ -15,7 +15,6 @@ import { useQuery } from "convex/react";
 import {
   AlertTriangle,
   DollarSign,
-  Loader2,
   Search,
   SearchX,
   Target,
@@ -25,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { CampaignCard } from "./CampaignCard";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { LoadingSpinner } from "./ui/loading-spinner";
 
 export function CampaignMarketplace() {
   const navigate = useNavigate();
@@ -69,11 +69,7 @@ export function CampaignMarketplace() {
   ]);
 
   if (marketplaceStats === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!marketplaceStats) {
