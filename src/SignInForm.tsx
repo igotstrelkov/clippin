@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { LoadingSpinner } from "./components/ui/loading-spinner";
 
 interface SignInFormProps {
   onSuccess?: () => void;
@@ -80,6 +81,7 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button className="w-full" type="submit" disabled={submitting}>
+            {submitting && <LoadingSpinner size="sm" centered={false} />}
             {flow === "signIn" ? "Sign In" : "Sign Up"}
           </Button>
           <div className="text-center text-sm">

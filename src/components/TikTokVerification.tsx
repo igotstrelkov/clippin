@@ -61,12 +61,12 @@ function TikTokVerification() {
           </CardTitle>
           <CardDescription>@{profile.tiktokUsername}</CardDescription>
         </CardHeader>
-        {/* <CardContent className="text-center">
+        <CardContent className="text-center">
           <p className="text-muted-foreground">
             Your TikTok account has been successfully verified. You can now
             submit to campaigns.
           </p>
-        </CardContent> */}
+        </CardContent>
       </Card>
     );
   }
@@ -249,17 +249,7 @@ function TikTokVerification() {
     }
   };
 
-  return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Verify Your TikTok Account</CardTitle>
-        <CardDescription>
-          Complete the steps to link your account and start earning.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>{renderContent()}</CardContent>
-    </Card>
-  );
+  return renderContent();
 }
 
 export default TikTokVerification;

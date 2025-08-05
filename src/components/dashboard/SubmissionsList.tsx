@@ -1,5 +1,5 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FolderOpen } from "lucide-react";
 import { memo } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -25,21 +25,6 @@ export const SubmissionsList = memo(
   }: SubmissionsListProps) => {
     if (isLoading) {
       return <LoadingSpinner />;
-    }
-
-    const totalSubmissions =
-      pendingSubmissions.length + reviewedSubmissions.length;
-
-    if (totalSubmissions === 0) {
-      return (
-        <div className="text-center py-12 text-muted-foreground">
-          <FolderOpen className="mx-auto h-12 w-12" />
-          <h3 className="mt-4 text-lg font-medium">No Recent Submissions</h3>
-          <p className="mt-1 text-sm">
-            Submissions will appear here when creators submit content.
-          </p>
-        </div>
-      );
     }
 
     return (
@@ -73,7 +58,13 @@ export const SubmissionsList = memo(
                 ))}
                 {pendingSubmissions.length === 0 && (
                   <div className="text-center py-12 text-muted-foreground">
-                    <p>No pending submissions.</p>
+                    <FolderOpen className="mx-auto h-12 w-12" />
+                    <h3 className="mt-4 text-lg font-medium">
+                      No Pending Submissions
+                    </h3>
+                    <p className="mt-1 text-sm">
+                      Your pending submissions will appear here.
+                    </p>
                   </div>
                 )}
               </div>
@@ -92,7 +83,13 @@ export const SubmissionsList = memo(
                 ))}
                 {reviewedSubmissions.length === 0 && (
                   <div className="text-center py-12 text-muted-foreground">
-                    <p>No reviewed submissions.</p>
+                    <FolderOpen className="mx-auto h-12 w-12" />
+                    <h3 className="mt-4 text-lg font-medium">
+                      No Reviewed Submissions
+                    </h3>
+                    <p className="mt-1 text-sm">
+                      Your reviewed submissions will appear here.
+                    </p>
                   </div>
                 )}
               </div>

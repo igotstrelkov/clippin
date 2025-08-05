@@ -44,6 +44,7 @@ export type SubmissionWithCampaign = Doc<"submissions"> & {
 
 export function CreatorDashboard() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [showTikTokModal, setShowTikTokModal] = useState(false);
   const [expandedSubmission, setExpandedSubmission] =
     useState<SubmissionWithCampaign | null>(null);
 
@@ -72,8 +73,6 @@ export function CreatorDashboard() {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Creator Dashboard</h1>
-
-      <TikTokVerification />
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -133,6 +132,7 @@ export function CreatorDashboard() {
               </div>
               <Button
                 className="w-full"
+                disabled={pendingEarnings?.totalPending === 0}
                 onClick={() => setShowPayoutModal(true)}
               >
                 Request Payout
@@ -148,15 +148,19 @@ export function CreatorDashboard() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full">
-                Update TikTok Account
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowTikTokModal(true)}
+              >
+                Verify TikTok Account
               </Button>
-              <Button variant="outline" className="w-full">
+              {/* <Button variant="outline" className="w-full">
                 Edit Profile
               </Button>
               <Button variant="outline" className="w-full">
                 Help & Support
-              </Button>
+              </Button> */}
             </CardContent>
           </Card>
         </div>
@@ -201,6 +205,18 @@ export function CreatorDashboard() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showTikTokModal} onOpenChange={setShowTikTokModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Verify TikTok Account</DialogTitle>
+            <DialogDescription>
+              Verify your TikTok account to connect with brands.
+            </DialogDescription>
+          </DialogHeader>
+          <TikTokVerification />
         </DialogContent>
       </Dialog>
 
