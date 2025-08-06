@@ -52,6 +52,7 @@ const applicationTables = {
     approvedSubmissions: v.optional(v.number()),
     // Stripe payment fields
     stripePaymentIntentId: v.optional(v.string()),
+    stripeTransferGroup: v.optional(v.string()), // Links charges and transfers
     stripeFeeAmount: v.optional(v.number()),
     paymentStatus: v.optional(
       v.union(v.literal("pending"), v.literal("paid"), v.literal("failed"))

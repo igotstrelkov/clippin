@@ -10,15 +10,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-06-30.basil",
 });
 
-// Fee calculation function
-const calculateFees = (amount: number) => {
-  const stripeFee = Math.round(amount * 0.029 + 30); // 2.9% + 30¢
-  const platformFee = Math.round(amount * 0.03); // 3% platform fee
-  const totalFees = stripeFee + platformFee;
-  const netAmount = amount - totalFees;
-
-  return { stripeFee, platformFee, totalFees, netAmount };
-};
+// Simple platform fee calculation (5% total)
+const PLATFORM_FEE_PERCENTAGE = 0.05;
 
 // Create Stripe Connect account for creator
 export const createStripeConnectAccount = action({
@@ -153,11 +146,11 @@ export const getConnectAccountStatus = action({
   },
 });
 
-// Process payout for creator using Stripe Connect
+// Process payout for creator using Stripe transfers
 export const processPayout = action({
   args: {
     creatorId: v.id("users"),
-    amount: v.number(),
+    amount: v.number(), // Creator's earnings amount (already calculated)
     submissionIds: v.array(v.id("submissions")),
   },
   handler: async (
@@ -186,55 +179,57 @@ export const processPayout = action({
       };
     }
 
-    // Calculate fees (platform takes 3% + Stripe fees)
-    const fees = calculateFees(args.amount);
-    const transferAmount = Math.round(args.amount - fees.platformFee); // Creator gets amount minus platform fee
-
     try {
-      // Create Stripe transfer to creator's Connect account
+      // Get the campaign and transfer group for the first submission
+      const firstSubmission = await ctx.runQuery(
+        internal.payoutHelpers.getSubmissionWithCampaign,
+        { submissionId: args.submissionIds[0] }
+      );
+
+      if (!firstSubmission?.campaign?.stripeTransferGroup) {
+        return {
+          success: false,
+          message: "Campaign transfer group not found. Contact support.",
+        };
+      }
+
+      // Create transfer from platform account to creator
       const transfer = await stripe.transfers.create({
-        amount: transferAmount,
+        amount: args.amount, // Transfer the full creator earnings amount
         currency: "USD",
         destination: creatorProfile.stripeConnectAccountId,
+        transfer_group: firstSubmission.campaign.stripeTransferGroup, // Link to original charge
         description: `Payout for ${args.submissionIds.length} submissions`,
         metadata: {
           creatorId: args.creatorId,
           submissionIds: args.submissionIds.join(","),
+          type: "creator_payout",
         },
       });
 
-      // Create payout record in database
+      console.log("Transfer created:", transfer);
+
+      // Create pending payout record (will be completed when transfer.paid webhook fires)
       await ctx.runMutation(internal.payoutHelpers.createPaymentRecord, {
         userId: args.creatorId,
         type: "creator_payout",
         amount: args.amount,
         stripeTransferId: transfer.id,
-        status: "completed",
+        status: "pending", // Will be updated to "completed" by webhook
         metadata: {
-          transferAmount,
-          platformFee: fees.platformFee,
-          stripeFee: fees.stripeFee,
           submissionIds: args.submissionIds,
+          transferAmount: args.amount,
         },
       });
 
-      // Update paidOutAmount for each submission
-      await ctx.runMutation(
-        internal.payoutHelpers.updateSubmissionsPaidAmount,
-        {
-          submissionIds: args.submissionIds,
-        }
-      );
+      // Note: We don't update submissions here - that happens in the webhook
+      // when transfer.paid event confirms the transfer completed
 
-      // Send payout confirmation email
-      await ctx.runAction(internal.payouts.sendPayoutNotification, {
-        creatorId: args.creatorId,
-        amount: args.amount,
-        transferAmount,
-        submissionIds: args.submissionIds,
-      });
-
-      return { success: true, message: "Payout processed" };
+      return {
+        success: true,
+        message:
+          "Payout initiated. You'll receive confirmation once processed.",
+      };
     } catch (error) {
       console.log(error);
       logger.error("Stripe transfer failed", {
@@ -251,7 +246,6 @@ export const processPayout = action({
         status: "failed",
         metadata: {
           submissionIds: args.submissionIds,
-          transferAmount,
         },
       });
 
@@ -315,26 +309,41 @@ export const sendPayoutNotification = internalAction({
   },
 });
 
-// Create payment intent for campaign funding
+// Create payment intent for campaign funding (charged to platform account)
 export const createCampaignPaymentIntent = action({
   args: {
     campaignId: v.id("campaigns"),
-    amount: v.number(),
+    amount: v.number(), // Total amount including platform fee
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
     try {
+      // Generate unique transfer group to link this charge with future transfers
+      const transferGroup = `campaign_${args.campaignId}_${Date.now()}`;
+
+      // Create payment intent charged to platform account
       const paymentIntent = await stripe.paymentIntents.create({
         amount: args.amount,
         currency: "USD",
+        transfer_group: transferGroup, // Link charges and transfers
         metadata: {
           campaignId: args.campaignId,
           userId: userId,
+          type: "campaign_funding",
         },
         description: "Campaign funding",
       });
+
+      // Store transfer group in campaign for later transfers
+      await ctx.runMutation(
+        internal.payoutHelpers.updateCampaignTransferGroup,
+        {
+          campaignId: args.campaignId,
+          transferGroup,
+        }
+      );
 
       return {
         clientSecret: paymentIntent.client_secret,
@@ -365,13 +374,24 @@ export const handleWebhook = internalAction({
         process.env.STRIPE_WEBHOOK_SECRET!
       );
 
-      switch (event.type) {
+      // Cast to any to handle additional event types like transfers
+      const eventType = event.type as string;
+
+      switch (eventType) {
         case "payment_intent.succeeded": {
-          const paymentIntent = event.data.object;
-          if (paymentIntent.metadata.campaignId) {
+          const paymentIntent = event.data.object as any;
+          if (
+            paymentIntent.metadata?.campaignId &&
+            paymentIntent.metadata?.type === "campaign_funding"
+          ) {
+            logger.info("Campaign funding successful", {
+              campaignId: paymentIntent.metadata.campaignId,
+              amount: paymentIntent.amount,
+            });
+
             // Activate the campaign
             await ctx.runMutation(internal.campaigns.activateCampaign, {
-              campaignId: paymentIntent.metadata.campaignId as any,
+              campaignId: paymentIntent.metadata.campaignId,
               paymentIntentId: paymentIntent.id,
             });
 
@@ -379,22 +399,40 @@ export const handleWebhook = internalAction({
             await ctx.runMutation(
               internal.payoutHelpers.updateCampaignPaymentStatus,
               {
-                campaignId: paymentIntent.metadata.campaignId as any,
+                campaignId: paymentIntent.metadata.campaignId,
                 paymentIntentId: paymentIntent.id,
                 status: "paid",
               }
             );
+
+            // Create campaign payment record
+            await ctx.runMutation(internal.payoutHelpers.createPaymentRecord, {
+              userId: paymentIntent.metadata.userId,
+              type: "campaign_payment",
+              amount: paymentIntent.amount,
+              stripePaymentIntentId: paymentIntent.id,
+              status: "completed",
+              campaignId: paymentIntent.metadata.campaignId,
+            });
           }
           break;
         }
 
         case "payment_intent.payment_failed": {
-          const failedPayment = event.data.object;
-          if (failedPayment.metadata.campaignId) {
+          const failedPayment = event.data.object as any;
+          if (
+            failedPayment.metadata?.campaignId &&
+            failedPayment.metadata?.type === "campaign_funding"
+          ) {
+            logger.error("Campaign funding failed", {
+              campaignId: failedPayment.metadata.campaignId,
+              amount: failedPayment.amount,
+            });
+
             await ctx.runMutation(
               internal.payoutHelpers.updateCampaignPaymentStatus,
               {
-                campaignId: failedPayment.metadata.campaignId as any,
+                campaignId: failedPayment.metadata.campaignId,
                 paymentIntentId: failedPayment.id,
                 status: "failed",
               }
@@ -403,11 +441,75 @@ export const handleWebhook = internalAction({
           break;
         }
 
+        case "transfer.created": {
+          const transfer = event.data.object as any;
+          if (transfer.metadata?.type === "creator_payout") {
+            logger.info("Creator payout transfer initiated", {
+              creatorId: transfer.metadata.creatorId,
+              amount: transfer.amount,
+            });
+          }
+          break;
+        }
+
+        case "transfer.paid": {
+          const transfer = event.data.object as any;
+          if (transfer.metadata?.type === "creator_payout") {
+            logger.info("Creator payout transfer completed", {
+              creatorId: transfer.metadata.creatorId,
+              amount: transfer.amount,
+            });
+
+            // Update payment record to completed
+            await ctx.runMutation(internal.payoutHelpers.updatePaymentStatus, {
+              stripeTransferId: transfer.id,
+              status: "completed",
+            });
+
+            // Update submissions paidOutAmount
+            const submissionIds =
+              transfer.metadata.submissionIds?.split(",") || [];
+            if (submissionIds.length > 0) {
+              await ctx.runMutation(
+                internal.payoutHelpers.updateSubmissionsPaidAmount,
+                {
+                  submissionIds: submissionIds,
+                }
+              );
+            }
+
+            // Send payout confirmation email
+            await ctx.runAction(internal.payouts.sendPayoutNotification, {
+              creatorId: transfer.metadata.creatorId,
+              amount: transfer.amount,
+              transferAmount: transfer.amount,
+              submissionIds: submissionIds,
+            });
+          }
+          break;
+        }
+
+        case "transfer.failed": {
+          const transfer = event.data.object as any;
+          if (transfer.metadata?.type === "creator_payout") {
+            logger.error("Creator payout transfer failed", {
+              creatorId: transfer.metadata.creatorId,
+              amount: transfer.amount,
+            });
+
+            // Update payment record to failed
+            await ctx.runMutation(internal.payoutHelpers.updatePaymentStatus, {
+              stripeTransferId: transfer.id,
+              status: "failed",
+            });
+          }
+          break;
+        }
+
         case "account.updated": {
           // Handle Connect account updates
-          const account = event.data.object;
+          const account = event.data.object as any;
           if (account.metadata?.userId) {
-            // Could update account status in database if needed
             logger.info("Connect account updated", {
               accountId: account.id,
               userId: account.metadata.userId,

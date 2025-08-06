@@ -50,12 +50,13 @@ function PaymentForm({
     setLoading(true);
 
     try {
-      // Create payment intent
+      // Create payment intent - platform fee is 5% total
+      const platformFee = amount * 0.05;
+      const totalAmount = amount + platformFee;
+      
       const { clientSecret } = await createPaymentIntent({
         campaignId: campaignId,
-        amount: Math.round(
-          (amount + amount * 0.029 + 0.3 + amount * 0.03) * 100
-        ), // Total amount including fees in cents
+        amount: Math.round(totalAmount * 100), // Total amount including platform fee in cents
       });
 
       // Confirm payment
@@ -93,17 +94,13 @@ function PaymentForm({
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Processing Fee:</span>
-              <span>{formatCurrency(amount * 0.029 + 0.3)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Platform Fee:</span>
-              <span>{formatCurrency(amount * 0.03)}</span>
+              <span className="text-muted-foreground">Platform Fee (5%):</span>
+              <span>{formatCurrency(amount * 0.05)}</span>
             </div>
             <div className="border-t pt-2 flex justify-between font-bold">
               <span>Total Charge:</span>
               <span>
-                {formatCurrency(amount + amount * 0.029 + 0.3 + amount * 0.03)}
+                {formatCurrency(amount + amount * 0.05)}
               </span>
             </div>
           </div>
@@ -136,7 +133,7 @@ function PaymentForm({
             {loading && <LoadingSpinner size="sm" centered={false} />}
             {loading
               ? "Processing..."
-              : `Pay ${formatCurrency(amount + amount * 0.029 + 0.3 + amount * 0.03)}`}
+              : `Pay ${formatCurrency(amount + amount * 0.05)}`}
           </Button>
         </div>
       </form>

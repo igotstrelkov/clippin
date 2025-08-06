@@ -57,7 +57,7 @@ function TikTokVerification() {
             <CheckCircle className="h-10 w-10 text-green-500" />
           </div>
           <CardTitle className="text-green-500">
-            TikTok Account Verified!
+            TikTok account verified!
           </CardTitle>
           <CardDescription>@{profile.tiktokUsername}</CardDescription>
         </CardHeader>

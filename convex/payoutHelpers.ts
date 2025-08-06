@@ -212,3 +212,58 @@ export const updateCampaignPaymentStatus = internalMutation({
     });
   },
 });
+
+// Internal mutation to update campaign transfer group
+export const updateCampaignTransferGroup = internalMutation({
+  args: {
+    campaignId: v.id("campaigns"),
+    transferGroup: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const campaign = await ctx.db.get(args.campaignId);
+    if (!campaign) return;
+
+    await ctx.db.patch(args.campaignId, {
+      stripeTransferGroup: args.transferGroup,
+    });
+  },
+});
+
+// Internal query to get submission with campaign data
+export const getSubmissionWithCampaign = internalQuery({
+  args: { submissionId: v.id("submissions") },
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) return null;
+
+    const campaign = await ctx.db.get(submission.campaignId);
+    return {
+      submission,
+      campaign,
+    };
+  },
+});
+
+// Internal mutation to update payment status by stripe transfer ID
+export const updatePaymentStatus = internalMutation({
+  args: {
+    stripeTransferId: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db
+      .query("payments")
+      .filter((q) => q.eq(q.field("stripeTransferId"), args.stripeTransferId))
+      .unique();
+    
+    if (payment) {
+      await ctx.db.patch(payment._id, {
+        status: args.status,
+      });
+    }
+  },
+});
