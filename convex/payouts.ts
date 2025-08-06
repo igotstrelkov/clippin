@@ -56,7 +56,7 @@ export const createStripeConnectAccount = action({
     } catch (error) {
       logger.error("Failed to create Stripe Connect account", {
         userId,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Failed to create payment account. Please try again.");
     }
@@ -95,7 +95,7 @@ export const createConnectOnboardingLink = action({
     } catch (error) {
       logger.error("Failed to create onboarding link", {
         userId,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Failed to create onboarding link. Please try again.");
     }
@@ -147,7 +147,7 @@ export const getConnectAccountStatus = action({
     } catch (error) {
       logger.error("Failed to retrieve account status", {
         userId,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       return { hasAccount: false, isComplete: false };
     }
@@ -237,7 +237,7 @@ export const processPayout = action({
       logger.error("Stripe transfer failed", {
         creatorId: args.creatorId,
         amount: args.amount,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
 
       // Create failed payout record
@@ -303,7 +303,7 @@ export const sendPayoutNotification = internalAction({
     } catch (error) {
       logger.error("Failed to send payout confirmation email", {
         creatorId: args.creatorId,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
     }
   },
@@ -338,7 +338,7 @@ export const createCampaignPaymentIntent = action({
       logger.error("Failed to create payment intent", {
         campaignId: args.campaignId,
         amount: args.amount,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Failed to create payment intent");
     }
@@ -404,7 +404,7 @@ export const handleWebhook = internalAction({
             // Could update account status in database if needed
             logger.info("Connect account updated", {
               accountId: account.id,
-              userId: account.metadata.userId
+              userId: account.metadata.userId,
             });
           }
           break;
@@ -413,14 +413,14 @@ export const handleWebhook = internalAction({
         default:
           logger.warn("Unhandled Stripe webhook event", {
             eventType: event.type,
-            eventId: event.id
+            eventId: event.id,
           });
       }
 
       return { success: true };
     } catch (error) {
       logger.error("Stripe webhook error", {
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Webhook processing failed");
     }

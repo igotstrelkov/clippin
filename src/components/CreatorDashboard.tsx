@@ -78,7 +78,8 @@ export function CreatorDashboard() {
               <AlertTitle>TikTok account not verified</AlertTitle>
 
               <AlertDescription>
-                Please verify your TikTok account to connect with brands.
+                Please verify your TikTok account to start connecting with
+                brands.
               </AlertDescription>
             </div>
             <Button

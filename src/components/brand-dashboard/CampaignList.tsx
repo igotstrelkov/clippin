@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -206,13 +205,13 @@ const ActiveCampaignCard = memo(
                 <DropdownMenuItem onClick={() => onEdit(campaign)}>
                   Edit Campaign
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
+                {/* <DropdownMenuSeparator /> */}
+                {/* <DropdownMenuItem
                   onClick={() => onDelete(campaign._id)}
                   className="text-destructive"
                 >
                   Delete Campaign
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -306,18 +305,25 @@ const NonActiveCampaignCard = memo(
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {draft && (
+                {draft ? (
                   <DropdownMenuItem onClick={() => onEdit(campaign)}>
                     Complete Payment
                   </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => onDelete(campaign._id)}
+                    className="text-destructive"
+                  >
+                    Delete Campaign
+                  </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator />
+                {/* <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => onDelete(campaign._id)}
                   className="text-destructive"
                 >
                   Delete Campaign
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -331,8 +337,10 @@ const NonActiveCampaignCard = memo(
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Category</p>
-            <p className="font-semibold text-gray-600">{campaign.category}</p>
+            <p className="text-muted-foreground">CPM Rate</p>
+            <p className="font-semibold">
+              {formatCurrency(campaign.cpmRate / 100)}
+            </p>
           </div>
 
           <div>

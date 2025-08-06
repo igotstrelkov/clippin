@@ -30,3 +30,13 @@ export const getRelativeTime = (timestamp: number) => {
   if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
   return "Just now";
 };
+
+// Fee calculation function
+export const calculateFees = (amount: number) => {
+  const stripeFee = Math.round(amount * 0.029 + 30); // 2.9% + 30¢
+  const platformFee = Math.round(amount * 0.03); // 3% platform fee
+  const totalFees = stripeFee + platformFee;
+  const netAmount = amount - totalFees;
+
+  return { stripeFee, platformFee, totalFees, netAmount };
+};

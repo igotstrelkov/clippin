@@ -111,9 +111,7 @@ export function EditCampaignModal({
             <>
               <DialogHeader>
                 <DialogTitle>Complete Payment</DialogTitle>
-                <DialogDescription>
-                  Activate "{campaign.title}"
-                </DialogDescription>
+                <DialogDescription>Activate {campaign.title}</DialogDescription>
               </DialogHeader>
               <CampaignPayment
                 campaignId={campaign._id}
