@@ -195,7 +195,7 @@ export const processPayout = action({
 
       // Create transfer from platform account to creator
       const transfer = await stripe.transfers.create({
-        amount: args.amount, // Transfer the full creator earnings amount
+        amount: Math.round(args.amount), // Ensure integer amount in cents
         currency: "USD",
         destination: creatorProfile.stripeConnectAccountId,
         transfer_group: firstSubmission.campaign.stripeTransferGroup, // Link to original charge
@@ -373,6 +373,8 @@ export const handleWebhook = internalAction({
         args.signature,
         process.env.STRIPE_WEBHOOK_SECRET!
       );
+
+      console.log(event);
 
       // Cast to any to handle additional event types like transfers
       const eventType = event.type as string;

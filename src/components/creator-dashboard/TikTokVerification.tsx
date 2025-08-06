@@ -73,15 +73,13 @@ function TikTokVerification() {
 
   const handleUsernameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const username = profile?.tiktokUsername || tiktokUsername.trim();
-    if (!username) return;
-
-    setTiktokUsername(username);
 
     // Automatically generate code after setting username
     setIsLoading(true);
     try {
-      await generateCode({ tiktokUsername: username });
+      await generateCode({
+        tiktokUsername: profile?.tiktokUsername || tiktokUsername.trim(),
+      });
       toast.success("Verification code generated");
     } catch (error) {
       toast.error(
@@ -93,11 +91,6 @@ function TikTokVerification() {
   };
 
   const handleGenerateCode = async () => {
-    if (!profile?.tiktokUsername || tiktokUsername.trim()) {
-      toast.error("Please enter a TikTok username first.");
-      return;
-    }
-
     setIsLoading(true);
     try {
       await generateCode({

@@ -25,11 +25,15 @@ export const getActiveSubmissions = internalQuery({
 // Helper function to calculate earnings based on view count and campaign settings
 function calculateEarnings(
   viewCount: number,
-  cpmRate: number,
+  cpmRate: number, // cpmRate is stored in cents
   maxPayout?: number
 ): number {
-  const earnings = (viewCount / 1000) * cpmRate;
-  return maxPayout ? Math.min(earnings, maxPayout) : earnings;
+  // Convert cpmRate from cents to dollars, calculate earnings, then convert back to cents
+  const cpmInDollars = cpmRate / 100;
+  const earningsInDollars = (viewCount / 1000) * cpmInDollars;
+  const earningsInCents = Math.round(earningsInDollars * 100);
+  
+  return maxPayout ? Math.min(earningsInCents, maxPayout) : earningsInCents;
 }
 
 // Helper function to process earnings updates and related database changes
