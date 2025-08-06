@@ -53,8 +53,8 @@ export function BrandDashboard() {
 
   const handleDelete = async (campaignId: Id<"campaigns">) => {
     try {
-      await deleteCampaign({ campaignId });
-      toast.success("Campaign deleted successfully");
+      const response = await deleteCampaign({ campaignId });
+      toast.success(response.message);
       return true;
     } catch (error) {
       toast.error(
@@ -75,7 +75,7 @@ export function BrandDashboard() {
   const handleApprove = async (submissionId: Id<"submissions">) => {
     try {
       await updateSubmissionStatus({ submissionId, status: "approved" });
-      toast.success("Submission approved successfully");
+      toast.success("Submission approved");
       return true;
     } catch (error) {
       toast.error(
@@ -95,7 +95,7 @@ export function BrandDashboard() {
         status: "rejected",
         rejectionReason,
       });
-      toast.success("Submission rejected successfully");
+      toast.success("Submission rejected");
       return true;
     } catch (error) {
       toast.error(

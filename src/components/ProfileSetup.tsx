@@ -100,7 +100,7 @@ export function ProfileSetup() {
           companyLogo: logoStorageId,
         });
       }
-      toast.success("Profile created successfully!");
+      toast.success("Profile created");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to create profile"

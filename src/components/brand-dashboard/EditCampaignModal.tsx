@@ -117,7 +117,7 @@ export function EditCampaignModal({
                 campaignId={campaign._id}
                 amount={campaign.totalBudget / 100}
                 onSuccess={() => {
-                  toast.success("Campaign activated successfully!");
+                  toast.success("Campaign activated");
                   onSuccess();
                   onClose();
                 }}
@@ -254,7 +254,7 @@ export function EditCampaignModal({
         status: formData.status,
       });
 
-      toast.success("Campaign updated successfully");
+      toast.success("Campaign updated");
       onSuccess();
     } catch (error) {
       toast.error(

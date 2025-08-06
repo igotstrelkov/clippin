@@ -98,11 +98,11 @@ export function CreatorDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <AlertTitle className="text-green-800">
-                  Stripe Connect Setup Complete!
+                  Payment account setup complete!
                 </AlertTitle>
                 <AlertDescription className="text-green-700">
-                  Your payment account has been successfully connected. You can
-                  now receive payouts.
+                  Your payment account has been successfully setup. You can now
+                  receive payouts.
                 </AlertDescription>
               </div>
             </div>

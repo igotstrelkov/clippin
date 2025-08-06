@@ -13,3 +13,4 @@ createRoot(document.getElementById("root")!).render(
 );
 
 // npx convex dev
+// stripe listen --forward-to https://enduring-snail-194.convex.site/stripe

@@ -71,7 +71,6 @@ function PaymentForm({
       if (error) {
         toast.error(error.message || "Payment failed");
       } else if (paymentIntent?.status === "succeeded") {
-        toast.success("Campaign funded successfully!");
         onSuccess();
       }
     } catch (error) {

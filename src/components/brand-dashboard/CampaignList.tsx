@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -297,36 +298,29 @@ const NonActiveCampaignCard = memo(
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {draft ? (
+          {draft && (
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit(campaign)}>
                     Complete Payment
                   </DropdownMenuItem>
-                ) : (
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onDelete(campaign._id)}
                     className="text-destructive"
                   >
                     Delete Campaign
                   </DropdownMenuItem>
-                )}
-                {/* <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onDelete(campaign._id)}
-                  className="text-destructive"
-                >
-                  Delete Campaign
-                </DropdownMenuItem> */}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-4 text-sm">

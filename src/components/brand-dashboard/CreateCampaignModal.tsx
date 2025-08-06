@@ -168,7 +168,7 @@ export function CreateCampaignModal({
   };
 
   const handlePaymentSuccess = () => {
-    toast.success("Campaign created and funded successfully!");
+    toast.success("Campaign funded and activated");
     onSuccess();
     handleClose();
   };

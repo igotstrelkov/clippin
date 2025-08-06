@@ -82,7 +82,7 @@ function TikTokVerification() {
     setIsLoading(true);
     try {
       await generateCode({ tiktokUsername: username });
-      toast.success("Verification code generated successfully!");
+      toast.success("Verification code generated");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to generate code."
@@ -103,7 +103,7 @@ function TikTokVerification() {
       await generateCode({
         tiktokUsername: profile?.tiktokUsername || tiktokUsername.trim(),
       });
-      toast.success("Verification code generated successfully!");
+      toast.success("Verification code generated");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to generate code."

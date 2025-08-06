@@ -234,7 +234,7 @@ export const processPayout = action({
         submissionIds: args.submissionIds,
       });
 
-      return { success: true, message: "Payout processed successfully!" };
+      return { success: true, message: "Payout processed" };
     } catch (error) {
       console.log(error);
       logger.error("Stripe transfer failed", {

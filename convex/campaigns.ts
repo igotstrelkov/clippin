@@ -235,7 +235,7 @@ export const deleteCampaign = mutation({
     }
 
     await ctx.db.delete(args.campaignId);
-    return { success: true, message: "Campaign deleted successfully" };
+    return { success: true, message: "Campaign deleted" };
   },
 });
 
