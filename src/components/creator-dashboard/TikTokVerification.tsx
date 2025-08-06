@@ -119,9 +119,7 @@ function TikTokVerification() {
       const result = await verifyBio({
         tiktokUsername: profile?.tiktokUsername || tiktokUsername.trim(),
       });
-      if (result.success) {
-        toast.success("Verification started! This may take a few moments...");
-      }
+      toast.success(result.message);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Verification failed."

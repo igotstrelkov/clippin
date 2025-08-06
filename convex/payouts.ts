@@ -231,7 +231,7 @@ export const processPayout = action({
           "Payout initiated. You'll receive confirmation once processed.",
       };
     } catch (error) {
-      console.log(error);
+      console.error(error);
       logger.error("Stripe transfer failed", {
         creatorId: args.creatorId,
         amount: args.amount,

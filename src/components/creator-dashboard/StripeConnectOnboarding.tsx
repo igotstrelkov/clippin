@@ -8,12 +8,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatCurrency } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
-import { AlertTriangle, CheckCircle, DollarSign, Info } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, DollarSign, Info } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { EmptyState } from "../ui/empty-state";
 import { LoadingSpinner } from "../ui/loading-spinner";
 
 interface ConnectStatus {
@@ -29,6 +41,9 @@ export function StripeConnectOnboarding() {
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(
     null
   );
+  const [selectedSubmissions, setSelectedSubmissions] = useState<
+    Id<"submissions">[]
+  >([]);
 
   const createConnectAccount = useAction(
     api.payouts.createStripeConnectAccount
@@ -37,13 +52,12 @@ export function StripeConnectOnboarding() {
     api.payouts.createConnectOnboardingLink
   );
   const getAccountStatus = useAction(api.payouts.getConnectAccountStatus);
+  const processPayout = useAction(api.payouts.processPayout);
   const user = useQuery(api.auth.loggedInUser);
+  const profile = useQuery(api.profiles.getCurrentProfile);
+  const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
 
-  useEffect(() => {
-    void checkAccountStatus();
-  }, []);
-
-  const checkAccountStatus = async () => {
+  const checkAccountStatus = useCallback(async () => {
     setLoading(true);
     try {
       const status = await getAccountStatus();
@@ -54,6 +68,60 @@ export function StripeConnectOnboarding() {
       if (process.env.NODE_ENV === "development") {
         console.error("Failed to check account status:", error);
       }
+    } finally {
+      setLoading(false);
+    }
+  }, [getAccountStatus]);
+
+  useEffect(() => {
+    void checkAccountStatus();
+  }, [checkAccountStatus]);
+
+  // Payout functionality
+  const selectedEarnings = selectedSubmissions.reduce((total, submissionId) => {
+    const submission = pendingEarnings?.submissions.find(
+      (s) => s._id === submissionId
+    );
+    return total + (submission?.pendingAmount || 0);
+  }, 0);
+
+  const handleSubmissionToggle = (submissionId: Id<"submissions">) => {
+    setSelectedSubmissions((prev) =>
+      prev.includes(submissionId)
+        ? prev.filter((id) => id !== submissionId)
+        : [...prev, submissionId]
+    );
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && pendingEarnings) {
+      setSelectedSubmissions(pendingEarnings.submissions.map((s) => s._id));
+    } else {
+      setSelectedSubmissions([]);
+    }
+  };
+
+  const handleRequestPayout = async () => {
+    if (!profile?.stripeConnectAccountId) {
+      toast.error("Please complete your payment account setup first");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await processPayout({
+        creatorId: profile.userId,
+        amount: selectedEarnings,
+        submissionIds: selectedSubmissions,
+      });
+      toast.success(response.message);
+      if (response.success) {
+        setSelectedSubmissions([]);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to process payout"
+      );
     } finally {
       setLoading(false);
     }
@@ -109,8 +177,8 @@ export function StripeConnectOnboarding() {
 
   if (!connectStatus.hasAccount) {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-4">
+      <>
+        <Alert className="flex flex-row items-center gap-4">
           <div className="bg-primary text-primary-foreground rounded-lg p-3">
             <DollarSign className="h-6 w-6" />
           </div>
@@ -120,8 +188,8 @@ export function StripeConnectOnboarding() {
               Create your payment account to receive payouts.
             </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </Alert>
+        <div className="space-y-4">
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>What you'll need:</AlertTitle>
@@ -144,15 +212,15 @@ export function StripeConnectOnboarding() {
             {loading && <LoadingSpinner size="sm" centered={false} />}
             {loading ? "Creating Account..." : "Create Payment Account"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </>
     );
   }
 
   if (!connectStatus.isComplete) {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-4">
+      <>
+        <Alert className="flex flex-row items-center gap-4">
           <div className="bg-yellow-500 text-white rounded-lg p-3">
             <AlertTriangle className="h-6 w-6" />
           </div>
@@ -162,8 +230,8 @@ export function StripeConnectOnboarding() {
               Finish setting up your payment account to receive payouts.
             </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </Alert>
+        <div className="space-y-4">
           <div className="border rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Account Status</span>
@@ -192,49 +260,90 @@ export function StripeConnectOnboarding() {
             {loading && <LoadingSpinner size="sm" centered={false} />}
             {loading ? "Redirecting..." : "Complete Setup"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-4">
-        <div className="bg-green-500 text-white rounded-lg p-3">
-          <CheckCircle className="h-6 w-6" />
-        </div>
-        <div>
-          <CardTitle>Payment Account Ready</CardTitle>
-          <CardDescription>You can now receive payouts.</CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="border rounded-lg p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Account Status</span>
-            <Badge variant="success">Active</Badge>
+    <>
+      <div className="space-y-4">
+        {/* Payout Table */}
+        <div className="space-y-4">
+          <div className="max-h-[60vh] overflow-y-auto pr-4">
+            {pendingEarnings === undefined ? (
+              <div className="flex justify-center items-center h-48">
+                <LoadingSpinner />
+              </div>
+            ) : pendingEarnings.submissions.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={
+                          pendingEarnings.submissions.length > 0 &&
+                          selectedSubmissions.length ===
+                            pendingEarnings.submissions.length
+                        }
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead>Campaign</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead className="text-right">Pending</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingEarnings.submissions.map((s) => (
+                    <TableRow key={s._id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedSubmissions.includes(s._id)}
+                          onCheckedChange={() => handleSubmissionToggle(s._id)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {s.campaignTitle}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(s.submittedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatCurrency((s.pendingAmount || 0) / 100)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <EmptyState
+                title="No Pending Payouts"
+                description="Approved submissions with earnings will appear here."
+              />
+            )}
           </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <div className="w-2 h-2 rounded-full mr-2 bg-green-500" />
-            Charges Enabled
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <div className="w-2 h-2 rounded-full mr-2 bg-green-500" />
-            Payouts Enabled
+
+          {/* Payout Actions */}
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div className="text-lg font-semibold">
+              Total:{" "}
+              <span className="font-mono text-primary">
+                {formatCurrency(selectedEarnings / 100)}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => void handleRequestPayout()}
+                disabled={loading || selectedEarnings === 0}
+              >
+                {loading && <LoadingSpinner size="sm" centered={false} />}
+                Request Payout
+              </Button>
+            </div>
           </div>
         </div>
-        <Button
-          onClick={() => {
-            void checkAccountStatus();
-          }}
-          variant="secondary"
-          disabled={loading}
-          className="w-full"
-        >
-          {loading && <LoadingSpinner size="sm" centered={false} />}
-          {loading ? "Refreshing..." : "Refresh Status"}
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }

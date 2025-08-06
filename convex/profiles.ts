@@ -179,24 +179,28 @@ export const verifyTikTokBio = mutation({
     }
 
     if (!profile.tiktokVerificationCode) {
-      throw new Error(
-        "No verification code found. Please generate a code first."
-      );
+      return {
+        success: false,
+        message: "No verification code found. Please generate a code first.",
+      };
     }
 
     // Check if verification code is expired (1 hour)
     const codeAge = Date.now() - (profile.verificationCodeGeneratedAt || 0);
     const oneHour = 60 * 60 * 1000;
     if (codeAge > oneHour) {
-      throw new Error(
-        "Verification code has expired. Please generate a new code."
-      );
+      return {
+        success: false,
+        message: "Verification code has expired. Please generate a new code.",
+      };
     }
 
     if (profile.tiktokUsername !== args.tiktokUsername) {
-      throw new Error(
-        "TikTok username doesn't match the one used to generate the code"
-      );
+      return {
+        success: false,
+        message:
+          "TikTok username doesn't match the one used to generate the code",
+      };
     }
 
     try {
@@ -212,9 +216,12 @@ export const verifyTikTokBio = mutation({
         }
       );
 
-      return { success: true, message: "Verification started" };
+      return { success: true, message: "Verification started..." };
     } catch {
-      throw new Error("Failed to start verification process");
+      return {
+        success: false,
+        message: "Failed to start verification process",
+      };
     }
   },
 });
