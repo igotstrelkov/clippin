@@ -79,13 +79,15 @@ export function PayoutRequestModal({
 
     setLoading(true);
     try {
-      await processPayout({
+      const response = await processPayout({
         creatorId: profile.userId,
         amount: selectedEarnings,
         submissionIds: selectedSubmissions,
       });
-      toast.success("Payout processed successfully!");
-      onClose();
+      toast.success(response.message);
+      if (response.success) {
+        onClose();
+      }
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to process payout"

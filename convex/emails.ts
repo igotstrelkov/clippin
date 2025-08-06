@@ -78,7 +78,7 @@ export const sendApprovalNotification = internalAction({
     } catch (error) {
       logger.error("Email sending failed", {
         templateType: "approval_notification",
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Failed to send approval notification email");
     }
@@ -159,7 +159,7 @@ export const sendRejectionNotification = internalAction({
     } catch (error) {
       logger.error("Email sending failed", {
         templateType: "approval_notification",
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Failed to send rejection notification email");
     }
@@ -264,7 +264,7 @@ export const sendPayoutConfirmation = internalAction({
     } catch (error) {
       logger.error("Email sending failed", {
         templateType: "approval_notification",
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Failed to send payout confirmation email");
     }
@@ -343,7 +343,7 @@ export const sendSubmissionNotification = internalAction({
     } catch (error) {
       logger.error("Email sending failed", {
         templateType: "approval_notification",
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Failed to send submission notification email");
     }
@@ -431,7 +431,7 @@ export const sendCampaignCompletionNotification = internalAction({
     } catch (error) {
       logger.error("Email sending failed", {
         templateType: "approval_notification",
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       throw new Error("Failed to send campaign completion notification email");
     }

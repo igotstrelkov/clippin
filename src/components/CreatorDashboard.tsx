@@ -91,6 +91,24 @@ export function CreatorDashboard() {
           </div>
         </Alert>
       )}
+      {/* Success alert for Stripe Connect */}
+      {typeof window !== "undefined" &&
+        window.location.search.includes("connected=true") && (
+          <Alert variant="default" className="border-green-200 bg-green-50">
+            <div className="flex justify-between items-center">
+              <div>
+                <AlertTitle className="text-green-800">
+                  Stripe Connect Setup Complete!
+                </AlertTitle>
+                <AlertDescription className="text-green-700">
+                  Your payment account has been successfully connected. You can
+                  now receive payouts.
+                </AlertDescription>
+              </div>
+            </div>
+          </Alert>
+        )}
+
       <CreatorStats stats={creatorStats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -170,9 +188,7 @@ export function CreatorDashboard() {
           {expandedSubmission && (
             <>
               <DialogHeader>
-                <DialogTitle>
-                  Performance for: {expandedSubmission.campaignTitle}
-                </DialogTitle>
+                <DialogTitle>{expandedSubmission.campaignTitle}</DialogTitle>
                 <DialogDescription>
                   Submitted on{" "}
                   {new Date(

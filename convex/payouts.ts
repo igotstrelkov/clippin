@@ -34,7 +34,6 @@ export const createStripeConnectAccount = action({
       // Create Stripe Connect account
       const account = await stripe.accounts.create({
         type: "express",
-        country: args.country || "US",
         email: args.email,
         capabilities: {
           card_payments: { requested: true },
@@ -86,8 +85,8 @@ export const createConnectOnboardingLink = action({
     try {
       const accountLink = await stripe.accountLinks.create({
         account: profile.stripeConnectAccountId,
-        refresh_url: `${process.env.SITE_URL || "http://localhost:5173"}/dashboard?refresh=true`,
-        return_url: `${process.env.SITE_URL || "http://localhost:5173"}/dashboard?connected=true`,
+        refresh_url: "http://localhost:5173/dashboard?refresh=true",
+        return_url: "http://localhost:5173/dashboard?connected=true",
         type: "account_onboarding",
       });
 
@@ -164,7 +163,7 @@ export const processPayout = action({
   handler: async (
     ctx,
     args
-  ): Promise<{ success: boolean; payoutId: any; transferId: string }> => {
+  ): Promise<{ success: boolean; message: string }> => {
     // Get creator profile with Stripe Connect account
     const creatorProfile = await ctx.runQuery(
       internal.payoutHelpers.getCreatorStripeAccount,
@@ -174,11 +173,17 @@ export const processPayout = action({
     );
 
     if (!creatorProfile?.stripeConnectAccountId) {
-      throw new Error("Creator must complete Stripe Connect onboarding first");
+      return {
+        success: false,
+        message: "Creator must complete Stripe Connect onboarding first",
+      };
     }
 
     if (args.amount <= 0) {
-      throw new Error("Payout amount must be positive");
+      return {
+        success: false,
+        message: "Payout amount must be positive",
+      };
     }
 
     // Calculate fees (platform takes 3% + Stripe fees)
@@ -189,7 +194,7 @@ export const processPayout = action({
       // Create Stripe transfer to creator's Connect account
       const transfer = await stripe.transfers.create({
         amount: transferAmount,
-        currency: "usd",
+        currency: "USD",
         destination: creatorProfile.stripeConnectAccountId,
         description: `Payout for ${args.submissionIds.length} submissions`,
         metadata: {
@@ -199,22 +204,19 @@ export const processPayout = action({
       });
 
       // Create payout record in database
-      const payoutId = await ctx.runMutation(
-        internal.payoutHelpers.createPaymentRecord,
-        {
-          userId: args.creatorId,
-          type: "creator_payout",
-          amount: args.amount,
-          stripeTransferId: transfer.id,
-          status: "completed",
-          metadata: {
-            transferAmount,
-            platformFee: fees.platformFee,
-            stripeFee: fees.stripeFee,
-            submissionIds: args.submissionIds,
-          },
-        }
-      );
+      await ctx.runMutation(internal.payoutHelpers.createPaymentRecord, {
+        userId: args.creatorId,
+        type: "creator_payout",
+        amount: args.amount,
+        stripeTransferId: transfer.id,
+        status: "completed",
+        metadata: {
+          transferAmount,
+          platformFee: fees.platformFee,
+          stripeFee: fees.stripeFee,
+          submissionIds: args.submissionIds,
+        },
+      });
 
       // Update paidOutAmount for each submission
       await ctx.runMutation(
@@ -232,8 +234,9 @@ export const processPayout = action({
         submissionIds: args.submissionIds,
       });
 
-      return { success: true, payoutId, transferId: transfer.id };
+      return { success: true, message: "Payout processed successfully!" };
     } catch (error) {
+      console.log(error);
       logger.error("Stripe transfer failed", {
         creatorId: args.creatorId,
         amount: args.amount,
@@ -247,12 +250,15 @@ export const processPayout = action({
         amount: args.amount,
         status: "failed",
         metadata: {
-          error: error instanceof Error ? error.message : "Unknown error",
           submissionIds: args.submissionIds,
+          transferAmount,
         },
       });
 
-      throw new Error("Payout failed. Please try again or contact support.");
+      return {
+        success: false,
+        message: "Payout failed. Please try again or contact support.",
+      };
     }
   },
 });
@@ -322,7 +328,7 @@ export const createCampaignPaymentIntent = action({
     try {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: args.amount,
-        currency: "usd",
+        currency: "USD",
         metadata: {
           campaignId: args.campaignId,
           userId: userId,

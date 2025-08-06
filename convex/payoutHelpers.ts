@@ -134,7 +134,14 @@ export const createPaymentRecord = internalMutation({
       v.literal("failed")
     ),
     campaignId: v.optional(v.id("campaigns")),
-    metadata: v.optional(v.object({})),
+    metadata: v.optional(
+      v.object({
+        submissionIds: v.optional(v.array(v.id("submissions"))),
+        transferAmount: v.optional(v.number()),
+        platformFee: v.optional(v.number()),
+        stripeFee: v.optional(v.number()),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("payments", {

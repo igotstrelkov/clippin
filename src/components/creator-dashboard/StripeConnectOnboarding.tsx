@@ -10,13 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAction, useQuery } from "convex/react";
-import {
-  AlertTriangle,
-  CheckCircle,
-  DollarSign,
-  Info,
-  RefreshCw,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle, DollarSign, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
@@ -50,14 +44,18 @@ export function StripeConnectOnboarding() {
   }, []);
 
   const checkAccountStatus = async () => {
+    setLoading(true);
     try {
       const status = await getAccountStatus();
+      console.log(status);
       setConnectStatus(status);
     } catch (error) {
       // Log error for debugging (replace with proper error tracking in production)
       if (process.env.NODE_ENV === "development") {
         console.error("Failed to check account status:", error);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -230,10 +228,11 @@ export function StripeConnectOnboarding() {
             void checkAccountStatus();
           }}
           variant="secondary"
+          disabled={loading}
           className="w-full"
         >
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh Status
+          {loading && <LoadingSpinner size="sm" centered={false} />}
+          {loading ? "Refreshing..." : "Refresh Status"}
         </Button>
       </CardContent>
     </Card>

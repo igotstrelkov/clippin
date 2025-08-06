@@ -223,9 +223,7 @@ export const SubmissionCard = memo(
             {expandedSubmission && (
               <>
                 <DialogHeader>
-                  <DialogTitle>
-                    Performance for: {expandedSubmission.campaignTitle}
-                  </DialogTitle>
+                  <DialogTitle>{expandedSubmission.campaignTitle}</DialogTitle>
                   <DialogDescription>
                     Submitted on{" "}
                     {new Date(

@@ -103,7 +103,14 @@ const applicationTables = {
       v.literal("failed")
     ),
     campaignId: v.optional(v.id("campaigns")),
-    metadata: v.optional(v.object({})),
+    metadata: v.optional(
+      v.object({
+        submissionIds: v.optional(v.array(v.id("submissions"))),
+        transferAmount: v.optional(v.number()),
+        platformFee: v.optional(v.number()),
+        stripeFee: v.optional(v.number()),
+      })
+    ),
     createdAt: v.number(),
   })
     .index("by_user_id", ["userId"])
