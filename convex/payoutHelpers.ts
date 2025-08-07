@@ -2,7 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 
-// Get creator's payout history
+// Get creator's payout history with enhanced details
 export const getCreatorPayouts = query({
   args: {},
   handler: async (ctx) => {
@@ -16,11 +16,82 @@ export const getCreatorPayouts = query({
       .order("desc")
       .collect();
 
-    return payouts;
+    // Enhance payouts with submission details
+    const enhancedPayouts = await Promise.all(
+      payouts.map(async (payout) => {
+        const submissionIds = payout.metadata?.submissionIds || [];
+        const campaigns: string[] = [];
+
+        for (const submissionId of submissionIds) {
+          const submission = await ctx.db.get(submissionId);
+          if (submission) {
+            const campaign = await ctx.db.get(submission.campaignId);
+            if (campaign && !campaigns.includes(campaign.title)) {
+              campaigns.push(campaign.title);
+            }
+          }
+        }
+
+        return {
+          ...payout,
+          campaignTitles: campaigns,
+          submissionCount: submissionIds.length,
+        };
+      })
+    );
+
+    return enhancedPayouts;
   },
 });
 
-// Get pending earnings for creator
+// Get pending payout requests (initiated but not yet completed)
+export const getPendingPayouts = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const pendingPayouts = await ctx.db
+      .query("payments")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("type"), "creator_payout"),
+          q.eq(q.field("status"), "pending")
+        )
+      )
+      .order("desc")
+      .collect();
+
+    // Enhance with submission details
+    const enhancedPending = await Promise.all(
+      pendingPayouts.map(async (payout) => {
+        const submissionIds = payout.metadata?.submissionIds || [];
+        const campaigns: string[] = [];
+
+        for (const submissionId of submissionIds) {
+          const submission = await ctx.db.get(submissionId);
+          if (submission) {
+            const campaign = await ctx.db.get(submission.campaignId);
+            if (campaign && !campaigns.includes(campaign.title)) {
+              campaigns.push(campaign.title);
+            }
+          }
+        }
+
+        return {
+          ...payout,
+          campaignTitles: campaigns,
+          submissionCount: submissionIds.length,
+        };
+      })
+    );
+
+    return enhancedPending;
+  },
+});
+
+// Get pending earnings for creator (excluding submissions in pending payouts)
 export const getPendingEarnings = query({
   args: {},
   handler: async (ctx) => {
@@ -34,16 +105,40 @@ export const getPendingEarnings = query({
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();
 
+    // Get submission IDs that are in pending payouts
+    const pendingPayouts = await ctx.db
+      .query("payments")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("type"), "creator_payout"),
+          q.eq(q.field("status"), "pending")
+        )
+      )
+      .collect();
+
+    const submissionsInPendingPayouts = new Set(
+      pendingPayouts.flatMap((p) => p.metadata?.submissionIds || [])
+    );
+
     // Calculate pending earnings: total earnings minus what's already been paid out
-    const totalPending = approvedSubmissions.reduce((sum, sub) => {
+    // Exclude submissions that are in pending payouts
+    const availableSubmissions = approvedSubmissions.filter((sub) => {
       const earnings = sub.earnings || 0;
       const paidOut = sub.paidOutAmount || 0;
-      const pending = Math.max(0, earnings - paidOut); // Ensure non-negative
+      const pending = Math.max(0, earnings - paidOut);
+      return pending > 0 && !submissionsInPendingPayouts.has(sub._id);
+    });
+
+    const totalPending = availableSubmissions.reduce((sum, sub) => {
+      const earnings = sub.earnings || 0;
+      const paidOut = sub.paidOutAmount || 0;
+      const pending = Math.max(0, earnings - paidOut);
       return sum + pending;
     }, 0);
 
     const submissionsWithCampaigns = await Promise.all(
-      approvedSubmissions.map(async (submission) => {
+      availableSubmissions.map(async (submission) => {
         const campaign = await ctx.db.get(submission.campaignId);
         const earnings = submission.earnings || 0;
         const paidOut = submission.paidOutAmount || 0;
@@ -259,7 +354,7 @@ export const updatePaymentStatus = internalMutation({
       .query("payments")
       .filter((q) => q.eq(q.field("stripeTransferId"), args.stripeTransferId))
       .unique();
-    
+
     if (payment) {
       await ctx.db.patch(payment._id, {
         status: args.status,

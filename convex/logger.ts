@@ -27,7 +27,11 @@ interface LogContext {
 class Logger {
   private isDevelopment = process.env.NODE_ENV === "development";
 
-  private formatMessage(level: LogLevel, message: string, context?: LogContext): string {
+  private formatMessage(
+    level: LogLevel,
+    message: string,
+    context?: LogContext
+  ): string {
     const timestamp = new Date().toISOString();
     const contextStr = context ? JSON.stringify(context) : "";
     return `[${timestamp}] ${level.toUpperCase()}: ${message} ${contextStr}`.trim();
@@ -39,6 +43,7 @@ class Logger {
       console.log(formatted);
     }
     // In production, this would send to a logging service like DataDog, LogRocket, etc.
+    console.log(formatted);
   }
 
   warn(message: string, context?: LogContext) {

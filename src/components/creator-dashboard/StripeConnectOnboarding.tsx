@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
-import { AlertTriangle, DollarSign, Info } from "lucide-react";
+import { AlertTriangle, Clock, DollarSign, Info } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
@@ -56,12 +57,13 @@ export function StripeConnectOnboarding() {
   const user = useQuery(api.auth.loggedInUser);
   const profile = useQuery(api.profiles.getCurrentProfile);
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
+  const pendingPayouts = useQuery(api.payoutHelpers.getPendingPayouts);
 
   const checkAccountStatus = useCallback(async () => {
     setLoading(true);
     try {
       const status = await getAccountStatus();
-      console.log(status);
+
       setConnectStatus(status);
     } catch (error) {
       // Log error for debugging (replace with proper error tracking in production)
@@ -114,9 +116,15 @@ export function StripeConnectOnboarding() {
         amount: selectedEarnings,
         submissionIds: selectedSubmissions,
       });
-      toast.success(response.message);
+
       if (response.success) {
+        toast.success("Payout request submitted successfully!", {
+          description:
+            "Your payout is being processed and will arrive in 2-7 business days.",
+        });
         setSelectedSubmissions([]);
+      } else {
+        toast.error(response.message);
       }
     } catch (error) {
       toast.error(
@@ -267,10 +275,63 @@ export function StripeConnectOnboarding() {
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Payout Table */}
+      <div className="space-y-6">
+        {/* Pending Payouts Section */}
+        {pendingPayouts && pendingPayouts.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-500" />
+              <h3 className="font-semibold text-lg">Processing Payouts</h3>
+            </div>
+            <Alert className="border-orange-200 bg-orange-50">
+              <Clock className="h-4 w-4 text-orange-600" />
+              <AlertTitle className="text-orange-800">
+                Payouts in Progress
+              </AlertTitle>
+              <AlertDescription className="text-orange-700">
+                Your payout requests are being processed. Funds typically arrive
+                in 2-7 business days.
+              </AlertDescription>
+            </Alert>
+            <div className="space-y-2">
+              {pendingPayouts.map((payout) => (
+                <div
+                  key={payout._id}
+                  className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200"
+                >
+                  <div>
+                    <div className="font-medium">
+                      {payout.campaignTitles.join(", ") || "Multiple campaigns"}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Requested{" "}
+                      {new Date(payout.createdAt).toLocaleDateString()} •{" "}
+                      {payout.submissionCount} submission
+                      {payout.submissionCount !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono font-semibold">
+                      {formatCurrency(payout.amount / 100)}
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className="bg-orange-100 text-orange-800"
+                    >
+                      Processing
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Separator />
+          </div>
+        )}
+
+        {/* Available Earnings Section */}
         <div className="space-y-4">
-          <div className="max-h-[60vh] overflow-y-auto pr-4">
+          <h3 className="font-semibold text-lg">Request New Payout</h3>
+          <div className="max-h-[40vh] overflow-y-auto pr-4">
             {pendingEarnings === undefined ? (
               <div className="flex justify-center items-center h-48">
                 <LoadingSpinner />
@@ -291,7 +352,7 @@ export function StripeConnectOnboarding() {
                     </TableHead>
                     <TableHead>Campaign</TableHead>
                     <TableHead>Submitted</TableHead>
-                    <TableHead className="text-right">Pending</TableHead>
+                    <TableHead className="text-right">Available</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -318,30 +379,40 @@ export function StripeConnectOnboarding() {
               </Table>
             ) : (
               <EmptyState
-                title="No Pending Payouts"
-                description="Approved submissions with earnings will appear here."
+                title={
+                  pendingPayouts && pendingPayouts.length > 0
+                    ? "No Additional Earnings"
+                    : "No Pending Payouts"
+                }
+                description={
+                  pendingPayouts && pendingPayouts.length > 0
+                    ? "All current earnings are being processed."
+                    : "Approved submissions with earnings will appear here."
+                }
               />
             )}
           </div>
 
           {/* Payout Actions */}
-          <div className="flex justify-between items-center pt-4 border-t">
-            <div className="text-lg font-semibold">
-              Total:{" "}
-              <span className="font-mono text-primary">
-                {formatCurrency(selectedEarnings / 100)}
-              </span>
+          {pendingEarnings && pendingEarnings.submissions.length > 0 && (
+            <div className="flex justify-between items-center pt-4 border-t">
+              <div className="text-lg font-semibold">
+                Selected:{" "}
+                <span className="font-mono text-primary">
+                  {formatCurrency(selectedEarnings / 100)}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => void handleRequestPayout()}
+                  disabled={loading || selectedEarnings === 0}
+                >
+                  {loading && <LoadingSpinner size="sm" centered={false} />}
+                  {loading ? "Processing..." : "Request Payout"}
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => void handleRequestPayout()}
-                disabled={loading || selectedEarnings === 0}
-              >
-                {loading && <LoadingSpinner size="sm" centered={false} />}
-                Request Payout
-              </Button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </>
