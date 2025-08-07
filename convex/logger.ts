@@ -22,6 +22,18 @@ interface LogContext {
   amount?: number;
   error?: Error;
   metadata?: Record<string, any>;
+  // Smart monitoring fields
+  newTier?: string;
+  growthRate?: number;
+  tier?: string;
+  processedCount?: number;
+  apiCallsSaved?: number;
+  totalChanges?: number;
+  // Rate limiting fields
+  waitTimeMs?: number;
+  queueSize?: number;
+  retryAfter?: string;
+  timestamp?: number;
 }
 
 class Logger {

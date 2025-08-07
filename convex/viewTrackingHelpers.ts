@@ -111,14 +111,16 @@ export const updateSubmissionViews = internalMutation({
       throw new Error("Campaign not found");
     }
 
+    const now = Date.now();
+
     // Prepare submission updates
     const submissionUpdates: Partial<Doc<"submissions">> = {
       viewCount: args.viewCount,
-      lastViewUpdate: Date.now(),
+      lastViewUpdate: now,
     };
 
     if (args.updateLastApiCall) {
-      submissionUpdates.lastApiCall = Date.now();
+      submissionUpdates.lastApiCall = now;
     }
 
     // Prepare campaign updates
@@ -152,8 +154,20 @@ export const updateSubmissionViews = internalMutation({
     await ctx.db.insert("viewTracking", {
       submissionId: args.submissionId,
       viewCount: args.viewCount,
-      timestamp: Date.now(),
+      timestamp: now,
       source: args.source,
+    });
+
+    // Add to view history for smart monitoring (async to avoid blocking)
+    ctx.runMutation(internal.smartMonitoring.addViewHistoryPoint, {
+      submissionId: args.submissionId,
+      viewCount: args.viewCount,
+      timestamp: now,
+    }).catch((error) => {
+      logger.error("Failed to update view history for smart monitoring", {
+        submissionId: args.submissionId,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
     });
 
     // Handle threshold crossing for pending submissions

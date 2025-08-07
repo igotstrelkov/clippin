@@ -84,11 +84,26 @@ const applicationTables = {
     // View tracking flags
     viewTrackingEnabled: v.optional(v.boolean()),
     lastApiCall: v.optional(v.number()), // Rate limiting
+    // Smart monitoring tier system
+    monitoringTier: v.optional(v.union(
+      v.literal("hot"),     // 15min intervals - rapid growth
+      v.literal("warm"),    // 1hr intervals - moderate growth
+      v.literal("cold"),    // 6hr intervals - slow/stable growth
+      v.literal("archived") // 24hr intervals - minimal/no growth
+    )),
+    lastTierUpdate: v.optional(v.number()),
+    growthRate: v.optional(v.number()), // Views per hour over last 24h
+    viewHistory: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      viewCount: v.number()
+    }))), // Last 7 days for growth calculation
   })
     .index("by_campaign_id", ["campaignId"])
     .index("by_creator_id", ["creatorId"])
     .index("by_status", ["status"])
-    .index("by_last_view_update", ["lastViewUpdate"]),
+    .index("by_last_view_update", ["lastViewUpdate"])
+    .index("by_monitoring_tier", ["monitoringTier"])
+    .index("by_tier_and_update", ["monitoringTier", "lastViewUpdate"]),
 
   // Payment tracking
   payments: defineTable({

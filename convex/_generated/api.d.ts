@@ -23,6 +23,8 @@ import type * as optimizedQueries from "../optimizedQueries.js";
 import type * as payoutHelpers from "../payoutHelpers.js";
 import type * as payouts from "../payouts.js";
 import type * as profiles from "../profiles.js";
+import type * as rateLimiter from "../rateLimiter.js";
+import type * as smartMonitoring from "../smartMonitoring.js";
 import type * as submissions from "../submissions.js";
 import type * as tiktokVerification from "../tiktokVerification.js";
 import type * as viewTracking from "../viewTracking.js";
@@ -47,6 +49,8 @@ declare const fullApi: ApiFromModules<{
   payoutHelpers: typeof payoutHelpers;
   payouts: typeof payouts;
   profiles: typeof profiles;
+  rateLimiter: typeof rateLimiter;
+  smartMonitoring: typeof smartMonitoring;
   submissions: typeof submissions;
   tiktokVerification: typeof tiktokVerification;
   viewTracking: typeof viewTracking;
