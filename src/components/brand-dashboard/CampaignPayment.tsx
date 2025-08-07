@@ -53,7 +53,7 @@ function PaymentForm({
       // Create payment intent - platform fee is 5% total
       const platformFee = amount * 0.05;
       const totalAmount = amount + platformFee;
-      
+
       const { clientSecret } = await createPaymentIntent({
         campaignId: campaignId,
         amount: Math.round(totalAmount * 100), // Total amount including platform fee in cents
@@ -94,14 +94,12 @@ function PaymentForm({
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Platform Fee (5%):</span>
+              <span className="text-muted-foreground">Platform Fee (5%)</span>
               <span>{formatCurrency(amount * 0.05)}</span>
             </div>
             <div className="border-t pt-2 flex justify-between font-bold">
-              <span>Total Charge:</span>
-              <span>
-                {formatCurrency(amount + amount * 0.05)}
-              </span>
+              <span>Total Charge</span>
+              <span>{formatCurrency(amount + amount * 0.05)}</span>
             </div>
           </div>
         </CardContent>

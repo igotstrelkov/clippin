@@ -1,7 +1,7 @@
-import { auth } from "./auth";
 import { httpRouter } from "convex/server";
-import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { httpAction } from "./_generated/server";
+import { auth } from "./auth";
 import { logger } from "./logger";
 
 const http = httpRouter();
@@ -31,7 +31,7 @@ http.route({
       }
     } catch (err) {
       logger.error("Stripe webhook processing failed", {
-        error: err instanceof Error ? err : new Error(String(err))
+        error: err instanceof Error ? err : new Error(String(err)),
       });
       return new Response("Webhook Error", {
         status: 400,

@@ -196,7 +196,7 @@ export const processPayout = action({
       // Create transfer from platform account to creator
       const transfer = await stripe.transfers.create({
         amount: Math.round(args.amount), // Ensure integer amount in cents
-        currency: "USD",
+        currency: "EUR",
         destination: creatorProfile.stripeConnectAccountId,
         transfer_group: firstSubmission.campaign.stripeTransferGroup, // Link to original charge
         description: `Payout for ${args.submissionIds.length} submissions`,
@@ -207,9 +207,9 @@ export const processPayout = action({
         },
       });
 
-      console.log("Transfer created:", transfer);
+      console.log("Payout created:", JSON.stringify(transfer));
 
-      // Create pending payout record (will be completed when transfer.paid webhook fires)
+      // Create pending payout record (will be completed when transfer.updated webhook fires)
       await ctx.runMutation(internal.payoutHelpers.createPaymentRecord, {
         userId: args.creatorId,
         type: "creator_payout",
@@ -223,7 +223,7 @@ export const processPayout = action({
       });
 
       // Note: We don't update submissions here - that happens in the webhook
-      // when transfer.paid event confirms the transfer completed
+      // when transfer.updated event confirms the transfer completed
 
       return {
         success: true,
@@ -326,7 +326,7 @@ export const createCampaignPaymentIntent = action({
       // Create payment intent charged to platform account
       const paymentIntent = await stripe.paymentIntents.create({
         amount: args.amount,
-        currency: "USD",
+        currency: "EUR",
         transfer_group: transferGroup, // Link charges and transfers
         metadata: {
           campaignId: args.campaignId,
@@ -374,7 +374,7 @@ export const handleWebhook = internalAction({
         process.env.STRIPE_WEBHOOK_SECRET!
       );
 
-      console.log(event);
+      console.log("Event received:", JSON.stringify(event));
 
       // Cast to any to handle additional event types like transfers
       const eventType = event.type as string;
@@ -454,56 +454,58 @@ export const handleWebhook = internalAction({
           break;
         }
 
-        case "transfer.paid": {
+        case "transfer.updated": {
           const transfer = event.data.object as any;
           if (transfer.metadata?.type === "creator_payout") {
-            logger.info("Creator payout transfer completed", {
-              creatorId: transfer.metadata.creatorId,
-              amount: transfer.amount,
-            });
+            if (transfer.status === "paid") {
+              logger.info("Creator payout transfer completed", {
+                creatorId: transfer.metadata.creatorId,
+                amount: transfer.amount,
+              });
 
-            // Update payment record to completed
-            await ctx.runMutation(internal.payoutHelpers.updatePaymentStatus, {
-              stripeTransferId: transfer.id,
-              status: "completed",
-            });
-
-            // Update submissions paidOutAmount
-            const submissionIds =
-              transfer.metadata.submissionIds?.split(",") || [];
-            if (submissionIds.length > 0) {
+              // Update payment record to completed
               await ctx.runMutation(
-                internal.payoutHelpers.updateSubmissionsPaidAmount,
+                internal.payoutHelpers.updatePaymentStatus,
                 {
-                  submissionIds: submissionIds,
+                  stripeTransferId: transfer.id,
+                  status: "completed",
+                }
+              );
+
+              // Update submissions paidOutAmount
+              const submissionIds =
+                transfer.metadata.submissionIds?.split(",") || [];
+              if (submissionIds.length > 0) {
+                await ctx.runMutation(
+                  internal.payoutHelpers.updateSubmissionsPaidAmount,
+                  {
+                    submissionIds: submissionIds,
+                  }
+                );
+              }
+
+              // Send payout confirmation email
+              await ctx.runAction(internal.payouts.sendPayoutNotification, {
+                creatorId: transfer.metadata.creatorId,
+                amount: transfer.amount,
+                transferAmount: transfer.amount,
+                submissionIds: submissionIds,
+              });
+            } else if (transfer.status === "failed") {
+              logger.error("Creator payout transfer failed", {
+                creatorId: transfer.metadata.creatorId,
+                amount: transfer.amount,
+              });
+
+              // Update payment record to failed
+              await ctx.runMutation(
+                internal.payoutHelpers.updatePaymentStatus,
+                {
+                  stripeTransferId: transfer.id,
+                  status: "failed",
                 }
               );
             }
-
-            // Send payout confirmation email
-            await ctx.runAction(internal.payouts.sendPayoutNotification, {
-              creatorId: transfer.metadata.creatorId,
-              amount: transfer.amount,
-              transferAmount: transfer.amount,
-              submissionIds: submissionIds,
-            });
-          }
-          break;
-        }
-
-        case "transfer.failed": {
-          const transfer = event.data.object as any;
-          if (transfer.metadata?.type === "creator_payout") {
-            logger.error("Creator payout transfer failed", {
-              creatorId: transfer.metadata.creatorId,
-              amount: transfer.amount,
-            });
-
-            // Update payment record to failed
-            await ctx.runMutation(internal.payoutHelpers.updatePaymentStatus, {
-              stripeTransferId: transfer.id,
-              status: "failed",
-            });
           }
           break;
         }
@@ -520,6 +522,28 @@ export const handleWebhook = internalAction({
           break;
         }
 
+        case "balance.available": {
+          const balance = event.data.object as any;
+          logger.info("Balance available updated", {
+            amount: balance.available,
+          });
+
+          // Optional: Trigger automatic payout processing for pending payouts
+          // when sufficient balance becomes available
+          const availableAmount = balance.available?.[0]?.amount || 0;
+          if (availableAmount > 0) {
+            logger.info("Funds available for payouts", {
+              amount: availableAmount,
+            });
+
+            // You could add logic here to process pending payouts
+            // await ctx.runAction(internal.payouts.processPendingPayouts, {
+            //   availableAmount
+            // });
+          }
+          break;
+        }
+
         default:
           logger.warn("Unhandled Stripe webhook event", {
             eventType: event.type,
@@ -529,10 +553,8 @@ export const handleWebhook = internalAction({
 
       return { success: true };
     } catch (error) {
-      logger.error("Stripe webhook error", {
-        error: error instanceof Error ? error : new Error(String(error)),
-      });
-      throw new Error("Webhook processing failed");
+      console.log("Error processing webhook", error);
+      return { success: false };
     }
   },
 });
