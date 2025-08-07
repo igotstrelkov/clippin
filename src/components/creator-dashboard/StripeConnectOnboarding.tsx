@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
-import { AlertTriangle, Clock, DollarSign, Info } from "lucide-react";
+import { AlertTriangle, DollarSign, Info } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
@@ -276,7 +275,7 @@ export function StripeConnectOnboarding() {
   return (
     <>
       <div className="space-y-6">
-        {/* Pending Payouts Section */}
+        {/* Pending Payouts Section
         {pendingPayouts && pendingPayouts.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -326,11 +325,10 @@ export function StripeConnectOnboarding() {
             </div>
             <Separator />
           </div>
-        )}
+        )} */}
 
         {/* Available Earnings Section */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Request New Payout</h3>
           <div className="max-h-[40vh] overflow-y-auto pr-4">
             {pendingEarnings === undefined ? (
               <div className="flex justify-center items-center h-48">
@@ -394,25 +392,24 @@ export function StripeConnectOnboarding() {
           </div>
 
           {/* Payout Actions */}
-          {pendingEarnings && pendingEarnings.submissions.length > 0 && (
-            <div className="flex justify-between items-center pt-4 border-t">
-              <div className="text-lg font-semibold">
-                Selected:{" "}
-                <span className="font-mono text-primary">
-                  {formatCurrency(selectedEarnings / 100)}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => void handleRequestPayout()}
-                  disabled={loading || selectedEarnings === 0}
-                >
-                  {loading && <LoadingSpinner size="sm" centered={false} />}
-                  {loading ? "Processing..." : "Request Payout"}
-                </Button>
-              </div>
+
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div className="text-lg font-semibold">
+              Selected:{" "}
+              <span className="font-mono text-primary">
+                {formatCurrency(selectedEarnings / 100)}
+              </span>
             </div>
-          )}
+            <div className="flex gap-2">
+              <Button
+                onClick={() => void handleRequestPayout()}
+                disabled={loading || selectedEarnings === 0}
+              >
+                {loading && <LoadingSpinner size="sm" centered={false} />}
+                {loading ? "Processing..." : "Request Payout"}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </>

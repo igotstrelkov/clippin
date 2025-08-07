@@ -1,9 +1,71 @@
 "use node";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import axios from "axios";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
 import { logger } from "./logger";
+
+type TikTokMusicInfo = {
+  id: string;
+  title: string;
+  play: string;
+  cover: string;
+  author: string;
+  original: boolean;
+  duration: number;
+  album: string;
+};
+
+type TikTokAuthor = {
+  id: string;
+  unique_id: string;
+  nickname: string;
+  avatar: string;
+};
+
+type TikTokCommerceInfo = {
+  ad_source: number;
+  adv_promotable: boolean;
+  auction_ad_invited: boolean;
+  branded_content_type: number;
+  organic_log_extra: string;
+  with_comment_filter_words: boolean;
+};
+
+type TikTokVideoData = {
+  aweme_id: string;
+  id: string;
+  region: string;
+  title: string;
+  cover: string;
+  ai_dynamic_cover: string;
+  origin_cover: string;
+  duration: number;
+  play: string;
+  wmplay: string;
+  hdplay: string;
+  size: number;
+  wm_size: number;
+  hd_size: number;
+  music: string;
+  music_info: TikTokMusicInfo;
+  play_count: number;
+  digg_count: number;
+  comment_count: number;
+  share_count: number;
+  download_count: number;
+  collect_count: number;
+  create_time: number;
+  anchors: any;
+  anchors_extras: string;
+  is_ad: boolean;
+  commerce_info: TikTokCommerceInfo;
+  commercial_video_info: string;
+  item_comment_settings: number;
+  mentioned_users: string;
+  author: TikTokAuthor;
+};
 
 // Mock TikTok API for development (replace with real API in production)
 class TikTokViewTracker {
@@ -14,14 +76,30 @@ class TikTokViewTracker {
       throw new Error("Invalid TikTok URL");
     }
 
-    // For development: simulate realistic view growth
-    const baseViews = Math.floor(Math.random() * 5000) + 1000; // 1K-6K base views
-    const growthFactor = Math.random() * 0.2 + 0.9; // 90%-110% of base
-    const currentViews = Math.floor(baseViews * growthFactor);
+    const options = {
+      method: "GET",
+      url: "https://tiktok-scraper7.p.rapidapi.com/",
+      params: {
+        url: videoUrl,
+        hd: "1",
+      },
+      headers: {
+        "x-rapidapi-key": process.env.RAPID_API_KEY!,
+        "x-rapidapi-host": "tiktok-scraper7.p.rapidapi.com",
+      },
+    };
 
-    // Add some randomness to simulate real growth
-    const timeBasedGrowth = Math.floor(Math.random() * 500);
-    return currentViews + timeBasedGrowth;
+    // For development: simulate realistic view growth
+    try {
+      const response = await axios.request(options);
+      console.log(response.data);
+      return response.data.data.play_count;
+    } catch (error) {
+      logger.error("Failed to get view count", {
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      return 0;
+    }
   }
 
   private extractVideoId(url: string): string | null {
@@ -71,7 +149,7 @@ export const getInitialViewCount = internalAction({
       logger.warn("Failed to get initial view count", {
         submissionId: args.submissionId,
         tiktokUrl: args.tiktokUrl,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       return { viewCount: 0 };
     }
@@ -104,40 +182,37 @@ export const updateAllViewCounts = internalAction({
 
         // Only update if views have changed significantly (avoid spam updates)
         const lastViews = submission.viewCount || 0;
-        const viewDifference = Math.abs(currentViews - lastViews);
+        // const viewDifference = Math.abs(currentViews - lastViews);
 
-        if (viewDifference > 10 || lastViews === 0) {
-          // Update if >10 view difference or first time
-          await ctx.runMutation(
-            internal.viewTrackingHelpers.updateSubmissionViews,
-            {
-              submissionId: submission._id,
-              viewCount: currentViews,
-              previousViews: lastViews, // Pass the old view count
-              source: "tiktok_api",
-            }
-          );
-
-          // Check if submission now meets threshold for pending submissions
-          if (
-            currentViews >= 1000 &&
-            submission.status === "pending" &&
-            lastViews < 1000
-          ) {
-            await ctx.runMutation(
-              internal.viewTrackingHelpers.markThresholdMet,
-              {
-                submissionId: submission._id,
-              }
-            );
+        //if (viewDifference > 10 || lastViews === 0) {
+        // Update if >10 view difference or first time
+        await ctx.runMutation(
+          internal.viewTrackingHelpers.updateSubmissionViews,
+          {
+            submissionId: submission._id,
+            viewCount: currentViews,
+            previousViews: lastViews, // Pass the old view count
+            source: "tiktok_api",
           }
+        );
 
-          updatedCount++;
+        // Check if submission now meets threshold for pending submissions
+        if (
+          currentViews >= 1000 &&
+          submission.status === "pending" &&
+          lastViews < 1000
+        ) {
+          await ctx.runMutation(internal.viewTrackingHelpers.markThresholdMet, {
+            submissionId: submission._id,
+          });
         }
+
+        updatedCount++;
+        //}
       } catch (error) {
         logger.error("Failed to update views for submission", {
           submissionId: submission._id,
-          error: error instanceof Error ? error : new Error(String(error))
+          error: error instanceof Error ? error : new Error(String(error)),
         });
         errorCount++;
       }
@@ -146,7 +221,7 @@ export const updateAllViewCounts = internalAction({
     logger.info("View tracking completed", {
       updatedCount,
       errorCount,
-      totalProcessed: submissions.length
+      totalProcessed: submissions.length,
     });
     return { updatedCount, errorCount, totalProcessed: submissions.length };
   },
@@ -234,7 +309,7 @@ export const cleanupOldRecords = internalAction({
 
     logger.info("View tracking cleanup completed", {
       deletedCount,
-      beforeTimestamp: thirtyDaysAgo
+      beforeTimestamp: thirtyDaysAgo,
     });
     return { deletedCount };
   },

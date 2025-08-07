@@ -20,8 +20,8 @@ import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
-import { PayoutRequestModal } from "./creator-dashboard/PayoutRequestModal";
 import { PayoutHistory } from "./creator-dashboard/PayoutHistory";
+import { PayoutRequestModal } from "./creator-dashboard/PayoutRequestModal";
 import TikTokVerification from "./creator-dashboard/TikTokVerification";
 import { CreatorStats } from "./DashboardStats";
 import { SubmissionCard } from "./SubmissionCard";
@@ -141,26 +141,34 @@ export function CreatorDashboard() {
                   Processing Payouts
                 </CardTitle>
                 <CardDescription>
-                  {pendingPayouts.reduce((sum, p) => sum + p.amount, 0) / 100} in payouts being processed
+                  {pendingPayouts.reduce((sum, p) => sum + p.amount, 0) / 100}{" "}
+                  in payouts being processed
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   {pendingPayouts.map((payout) => (
-                    <div key={payout._id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div
+                      key={payout._id}
+                      className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200"
+                    >
                       <div>
                         <div className="text-sm font-medium">
-                          {payout.campaignTitles.join(", ") || "Multiple campaigns"}
+                          {payout.campaignTitles.join(", ") ||
+                            "Multiple campaigns"}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Requested {new Date(payout.createdAt).toLocaleDateString()}
+                          Requested{" "}
+                          {new Date(payout.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold">
                           {formatCurrency(payout.amount / 100)}
                         </div>
-                        <div className="text-xs text-orange-600">2-7 business days</div>
+                        <div className="text-xs text-orange-600">
+                          2-7 business days
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -169,6 +177,7 @@ export function CreatorDashboard() {
             </Card>
           )}
 
+          {/* Available Payouts Card */}
           <Card>
             <CardHeader>
               <CardTitle>Available Payout</CardTitle>
@@ -181,12 +190,11 @@ export function CreatorDashboard() {
                 {formatCurrency((pendingEarnings?.totalPending || 0) / 100)}
               </div>
               <div className="text-sm text-muted-foreground mb-4">
-                {pendingEarnings?.totalPending === 0 
-                  ? pendingPayouts && pendingPayouts.length > 0 
+                {pendingEarnings?.totalPending === 0
+                  ? pendingPayouts && pendingPayouts.length > 0
                     ? "All earnings being processed"
                     : "No earnings available"
-                  : "Ready to withdraw"
-                }
+                  : "Ready to withdraw"}
               </div>
               <Button
                 className="w-full"
