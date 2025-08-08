@@ -70,20 +70,24 @@ type TikTokVideoData = {
 // Rate-limited TikTok API client respecting 120 requests/minute
 class TikTokViewTracker {
   private async waitForRateLimit(ctx: any): Promise<void> {
-    const rateLimitStatus = await ctx.runQuery(internal.rateLimiter.canMakeRequest);
-    
+    const rateLimitStatus = await ctx.runQuery(
+      internal.rateLimiter.canMakeRequest
+    );
+
     if (!rateLimitStatus.canRequest && rateLimitStatus.waitTimeMs > 0) {
       logger.info("Rate limit reached, waiting", {
         waitTimeMs: rateLimitStatus.waitTimeMs,
         queueSize: rateLimitStatus.queueSize,
       });
-      
+
       // Wait for the required time
-      await new Promise(resolve => setTimeout(resolve, rateLimitStatus.waitTimeMs));
+      await new Promise((resolve) =>
+        setTimeout(resolve, rateLimitStatus.waitTimeMs)
+      );
     }
   }
 
-  async getVideoViews(videoUrl: string, ctx?: any): Promise<number> {
+  async getViews(videoUrl: string, ctx?: any): Promise<number> {
     // Extract video ID from URL for validation
     const videoId = this.extractVideoId(videoUrl);
     if (!videoId) {
@@ -110,14 +114,14 @@ class TikTokViewTracker {
 
     try {
       const response = await axios.request(options);
-      
+
       // Record the API request for rate limiting
       if (ctx) {
         await ctx.runMutation(internal.rateLimiter.recordRequest, {
           submissionId: videoId,
         });
       }
-      
+
       console.log(response.data);
       return response.data.data.play_count;
     } catch (error) {
@@ -125,14 +129,14 @@ class TikTokViewTracker {
       if (axios.isAxiosError(error) && error.response?.status === 429) {
         logger.warn("RapidAPI rate limit exceeded", {
           error: error instanceof Error ? error : new Error(String(error)),
-          retryAfter: error.response?.headers['retry-after'],
+          retryAfter: error.response?.headers["retry-after"],
         });
-        
+
         // Wait 1 minute and retry once
-        await new Promise(resolve => setTimeout(resolve, 60000));
-        return this.getVideoViews(videoUrl, ctx);
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+        return this.getViews(videoUrl, ctx);
       }
-      
+
       logger.error("Failed to get view count", {
         error: error instanceof Error ? error : new Error(String(error)),
       });
@@ -167,7 +171,7 @@ export const getInitialViewCount = internalAction({
   handler: async (ctx, args): Promise<{ viewCount: number }> => {
     const tracker = new TikTokViewTracker();
     try {
-      const viewCount = await tracker.getVideoViews(args.tiktokUrl, ctx);
+      const viewCount = await tracker.getViews(args.tiktokUrl, ctx);
 
       // If submissionId provided, update the submission
       if (args.submissionId) {
@@ -216,7 +220,7 @@ export const updateAllViewCounts = internalAction({
 
     for (const submission of submissions) {
       try {
-        const currentViews = await tracker.getVideoViews(submission.tiktokUrl, ctx);
+        const currentViews = await tracker.getViews(submission.tiktokUrl, ctx);
 
         // Only update if views have changed significantly (avoid spam updates)
         const lastViews = submission.viewCount || 0;
@@ -306,7 +310,7 @@ export const refreshSubmissionViews = action({
     }
 
     const tracker = new TikTokViewTracker();
-    const currentViews = await tracker.getVideoViews(submission.tiktokUrl, ctx);
+    const currentViews = await tracker.getViews(submission.tiktokUrl, ctx);
 
     // Atomically update views and the rate-limiting timestamp
     await ctx.runMutation(internal.viewTrackingHelpers.updateSubmissionViews, {

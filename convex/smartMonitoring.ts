@@ -128,23 +128,6 @@ export const getSubmissionsDueForUpdate = internalQuery({
 // Get all submissions that need tier classification (new submissions or periodic reclassification)
 export const getSubmissionsForTierUpdate = internalQuery({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("submissions"),
-      viewCount: v.optional(v.number()),
-      monitoringTier: v.optional(v.string()),
-      lastTierUpdate: v.optional(v.number()),
-      growthRate: v.optional(v.number()),
-      viewHistory: v.optional(
-        v.array(
-          v.object({
-            timestamp: v.number(),
-            viewCount: v.number(),
-          })
-        )
-      ),
-    })
-  ),
   handler: async (ctx) => {
     const now = Date.now();
     const sixHoursAgo = now - 6 * 60 * 60 * 1000; // Reclassify every 6 hours
@@ -471,14 +454,14 @@ export const getMonitoringStatsForUser = query({
       throw new Error("Authentication required");
     }
 
-    // Check if user is a brand
+    // Check if user is an admin
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!profile || profile.userType !== "brand") {
-      throw new Error("Only brands can access monitoring statistics");
+    if (!profile || profile.userType !== "admin") {
+      throw new Error("Only administrators can access monitoring statistics");
     }
 
     // Get monitoring stats and rate limiter status

@@ -4,10 +4,10 @@ import { logger } from "./logger";
 
 // Rate limiter for RapidAPI (120 requests/minute = 2 requests/second)
 const RATE_LIMIT = {
-  MAX_REQUESTS_PER_MINUTE: 120,
-  MAX_REQUESTS_PER_SECOND: 2,
+  MAX_REQUESTS_PER_MINUTE: 120, // ← Change to 300 when rate limit is higher
+  MAX_REQUESTS_PER_SECOND: 2, // Change to 5 when rate limit is higher
   WINDOW_SIZE_MS: 60 * 1000, // 1 minute
-  BURST_WINDOW_MS: 1000,     // 1 second
+  BURST_WINDOW_MS: 1000, // 1 second
 };
 
 // Global rate limiter state (in production, this would be in a dedicated cache/db)
@@ -27,26 +27,40 @@ export const canMakeRequest = internalQuery({
     const oneSecondAgo = now - RATE_LIMIT.BURST_WINDOW_MS;
 
     // Clean up old requests from queue
-    requestQueue = requestQueue.filter(req => req.timestamp > oneMinuteAgo);
+    requestQueue = requestQueue.filter((req) => req.timestamp > oneMinuteAgo);
 
     // Count requests in last minute and last second
     const requestsLastMinute = requestQueue.length;
-    const requestsLastSecond = requestQueue.filter(req => req.timestamp > oneSecondAgo).length;
+    const requestsLastSecond = requestQueue.filter(
+      (req) => req.timestamp > oneSecondAgo
+    ).length;
 
     // Check if we can make a request
-    const canRequestMinute = requestsLastMinute < RATE_LIMIT.MAX_REQUESTS_PER_MINUTE;
-    const canRequestSecond = requestsLastSecond < RATE_LIMIT.MAX_REQUESTS_PER_SECOND;
+    const canRequestMinute =
+      requestsLastMinute < RATE_LIMIT.MAX_REQUESTS_PER_MINUTE;
+    const canRequestSecond =
+      requestsLastSecond < RATE_LIMIT.MAX_REQUESTS_PER_SECOND;
     const canRequest = canRequestMinute && canRequestSecond;
 
     // Calculate wait time if we can't make request
     let waitTimeMs = 0;
     if (!canRequestSecond) {
       // Need to wait until next second window
-      waitTimeMs = Math.max(1000 - (now - requestQueue[requestQueue.length - RATE_LIMIT.MAX_REQUESTS_PER_SECOND].timestamp), 0);
+      waitTimeMs = Math.max(
+        1000 -
+          (now -
+            requestQueue[
+              requestQueue.length - RATE_LIMIT.MAX_REQUESTS_PER_SECOND
+            ].timestamp),
+        0
+      );
     } else if (!canRequestMinute) {
       // Need to wait until oldest request in minute window expires
       const oldestRequest = requestQueue[0];
-      waitTimeMs = Math.max(RATE_LIMIT.WINDOW_SIZE_MS - (now - oldestRequest.timestamp), 0);
+      waitTimeMs = Math.max(
+        RATE_LIMIT.WINDOW_SIZE_MS - (now - oldestRequest.timestamp),
+        0
+      );
     }
 
     return {
@@ -65,7 +79,7 @@ export const recordRequest = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
-    
+
     // Add request to queue
     requestQueue.push({
       timestamp: now,
@@ -74,7 +88,7 @@ export const recordRequest = internalMutation({
 
     // Clean up requests older than 1 minute
     const oneMinuteAgo = now - RATE_LIMIT.WINDOW_SIZE_MS;
-    requestQueue = requestQueue.filter(req => req.timestamp > oneMinuteAgo);
+    requestQueue = requestQueue.filter((req) => req.timestamp > oneMinuteAgo);
 
     logger.info("API request recorded", {
       submissionId: args.submissionId,
@@ -100,14 +114,18 @@ export const getRateLimiterStatus = internalQuery({
     const oneSecondAgo = now - RATE_LIMIT.BURST_WINDOW_MS;
 
     // Clean up old requests
-    requestQueue = requestQueue.filter(req => req.timestamp > oneMinuteAgo);
+    requestQueue = requestQueue.filter((req) => req.timestamp > oneMinuteAgo);
 
     const requestsLastMinute = requestQueue.length;
-    const requestsLastSecond = requestQueue.filter(req => req.timestamp > oneSecondAgo).length;
-    const utilizationPercent = (requestsLastMinute / RATE_LIMIT.MAX_REQUESTS_PER_MINUTE) * 100;
+    const requestsLastSecond = requestQueue.filter(
+      (req) => req.timestamp > oneSecondAgo
+    ).length;
+    const utilizationPercent =
+      (requestsLastMinute / RATE_LIMIT.MAX_REQUESTS_PER_MINUTE) * 100;
 
-    const canMakeRequest = requestsLastMinute < RATE_LIMIT.MAX_REQUESTS_PER_MINUTE && 
-                          requestsLastSecond < RATE_LIMIT.MAX_REQUESTS_PER_SECOND;
+    const canMakeRequest =
+      requestsLastMinute < RATE_LIMIT.MAX_REQUESTS_PER_MINUTE &&
+      requestsLastSecond < RATE_LIMIT.MAX_REQUESTS_PER_SECOND;
 
     return {
       requestsLastMinute,
@@ -121,5 +139,5 @@ export const getRateLimiterStatus = internalQuery({
 
 // Utility function to delay execution
 export function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

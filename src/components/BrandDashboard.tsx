@@ -19,7 +19,6 @@ import { CampaignList } from "./brand-dashboard/CampaignList";
 import { EditCampaignModal } from "./brand-dashboard/EditCampaignModal";
 import { SubmissionsList } from "./creator-dashboard/SubmissionsList";
 import { BrandStats } from "./DashboardStats";
-import { SmartMonitoringStats } from "./SmartMonitoringStats";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -141,7 +140,6 @@ export function BrandDashboard() {
         <TabsList>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
-          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns">
@@ -165,9 +163,6 @@ export function BrandDashboard() {
           />
         </TabsContent>
 
-        <TabsContent value="monitoring">
-          <SmartMonitoringStats />
-        </TabsContent>
       </Tabs>
 
       {editingCampaign && (

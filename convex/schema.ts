@@ -6,7 +6,7 @@ const applicationTables = {
   // User profiles extending auth
   profiles: defineTable({
     userId: v.id("users"),
-    userType: v.union(v.literal("creator"), v.literal("brand")),
+    userType: v.union(v.literal("creator"), v.literal("brand"), v.literal("admin")),
     // Creator fields
     creatorName: v.optional(v.string()),
     tiktokUsername: v.optional(v.string()),

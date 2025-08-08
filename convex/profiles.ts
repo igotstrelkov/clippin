@@ -51,7 +51,7 @@ export const generateUploadUrl = mutation({
 // Create or update profile
 export const updateProfile = mutation({
   args: {
-    userType: v.union(v.literal("creator"), v.literal("brand")),
+    userType: v.union(v.literal("creator"), v.literal("brand"), v.literal("admin")),
     // Creator fields
     creatorName: v.optional(v.string()),
     //tiktokUsername: v.optional(v.string()),
@@ -439,6 +439,55 @@ export const getBrandStats = query({
       effectiveCPM,
       totalSubmissions,
       approvedSubmissions,
+    };
+  },
+});
+
+// Get admin dashboard stats
+export const getAdminStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (!profile || profile.userType !== "admin") return null;
+
+    // Get system-wide statistics
+    const totalUsers = await ctx.db.query("profiles").collect();
+    const totalCampaigns = await ctx.db.query("campaigns").collect();
+    const totalSubmissions = await ctx.db.query("submissions").collect();
+    
+    const userTypeCounts = {
+      creators: totalUsers.filter(u => u.userType === "creator").length,
+      brands: totalUsers.filter(u => u.userType === "brand").length,
+      admins: totalUsers.filter(u => u.userType === "admin").length
+    };
+
+    const campaignStatusCounts = {
+      active: totalCampaigns.filter(c => c.status === "active").length,
+      completed: totalCampaigns.filter(c => c.status === "completed").length,
+      draft: totalCampaigns.filter(c => c.status === "draft").length,
+      paused: totalCampaigns.filter(c => c.status === "paused").length
+    };
+
+    const submissionStatusCounts = {
+      pending: totalSubmissions.filter(s => s.status === "pending").length,
+      approved: totalSubmissions.filter(s => s.status === "approved").length,
+      rejected: totalSubmissions.filter(s => s.status === "rejected").length
+    };
+
+    return {
+      totalUsers: totalUsers.length,
+      userTypeCounts,
+      totalCampaigns: totalCampaigns.length,
+      campaignStatusCounts,
+      totalSubmissions: totalSubmissions.length,
+      submissionStatusCounts
     };
   },
 });
