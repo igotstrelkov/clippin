@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { memo } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { SubmissionCard } from "../SubmissionCard";
+import type { UISubmission } from "@/types/ui";
 import {
   Card,
   CardContent,
@@ -13,8 +14,8 @@ import {
 import { EmptyState } from "../ui/empty-state";
 
 interface SubmissionsListProps {
-  pendingSubmissions: any[];
-  reviewedSubmissions: any[];
+  pendingSubmissions: UISubmission[];
+  reviewedSubmissions: UISubmission[];
   isLoading: boolean;
   onApprove: (submissionId: Id<"submissions">) => void;
   onReject: (submissionId: Id<"submissions">, rejectionReason: string) => void;

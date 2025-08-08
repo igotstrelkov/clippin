@@ -27,6 +27,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { SignInForm } from "./auth/SignInForm";
 import { LoadingSpinner } from "./ui/loading-spinner";
+import type { UICampaignWithBrand } from "@/types/ui";
 
 export function CampaignDetails() {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -37,7 +38,7 @@ export function CampaignDetails() {
   const campaign = useQuery(
     api.campaigns.getCampaign,
     campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
-  );
+  ) as UICampaignWithBrand | null | undefined;
   const profile = useQuery(api.profiles.getCurrentProfile);
   const submitToCampaign = useMutation(api.submissions.submitToCampaign);
 

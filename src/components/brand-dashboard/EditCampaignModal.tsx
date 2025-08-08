@@ -29,36 +29,14 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
 import { Calendar } from "../ui/calendar";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { CampaignPayment } from "./CampaignPayment";
-
-// Define a more specific type for the campaign prop
-type Campaign = {
-  _id: Id<"campaigns">;
-  title: string;
-  description?: string;
-  category?: string;
-  endDate?: number;
-  assetLinks?: string[];
-  requirements?: string[];
-  status: "draft" | "active" | "paused" | "completed";
-  totalBudget: number;
-  cpmRate?: number;
-  maxPayoutPerSubmission?: number;
-  // Fields from dashboard view
-  _creationTime?: number;
-  remainingBudget?: number;
-  totalSubmissions?: number;
-  approvedSubmissions?: number;
-  totalViews?: number;
-  updatedTime?: number;
-};
+import type { UICampaign } from "@/types/ui";
 
 interface EditCampaignModalProps {
-  campaign: Campaign | null;
+  campaign: UICampaign | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;

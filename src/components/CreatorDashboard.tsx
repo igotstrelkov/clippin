@@ -15,11 +15,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
+import type { CreatorQuerySubmission, UISubmission } from "@/types/ui";
 import { useQuery } from "convex/react";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
-import { Doc } from "../../convex/_generated/dataModel";
 import { PayoutHistory } from "./creator-dashboard/PayoutHistory";
 import { PayoutRequestModal } from "./creator-dashboard/PayoutRequestModal";
 import TikTokVerification from "./creator-dashboard/TikTokVerification";
@@ -29,27 +29,16 @@ import { EmptyState } from "./ui/empty-state";
 import { LoadingSpinner } from "./ui/loading-spinner";
 import { ViewChart } from "./ViewChart";
 
-// Type definitions based on Convex queries
-
-export type SubmissionWithCampaign = Doc<"submissions"> & {
-  campaignTitle: string | undefined;
-  brandName: string | undefined;
-  status: "approved" | "rejected" | "pending";
-  rejectionReason?: string;
-  earnings?: number;
-  tiktokVideoUrl?: string;
-};
-
 export function CreatorDashboard() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [showTikTokModal, setShowTikTokModal] = useState(false);
   const [expandedSubmission, setExpandedSubmission] =
-    useState<SubmissionWithCampaign | null>(null);
+    useState<UISubmission | null>(null);
 
   const creatorStats = useQuery(api.profiles.getCreatorStats);
-  const submissions: SubmissionWithCampaign[] | undefined = useQuery(
-    api.submissions.getCreatorSubmissions
-  );
+  const submissions = useQuery(api.submissions.getCreatorSubmissions) as
+    | CreatorQuerySubmission[]
+    | undefined;
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
   const pendingPayouts = useQuery(api.payoutHelpers.getPendingPayouts);
   const profile = useQuery(api.profiles.getCurrentProfile);
@@ -225,7 +214,8 @@ export function CreatorDashboard() {
                 <DialogDescription>
                   Submitted on{" "}
                   {new Date(
-                    expandedSubmission._creationTime
+                    expandedSubmission.submittedAt ??
+                      expandedSubmission._creationTime
                   ).toLocaleDateString()}
                 </DialogDescription>
               </DialogHeader>
@@ -279,33 +269,33 @@ function SubmissionsSection({
   submissions,
   onExpand,
 }: {
-  submissions: SubmissionWithCampaign[] | undefined;
-  onExpand: (s: SubmissionWithCampaign) => void;
+  submissions: CreatorQuerySubmission[] | undefined;
+  onExpand: (s: UISubmission) => void;
 }) {
   const profile = useQuery(api.profiles.getCurrentProfile);
   return (
     <div className="space-y-4">
       {submissions && submissions.length > 0 ? (
         submissions.map((s) => {
-          // Convert SubmissionWithCampaign to Submission type for SubmissionCard
-          const submissionForCard = {
-            _id: s._id,
-            status: s.status,
-            creatorName: s.campaignTitle || "Unknown Campaign", // This is the creator's own dashboard
-            campaignTitle: `by ${s.brandName}`,
-            submittedAt: s._creationTime,
-            viewCount: s.viewCount,
-            earnings: s.earnings,
-            tiktokUrl: s.tiktokUrl || "",
-            rejectionReason: s.rejectionReason,
+          // Convert item to UISubmission for the card
+          const submissionForCard: UISubmission = {
+            ...s,
+            // On creator dashboard, surface brand name prominently
+            creatorName: s.brandName || "Brand",
+            campaignTitle: s.campaignTitle || "Campaign",
+            submittedAt: s.submittedAt ?? s._creationTime,
           };
 
           return (
             <SubmissionCard
               key={s._id}
               submission={submissionForCard}
-              onExpand={() => onExpand(s)}
-              userType={profile?.userType}
+              onExpand={() => onExpand(submissionForCard)}
+              userType={
+                profile?.userType === "brand" || profile?.userType === "creator"
+                  ? profile.userType
+                  : undefined
+              }
             />
           );
         })

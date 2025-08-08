@@ -10,7 +10,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { memo, useCallback, useState } from "react";
-import { Doc, Id } from "../../convex/_generated/dataModel";
+import { Id } from "../../convex/_generated/dataModel";
+import type { UISubmission } from "@/types/ui";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import {
   AlertDialog,
@@ -33,17 +34,6 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { ViewChart } from "./ViewChart";
 
-// Extended submission type for the card component
-// Using Pick to only require the fields we actually use in the component
-type Submission = Pick<
-  Doc<"submissions">,
-  "_id" | "status" | "viewCount" | "tiktokUrl" | "rejectionReason" | "earnings"
-> & {
-  creatorName: string;
-  campaignTitle: string;
-  submittedAt: number;
-};
-
 export const SubmissionCard = memo(
   ({
     submission,
@@ -52,14 +42,14 @@ export const SubmissionCard = memo(
     onExpand,
     userType,
   }: {
-    submission: Submission;
+    submission: UISubmission;
     onApprove?: (id: Id<"submissions">) => void;
     onReject?: (id: Id<"submissions">, rejectionReason: string) => void;
-    onExpand?: (submission: Submission) => void;
+    onExpand?: (submission: UISubmission) => void;
     userType?: "brand" | "creator";
   }) => {
     const [expandedSubmission, setExpandedSubmission] =
-      useState<Submission | null>(null);
+      useState<UISubmission | null>(null);
     const [showRejectionDialog, setShowRejectionDialog] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
 
@@ -121,7 +111,9 @@ export const SubmissionCard = memo(
                     Submitted
                   </p>
                   <p className="font-bold text-lg">
-                    {getRelativeTime(submission.submittedAt)}
+                    {getRelativeTime(
+                      submission.submittedAt ?? submission._creationTime
+                    )}
                   </p>
                 </div>
                 <div className="text-center">

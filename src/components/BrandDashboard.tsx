@@ -11,10 +11,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation, useQuery } from "convex/react";
 import { AlertTriangle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import type { UICampaign, UISubmission } from "@/types/ui";
 import { CampaignList } from "./brand-dashboard/CampaignList";
 import { EditCampaignModal } from "./brand-dashboard/EditCampaignModal";
 import { SubmissionsList } from "./creator-dashboard/SubmissionsList";
@@ -24,86 +25,123 @@ import { LoadingSpinner } from "./ui/loading-spinner";
 
 export function BrandDashboard() {
   const brandStats = useQuery(api.campaigns.getBrandStats);
-  const submissions = useQuery(api.submissions.getBrandSubmissions);
+  const submissions = useQuery(
+    api.submissions.getBrandSubmissions
+  ) as UISubmission[] | undefined;
   const profile = useQuery(api.profiles.getCurrentProfile);
   const deleteCampaign = useMutation(api.campaigns.deleteCampaign);
   const updateSubmissionStatus = useMutation(
     api.submissions.updateSubmissionStatus
   );
 
-  const { pendingSubmissions, reviewedSubmissions } = useMemo(() => {
-    if (!submissions)
-      return { pendingSubmissions: [], reviewedSubmissions: [] };
-    const pending = submissions.filter((s) => s.status === "pending");
-    const reviewed = submissions.filter((s) => s.status !== "pending");
+  const isSubmissionsLoading = submissions === undefined;
+  const userType: "creator" | "brand" =
+    profile?.userType === "brand" || profile?.userType === "creator"
+      ? profile.userType
+      : "brand";
+
+  const { pendingSubmissions, reviewedSubmissions } = useMemo<{
+    pendingSubmissions: UISubmission[];
+    reviewedSubmissions: UISubmission[];
+  }>(() => {
+    const list = submissions ?? [];
+    const pending = list.filter((s) => s.status === "pending");
+    const reviewed = list.filter((s) => s.status !== "pending");
     return { pendingSubmissions: pending, reviewedSubmissions: reviewed };
   }, [submissions]);
 
-  const [editingCampaign, setEditingCampaign] = useState<any>(null);
+  const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(
+    null
+  );
   const [deletingCampaignId, setDeletingCampaignId] =
     useState<Id<"campaigns"> | null>(null);
 
-  const onCampaignEdit = (campaign: any) => {
+  const onCampaignEdit = useCallback((campaign: UICampaign) => {
     setEditingCampaign(campaign);
-  };
+  }, []);
 
-  const onCampaignDelete = (campaignId: Id<"campaigns">) => {
+  const onCampaignDelete = useCallback((campaignId: Id<"campaigns">) => {
     setDeletingCampaignId(campaignId);
-  };
+  }, []);
 
-  const handleDelete = async (campaignId: Id<"campaigns">) => {
-    try {
-      const response = await deleteCampaign({ campaignId });
-      toast.success(response.message);
-      return true;
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to delete campaign"
-      );
-      return false;
-    }
-  };
+  const handleDelete = useCallback(
+    async (campaignId: Id<"campaigns">) => {
+      try {
+        const response = await deleteCampaign({ campaignId });
+        toast.success(response.message);
+        return true;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to delete campaign"
+        );
+        return false;
+      }
+    },
+    [deleteCampaign]
+  );
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deletingCampaignId) return;
     const success = await handleDelete(deletingCampaignId);
     if (success) {
       setDeletingCampaignId(null);
     }
-  };
+  }, [deletingCampaignId, handleDelete]);
 
-  const handleApprove = async (submissionId: Id<"submissions">) => {
-    try {
-      await updateSubmissionStatus({ submissionId, status: "approved" });
-      toast.success("Submission approved");
-      return true;
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to approve submission"
-      );
-      return false;
-    }
-  };
+  const handleApprove = useCallback(
+    async (submissionId: Id<"submissions">) => {
+      try {
+        await updateSubmissionStatus({ submissionId, status: "approved" });
+        toast.success("Submission approved");
+        return true;
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to approve submission"
+        );
+        return false;
+      }
+    },
+    [updateSubmissionStatus]
+  );
 
-  const handleReject = async (
-    submissionId: Id<"submissions">,
-    rejectionReason: string
-  ) => {
-    try {
-      await updateSubmissionStatus({
-        submissionId,
-        status: "rejected",
-        rejectionReason,
-      });
-      toast.success("Submission rejected");
-      return true;
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to reject submission"
-      );
-      return false;
-    }
-  };
+  const handleReject = useCallback(
+    async (
+      submissionId: Id<"submissions">,
+      rejectionReason: string
+    ) => {
+      try {
+        await updateSubmissionStatus({
+          submissionId,
+          status: "rejected",
+          rejectionReason,
+        });
+        toast.success("Submission rejected");
+        return true;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to reject submission"
+        );
+        return false;
+      }
+    },
+    [updateSubmissionStatus]
+  );
+
+  const onApprove = useCallback(
+    (id: Id<"submissions">) => {
+      void handleApprove(id);
+    },
+    [handleApprove]
+  );
+
+  const onReject = useCallback(
+    (id: Id<"submissions">, reason: string) => {
+      void handleReject(id, reason);
+    },
+    [handleReject]
+  );
 
   if (brandStats === undefined) {
     return <LoadingSpinner />;
@@ -156,10 +194,10 @@ export function BrandDashboard() {
           <SubmissionsList
             pendingSubmissions={pendingSubmissions}
             reviewedSubmissions={reviewedSubmissions}
-            isLoading={false}
-            onApprove={(id) => void handleApprove(id)}
-            onReject={(id, reason) => void handleReject(id, reason)}
-            userType={profile?.userType as "creator" | "brand"}
+            isLoading={isSubmissionsLoading}
+            onApprove={onApprove}
+            onReject={onReject}
+            userType={userType}
           />
         </TabsContent>
 

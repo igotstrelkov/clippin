@@ -10,23 +10,10 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/lib/utils";
-import { Id } from "../../../convex/_generated/dataModel";
-
-interface Campaign {
-  _id: Id<"campaigns">;
-  title: string;
-  description: string;
-  category: string;
-  cpmRate: number;
-  maxPayoutPerSubmission: number;
-  totalBudget: number;
-  remainingBudget: number;
-  brandName: string;
-  brandLogo?: string | null;
-}
+import type { UICampaignWithBrand } from "@/types/ui";
 
 interface CampaignCardProps {
-  campaign: Campaign;
+  campaign: UICampaignWithBrand;
   onClick: () => void;
 }
 

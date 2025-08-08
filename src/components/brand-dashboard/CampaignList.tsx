@@ -28,29 +28,14 @@ import {
 } from "lucide-react";
 import { memo, useState } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
+import type { UICampaign } from "@/types/ui";
 import { CreateCampaignModal } from "./CreateCampaignModal";
 
-interface Campaign {
-  _id: Id<"campaigns">;
-  _creationTime: number;
-  title: string;
-  status: "active" | "draft" | "completed" | "paused";
-  totalBudget: number;
-  remainingBudget: number;
-  totalViews?: number;
-  totalSubmissions?: number;
-  description: string;
-  category: string;
-  cpmRate: number;
-  maxPayoutPerSubmission: number;
-  endDate?: number;
-}
-
 interface CampaignListProps {
-  activeCampaigns: Campaign[];
-  draftCampaigns: Campaign[];
-  completedCampaigns: Campaign[];
-  onEdit: (campaign: Campaign) => void;
+  activeCampaigns: UICampaign[];
+  draftCampaigns: UICampaign[];
+  completedCampaigns: UICampaign[];
+  onEdit: (campaign: UICampaign) => void;
   onDelete: (campaignId: Id<"campaigns">) => void;
 }
 
@@ -172,8 +157,8 @@ const ActiveCampaignCard = memo(
     onEdit,
     onDelete,
   }: {
-    campaign: Campaign;
-    onEdit: (campaign: Campaign) => void;
+    campaign: UICampaign;
+    onEdit: (campaign: UICampaign) => void;
     onDelete: (campaignId: Id<"campaigns">) => void;
   }) => {
     const progressPercentage = Math.round(
@@ -280,8 +265,8 @@ const NonActiveCampaignCard = memo(
     onDelete,
     draft,
   }: {
-    campaign: Campaign;
-    onEdit: (campaign: Campaign) => void;
+    campaign: UICampaign;
+    onEdit: (campaign: UICampaign) => void;
     onDelete: (campaignId: Id<"campaigns">) => void;
     draft?: boolean;
   }) => {

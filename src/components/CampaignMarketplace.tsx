@@ -26,6 +26,7 @@ import { CampaignCard } from "./campaign-marketplace/CampaignCard";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { EmptyState } from "./ui/empty-state";
 import { LoadingSpinner } from "./ui/loading-spinner";
+import type { UICampaignWithBrand } from "@/types/ui";
 
 export function CampaignMarketplace() {
   const navigate = useNavigate();
@@ -33,7 +34,16 @@ export function CampaignMarketplace() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"newest" | "budget" | "cpm">("newest");
 
-  const marketplaceStats = useQuery(api.campaigns.getMarketplaceStats);
+  const marketplaceStats = useQuery(api.campaigns.getMarketplaceStats) as
+    | {
+        campaigns: UICampaignWithBrand[];
+        stats: {
+          totalBudget: number;
+          avgCpm: number;
+          activeCampaignsCount: number;
+        };
+      }
+    | undefined;
   const debouncedSearchQuery = useDebounce(
     searchQuery,
     UI_CONFIG.SEARCH_DEBOUNCE_MS

@@ -88,7 +88,7 @@ export function PayoutHistory() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Campaigns</TableHead>
+                  {/* <TableHead>Campaigns</TableHead> */}
                   <TableHead className="text-center">Submissions</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -100,13 +100,13 @@ export function PayoutHistory() {
                     <TableCell>
                       {new Date(payout.createdAt).toLocaleDateString()}
                     </TableCell>
-                    <TableCell className="max-w-[200px]">
+                    {/* <TableCell className="max-w-[200px]">
                       <div className="truncate" title={payout.campaignTitles.join(", ")}>
                         {payout.campaignTitles.length > 0
                           ? payout.campaignTitles.join(", ")
                           : "Multiple campaigns"}
                       </div>
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell className="text-center">
                       {payout.submissionCount}
                     </TableCell>
