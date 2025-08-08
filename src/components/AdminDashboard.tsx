@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "./ui/card";
 import { LoadingSpinner } from "./ui/loading-spinner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Tabs, TabsContent } from "./ui/tabs";
 
 function AdminStatsCard({
   title,
@@ -211,9 +211,9 @@ export function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="monitoring">
-        <TabsList>
+        {/* <TabsList>
           <TabsTrigger value="monitoring">Smart Monitoring</TabsTrigger>
-        </TabsList>
+        </TabsList> */}
 
         <TabsContent value="monitoring">
           <SmartMonitoringStats />

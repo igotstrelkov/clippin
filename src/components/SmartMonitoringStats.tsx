@@ -32,7 +32,12 @@ export function SmartMonitoringStats() {
     );
   }
 
-  const { tierCounts, totalApiCallsPerHour, estimatedSavings, rateLimitStatus } = stats;
+  const {
+    tierCounts,
+    totalApiCallsPerHour,
+    estimatedSavings,
+    rateLimitStatus,
+  } = stats;
   const totalVideos = Object.values(tierCounts).reduce(
     (sum: number, count: number) => sum + count,
     0
@@ -92,7 +97,7 @@ export function SmartMonitoringStats() {
             Smart Monitoring System
           </CardTitle>
           <CardDescription>
-            AI-powered video monitoring with dynamic tier classification
+            Video monitoring with dynamic tier classification
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -121,20 +126,24 @@ export function SmartMonitoringStats() {
                 Videos Monitored
               </div>
             </div>
-            <div className={`text-center p-4 rounded-lg ${
-              rateLimitStatus.utilizationPercent > 90 
-                ? 'bg-red-50 dark:bg-red-900/20'
-                : rateLimitStatus.utilizationPercent > 75
-                ? 'bg-yellow-50 dark:bg-yellow-900/20' 
-                : 'bg-green-50 dark:bg-green-900/20'
-            }`}>
-              <div className={`text-2xl font-bold ${
-                rateLimitStatus.utilizationPercent > 90 
-                  ? 'text-red-600 dark:text-red-400'
+            <div
+              className={`text-center p-4 rounded-lg ${
+                rateLimitStatus.utilizationPercent > 90
+                  ? "bg-red-50 dark:bg-red-900/20"
                   : rateLimitStatus.utilizationPercent > 75
-                  ? 'text-yellow-600 dark:text-yellow-400'
-                  : 'text-green-600 dark:text-green-400'
-              }`}>
+                    ? "bg-yellow-50 dark:bg-yellow-900/20"
+                    : "bg-green-50 dark:bg-green-900/20"
+              }`}
+            >
+              <div
+                className={`text-2xl font-bold ${
+                  rateLimitStatus.utilizationPercent > 90
+                    ? "text-red-600 dark:text-red-400"
+                    : rateLimitStatus.utilizationPercent > 75
+                      ? "text-yellow-600 dark:text-yellow-400"
+                      : "text-green-600 dark:text-green-400"
+                }`}
+              >
                 {rateLimitStatus.utilizationPercent.toFixed(1)}%
               </div>
               <div className="text-sm text-muted-foreground">
@@ -188,7 +197,10 @@ export function SmartMonitoringStats() {
                 <li>• Videos are automatically classified by growth rate</li>
                 <li>• High-growth videos get frequent monitoring (15min)</li>
                 <li>• Stable videos get less frequent checks (6h-24h)</li>
-                <li>• Smart system reduces API calls by {estimatedSavings.toFixed(0)}%</li>
+                <li>
+                  • Smart system reduces API calls by{" "}
+                  {estimatedSavings.toFixed(0)}%
+                </li>
                 <li>• Rate limiting respects 120 requests/minute API limit</li>
               </ul>
             </div>
