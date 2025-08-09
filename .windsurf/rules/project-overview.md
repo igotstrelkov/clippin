@@ -6,7 +6,7 @@ This file provides guidance to Windsurf when working with code in this repositor
 
 ## Project Overview
 
-This is a **Clippin** influencer marketing platform built with [Chef](https://chef.convex.dev) using [Convex](https://convex.dev) as its backend. The project is connected to the Convex deployment named `enduring-snail-194`.
+This is a **Clippin** influencer marketing platform built with [Convex](https://convex.dev) as its backend. The project is connected to the Convex deployment named `enduring-snail-194`.
 
 ## Development Commands
 
@@ -30,7 +30,7 @@ This is a **Clippin** influencer marketing platform built with:
 - **Frontend**: React 19 + TypeScript + Vite + React Router + shadcn/ui components
 - **Backend**: Convex (real-time database with built-in functions)
 - **Styling**: Tailwind CSS with dark/light theme support
-- **Authentication**: Convex Auth with anonymous authentication
+- **Authentication**: Convex Auth
 - **Payments**: Stripe integration for campaign payments and creator payouts
 - **External APIs**: TikTok API for view tracking and verification
 

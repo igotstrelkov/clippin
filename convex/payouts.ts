@@ -7,9 +7,7 @@ import { internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
 import { logger } from "./logger";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-06-30.basil",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 // Simple platform fee calculation (5% total)
 // const PLATFORM_FEE_PERCENTAGE = 0.05;
