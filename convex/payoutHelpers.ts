@@ -45,51 +45,51 @@ export const getCreatorPayouts = query({
 });
 
 // Get pending payout requests (initiated but not yet completed)
-export const getPendingPayouts = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
+// export const getPendingPayouts = query({
+//   args: {},
+//   handler: async (ctx) => {
+//     const userId = await getAuthUserId(ctx);
+//     if (!userId) return [];
 
-    const pendingPayouts = await ctx.db
-      .query("payments")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("type"), "creator_payout"),
-          q.eq(q.field("status"), "pending")
-        )
-      )
-      .order("desc")
-      .collect();
+//     const pendingPayouts = await ctx.db
+//       .query("payments")
+//       .withIndex("by_user_id", (q) => q.eq("userId", userId))
+//       .filter((q) =>
+//         q.and(
+//           q.eq(q.field("type"), "creator_payout"),
+//           q.eq(q.field("status"), "pending")
+//         )
+//       )
+//       .order("desc")
+//       .collect();
 
-    // Enhance with submission details
-    const enhancedPending = await Promise.all(
-      pendingPayouts.map(async (payout) => {
-        const submissionIds = payout.metadata?.submissionIds || [];
-        const campaigns: string[] = [];
+//     // Enhance with submission details
+//     const enhancedPending = await Promise.all(
+//       pendingPayouts.map(async (payout) => {
+//         const submissionIds = payout.metadata?.submissionIds || [];
+//         const campaigns: string[] = [];
 
-        for (const submissionId of submissionIds) {
-          const submission = await ctx.db.get(submissionId);
-          if (submission) {
-            const campaign = await ctx.db.get(submission.campaignId);
-            if (campaign && !campaigns.includes(campaign.title)) {
-              campaigns.push(campaign.title);
-            }
-          }
-        }
+//         for (const submissionId of submissionIds) {
+//           const submission = await ctx.db.get(submissionId);
+//           if (submission) {
+//             const campaign = await ctx.db.get(submission.campaignId);
+//             if (campaign && !campaigns.includes(campaign.title)) {
+//               campaigns.push(campaign.title);
+//             }
+//           }
+//         }
 
-        return {
-          ...payout,
-          campaignTitles: campaigns,
-          submissionCount: submissionIds.length,
-        };
-      })
-    );
+//         return {
+//           ...payout,
+//           campaignTitles: campaigns,
+//           submissionCount: submissionIds.length,
+//         };
+//       })
+//     );
 
-    return enhancedPending;
-  },
-});
+//     return enhancedPending;
+//   },
+// });
 
 // Get pending earnings for creator (excluding submissions in pending payouts)
 export const getPendingEarnings = query({

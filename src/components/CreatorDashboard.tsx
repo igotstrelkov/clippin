@@ -40,7 +40,7 @@ export function CreatorDashboard() {
     | CreatorQuerySubmission[]
     | undefined;
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
-  const pendingPayouts = useQuery(api.payoutHelpers.getPendingPayouts);
+  // const pendingPayouts = useQuery(api.payoutHelpers.getPendingPayouts);
   const profile = useQuery(api.profiles.getCurrentProfile);
 
   if (creatorStats === undefined) {
@@ -122,7 +122,7 @@ export function CreatorDashboard() {
 
         <div className="space-y-8">
           {/* Pending Payouts Card */}
-          {pendingPayouts && pendingPayouts.length > 0 && (
+          {/* {pendingPayouts && pendingPayouts.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -164,7 +164,7 @@ export function CreatorDashboard() {
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
 
           {/* Available Payouts Card */}
           <Card>
@@ -180,9 +180,7 @@ export function CreatorDashboard() {
               </div>
               <div className="text-sm text-muted-foreground mb-4">
                 {pendingEarnings?.totalPending === 0
-                  ? pendingPayouts && pendingPayouts.length > 0
-                    ? "All earnings being processed"
-                    : "No earnings available"
+                  ? "No earnings available"
                   : "Ready to withdraw"}
               </div>
               <Button

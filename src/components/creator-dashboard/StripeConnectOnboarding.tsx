@@ -56,7 +56,7 @@ export function StripeConnectOnboarding() {
   const user = useQuery(api.auth.loggedInUser);
   const profile = useQuery(api.profiles.getCurrentProfile);
   const pendingEarnings = useQuery(api.payoutHelpers.getPendingEarnings);
-  const pendingPayouts = useQuery(api.payoutHelpers.getPendingPayouts);
+  // const pendingPayouts = useQuery(api.payoutHelpers.getPendingPayouts);
 
   const checkAccountStatus = useCallback(async () => {
     setLoading(true);
@@ -377,15 +377,9 @@ export function StripeConnectOnboarding() {
               </Table>
             ) : (
               <EmptyState
-                title={
-                  pendingPayouts && pendingPayouts.length > 0
-                    ? "No Additional Earnings"
-                    : "No Pending Payouts"
-                }
+                title={"No Pending Payouts"}
                 description={
-                  pendingPayouts && pendingPayouts.length > 0
-                    ? "All current earnings are being processed."
-                    : "Approved submissions with earnings will appear here."
+                  "Approved submissions with earnings will appear here."
                 }
               />
             )}
