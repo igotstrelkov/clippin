@@ -53,20 +53,5 @@ crons.interval(
   {}
 );
 
-// Auto-approve submissions that have been pending for more than 48 hours
-crons.interval(
-  "auto approve expired submissions",
-  { hours: 6 },
-  internal.submissions.autoApproveExpiredSubmissions,
-  {}
-);
-
-// Legacy fallback: Update any unclassified submissions every 2 hours
-// crons.interval(
-//   "legacy view tracking fallback",
-//   { hours: 2 },
-//   internal.viewTracking.updateAllViewCounts,
-//   {}
-// );
 
 export default crons;

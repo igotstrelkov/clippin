@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatCurrency, getRelativeTime } from "@/lib/utils";
+import type { UISubmission } from "@/types/ui";
 import {
   AlertTriangle,
   CheckCircle,
@@ -11,7 +12,6 @@ import {
 } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
-import type { UISubmission } from "@/types/ui";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import {
   AlertDialog,
@@ -130,6 +130,16 @@ export const SubmissionCard = memo(
                     {formatCurrency((submission.earnings || 0) / 100)}
                   </p>
                 </div>
+                {/* <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Last Updated
+                  </p>
+                  <p className="font-bold text-lg">
+                    {getRelativeTime(
+                      submission.lastViewUpdate ?? submission._creationTime
+                    )}
+                  </p>
+                </div> */}
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground mb-1">TikTok</p>
                   <Button variant="outline" size="sm" asChild className="h-8">
