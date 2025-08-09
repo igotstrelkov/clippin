@@ -11,6 +11,7 @@ import {
 import { useDebounce } from "@/hooks/useDebounce";
 import { CAMPAIGN_CATEGORIES, SORT_OPTIONS, UI_CONFIG } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
+import type { UICampaignWithBrand } from "@/types/ui";
 import { useQuery } from "convex/react";
 import {
   AlertTriangle,
@@ -26,7 +27,6 @@ import { CampaignCard } from "./campaign-marketplace/CampaignCard";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { EmptyState } from "./ui/empty-state";
 import { LoadingSpinner } from "./ui/loading-spinner";
-import type { UICampaignWithBrand } from "@/types/ui";
 
 export function CampaignMarketplace() {
   const navigate = useNavigate();
@@ -101,7 +101,7 @@ export function CampaignMarketplace() {
         <h1 className="text-4xl font-bold tracking-tight mb-4">
           Turn Your{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">
-            TikTok Into Cash
+            Clips Into Cash
           </span>
         </h1>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto">

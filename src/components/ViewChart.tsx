@@ -35,7 +35,7 @@ export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
   if (viewHistory.length < 2) {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center h-full">
-        <Info className="h-8 w-8 text-muted-foreground" />
+        <Info className="h-8 w-8 text-muted-foreground text-black" />
         <p className="mt-4 text-muted-foreground">
           Not enough data to display a chart. At least two data points are
           needed.

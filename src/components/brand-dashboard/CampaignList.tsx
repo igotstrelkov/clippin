@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/utils";
+import type { UICampaign } from "@/types/ui";
 import {
   CheckCircle,
   Clock,
@@ -28,7 +29,6 @@ import {
 } from "lucide-react";
 import { memo, useState } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
-import type { UICampaign } from "@/types/ui";
 import { CreateCampaignModal } from "./CreateCampaignModal";
 
 interface CampaignListProps {
@@ -168,7 +168,7 @@ const ActiveCampaignCard = memo(
     );
 
     return (
-      <Card className="p-6">
+      <Card className="p-6 border-l-4 border-l-primary">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div>
@@ -271,7 +271,7 @@ const NonActiveCampaignCard = memo(
     draft?: boolean;
   }) => {
     return (
-      <Card className="p-6">
+      <Card className="p-6 border-l-4 border-l-primary">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div>
