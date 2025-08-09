@@ -418,3 +418,111 @@ export const getBrandSubmissions = query({
       .sort((a, b) => b._creationTime - a._creationTime);
   },
 });
+
+// Auto-approve submissions that have been pending for more than 48 hours
+export const autoApproveExpiredSubmissions = internalMutation({
+  args: {},
+  returns: v.object({
+    processed: v.number(),
+    approved: v.number(),
+  }),
+  handler: async (ctx) => {
+    const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
+
+    // Find pending submissions older than 48 hours
+    const expiredSubmissions = await ctx.db
+      .query("submissions")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .filter((q) => q.lt(q.field("submittedAt"), fortyEightHoursAgo))
+      .collect();
+
+    let approvedCount = 0;
+
+    for (const submission of expiredSubmissions) {
+      try {
+        // Get the campaign to update approved submissions count
+        const campaign = await ctx.db.get(submission.campaignId);
+        if (!campaign) {
+          logger.error("Campaign not found for auto-approval", {
+            submissionId: submission._id,
+            campaignId: submission.campaignId,
+          });
+          continue;
+        }
+
+        // Update submission status to approved
+        await ctx.db.patch(submission._id, {
+          status: "approved",
+          approvedAt: Date.now(),
+        });
+
+        // Update campaign's approved submission count
+        await ctx.db.patch(submission.campaignId, {
+          approvedSubmissions: (campaign.approvedSubmissions || 0) + 1,
+        });
+
+        // Log the auto-approval
+        logger.info("Submission auto-approved after 48 hours", {
+          submissionId: submission._id,
+          campaignId: submission.campaignId,
+          creatorId: submission.creatorId,
+        });
+
+        approvedCount++;
+
+        // Send notification email to creator about auto-approval
+        try {
+          const creator = await ctx.db.get(submission.creatorId);
+          const creatorProfile = await ctx.db
+            .query("profiles")
+            .withIndex("by_user_id", (q) =>
+              q.eq("userId", submission.creatorId)
+            )
+            .unique();
+
+          const brandProfile = await ctx.db
+            .query("profiles")
+            .withIndex("by_user_id", (q) => q.eq("userId", campaign.brandId))
+            .unique();
+
+          if (creator?.email && creatorProfile && brandProfile) {
+            await ctx.scheduler.runAfter(
+              0,
+              internal.emails.sendApprovalNotification,
+              {
+                creatorEmail: creator.email,
+                creatorName: creatorProfile.creatorName || "Creator",
+                campaignTitle: campaign.title,
+                brandName: brandProfile.companyName || "Brand",
+                earnings: 0, // Auto-approved submissions start with 0 earnings
+                viewCount: submission.viewCount || 0,
+              }
+            );
+          }
+        } catch (emailError) {
+          logger.error("Failed to send auto-approval notification email", {
+            submissionId: submission._id,
+            error:
+              emailError instanceof Error
+                ? emailError
+                : new Error(String(emailError)),
+          });
+        }
+      } catch (error) {
+        logger.error("Failed to auto-approve submission", {
+          submissionId: submission._id,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
+    }
+
+    logger.info("Auto-approval batch completed", {
+      totalProcessed: expiredSubmissions.length,
+    });
+
+    return {
+      processed: expiredSubmissions.length,
+      approved: approvedCount,
+    };
+  },
+});

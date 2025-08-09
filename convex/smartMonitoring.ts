@@ -465,8 +465,12 @@ export const getMonitoringStatsForUser = query({
     }
 
     // Get monitoring stats and rate limiter status
-    const stats = await ctx.runQuery(internal.smartMonitoring.getMonitoringStats);
-    const rateLimitStatus = await ctx.runQuery(internal.rateLimiter.getRateLimiterStatus);
+    const stats = await ctx.runQuery(
+      internal.smartMonitoring.getMonitoringStats
+    );
+    const rateLimitStatus = await ctx.runQuery(
+      internal.rateLimiter.getRateLimiterStatus
+    );
 
     return {
       ...stats,

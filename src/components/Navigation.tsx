@@ -88,9 +88,11 @@ export function Navigation() {
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex items-center justify-end">
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {profileName}
-                          </p>
+                          {profile.userType !== "admin" && (
+                            <p className="text-sm font-medium leading-none">
+                              {profileName}
+                            </p>
+                          )}
                           <p className="text-xs leading-none text-muted-foreground capitalize">
                             {profile.userType}
                           </p>
