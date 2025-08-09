@@ -44,27 +44,31 @@ export function PayoutHistory() {
     switch (status) {
       case "completed":
         return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
+          <Badge variant="default" className="bg-green-100 text-green-500">
             <CheckCircle2 className="w-3 h-3 mr-1" />
             Completed
           </Badge>
         );
       case "pending":
         return (
-          <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+          <Badge variant="secondary" className="bg-orange-100 text-orange-500">
             <Clock className="w-3 h-3 mr-1" />
             Processing
           </Badge>
         );
       case "failed":
         return (
-          <Badge variant="destructive">
+          <Badge variant="destructive" className="bg-red-100 text-red-500">
             <XCircle className="w-3 h-3 mr-1" />
             Failed
           </Badge>
         );
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return (
+          <Badge variant="secondary" className="bg-gray-100 text-gray-500">
+            {status}
+          </Badge>
+        );
     }
   };
 

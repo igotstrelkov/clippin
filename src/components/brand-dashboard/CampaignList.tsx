@@ -168,7 +168,7 @@ const ActiveCampaignCard = memo(
     );
 
     return (
-      <Card className="p-6 border-l-4 border-l-primary">
+      <Card className={getBorderColorClass(campaign.status)}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div>
@@ -258,6 +258,23 @@ const getStatusIcon = (status: "draft" | "active" | "completed" | "paused") => {
   }
 };
 
+const getBorderColorClass = (
+  status: "draft" | "active" | "completed" | "paused"
+) => {
+  switch (status) {
+    case "draft":
+      return "p-6 border-l-4 border-l-gray-500";
+    case "active":
+      return "p-6 border-l-4 border-l-blue-500";
+    case "paused":
+      return "p-6 border-l-4 border-l-yellow-500";
+    case "completed":
+      return "p-6 border-l-4 border-l-green-500";
+    default:
+      return "p-6 border-l-4 border-l-gray-500";
+  }
+};
+
 const NonActiveCampaignCard = memo(
   ({
     campaign,
@@ -271,7 +288,7 @@ const NonActiveCampaignCard = memo(
     draft?: boolean;
   }) => {
     return (
-      <Card className="p-6 border-l-4 border-l-primary">
+      <Card className={getBorderColorClass(campaign.status)}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div>
