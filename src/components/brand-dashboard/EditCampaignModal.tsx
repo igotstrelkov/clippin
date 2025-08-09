@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import type { UICampaign } from "@/types/ui";
 import { useMutation } from "convex/react";
 import {
   AlertTriangle,
@@ -33,7 +34,6 @@ import { Calendar } from "../ui/calendar";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { CampaignPayment } from "./CampaignPayment";
-import type { UICampaign } from "@/types/ui";
 
 interface EditCampaignModalProps {
   campaign: UICampaign | null;
@@ -444,7 +444,7 @@ export function EditCampaignModal({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>

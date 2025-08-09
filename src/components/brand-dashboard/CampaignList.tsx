@@ -17,6 +17,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { formatCurrency } from "@/lib/utils";
 import type { UICampaign } from "@/types/ui";
 import {
@@ -47,6 +48,7 @@ export const CampaignList = memo(
     onEdit,
     onDelete,
   }: CampaignListProps) => {
+    const isMobile = useIsMobile();
     const [showCreateModal, setShowCreateModal] = useState(false);
 
     return (
@@ -62,7 +64,7 @@ export const CampaignList = memo(
               </div>
               <Button onClick={() => setShowCreateModal(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Create Campaign
+                {isMobile ? "Create" : "Create Campaign"}
               </Button>
             </div>
           </CardHeader>

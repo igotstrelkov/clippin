@@ -433,7 +433,7 @@ export function CreateCampaignModal({
                   Add Requirement
                 </Button>
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex flex-col gap-2">
                 <DialogClose asChild>
                   <Button type="button" variant="outline">
                     Cancel
