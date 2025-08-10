@@ -147,7 +147,7 @@ export function EditCampaignModal({
                   </CardContent>
                 </Card>
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex flex-col gap-2">
                 <Button variant="outline" onClick={onClose}>
                   Cancel
                 </Button>

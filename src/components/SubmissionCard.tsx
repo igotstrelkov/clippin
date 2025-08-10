@@ -101,7 +101,7 @@ export const SubmissionCard = memo(
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                {getStatusIcon()}
+                {/* {getStatusIcon()} */}
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold truncate">
                     {submission.creatorName}
