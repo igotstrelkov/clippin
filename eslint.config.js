@@ -32,6 +32,7 @@ export default tseslint.config(
           "./tsconfig.node.json",
           "./tsconfig.app.json",
           "./convex/tsconfig.json",
+          "./tsconfig.vitest.json",
         ],
       },
     },
@@ -72,6 +73,15 @@ export default tseslint.config(
       // Allow async functions without await
       // for consistency (esp. Convex `handler`s)
       "@typescript-eslint/require-await": "off",
+    },
+  },
+  {
+    // Test-specific overrides
+    files: ["tests/**/*.{ts,tsx}"],
+    rules: {
+      // In tests we commonly assert on mock functions like axios.request,
+      // which this rule flags as potentially unbound methods. Safe to disable here.
+      "@typescript-eslint/unbound-method": "off",
     },
   },
 );

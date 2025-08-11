@@ -1,6 +1,17 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import {
+  validateCampaignCreation,
+  validateCampaignUpdate,
+  canDeleteCampaign,
+  calculateCampaignStats,
+  prepareCampaignCreation,
+  prepareCampaignUpdate,
+  groupCampaignsByStatus,
+  type CampaignCreationArgs,
+  type CampaignUpdateArgs,
+} from "./lib/campaignService";
 
 // Create a draft campaign (before payment)
 export const createDraftCampaign = mutation({
@@ -29,40 +40,17 @@ export const createDraftCampaign = mutation({
       throw new Error("Only brands can create campaigns");
     }
 
-    // Validate campaign data
-    if (args.totalBudget < 5000) {
-      // Minimum $50
-      throw new Error("Minimum campaign budget is $50");
+    // Validate campaign data using service layer
+    const validation = validateCampaignCreation(args);
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
     }
 
-    if (args.cpmRate < 100) {
-      // Minimum $1 CPM
-      throw new Error("Minimum CPM rate is $1.00");
-    }
-
-    if (args.maxPayoutPerSubmission > args.totalBudget) {
-      throw new Error("Max payout per submission cannot exceed total budget");
-    }
+    // Prepare campaign data using service layer
+    const campaignData = prepareCampaignCreation(userId, args);
 
     // Create draft campaign
-    const campaignId = await ctx.db.insert("campaigns", {
-      brandId: userId,
-      title: args.title.trim(),
-      description: args.description.trim(),
-      category: args.category,
-      totalBudget: args.totalBudget,
-      remainingBudget: args.totalBudget,
-      cpmRate: args.cpmRate,
-      maxPayoutPerSubmission: args.maxPayoutPerSubmission,
-      endDate: args.endDate,
-      assetLinks: args.assetLinks,
-      requirements: args.requirements.filter((req) => req.trim().length > 0),
-      status: "draft", // Start as draft until payment is completed
-      totalViews: 0,
-      totalSubmissions: 0,
-      approvedSubmissions: 0,
-      paymentStatus: "pending",
-    });
+    const campaignId = await ctx.db.insert("campaigns", campaignData);
 
     return campaignId;
   },
@@ -195,15 +183,14 @@ export const updateCampaign = mutation({
       throw new Error("Not authorized to update this campaign");
     }
 
-    const updates: any = {};
-    if (args.title !== undefined) updates.title = args.title;
-    if (args.description !== undefined) updates.description = args.description;
-    if (args.category !== undefined) updates.category = args.category;
-    if (args.endDate !== undefined) updates.endDate = args.endDate;
-    if (args.assetLinks !== undefined) updates.assetLinks = args.assetLinks;
-    if (args.requirements !== undefined)
-      updates.requirements = args.requirements;
-    if (args.status !== undefined) updates.status = args.status;
+    // Validate updates using service layer
+    const validation = validateCampaignUpdate(campaign, args);
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
+    }
+
+    // Prepare updates using service layer
+    const updates = prepareCampaignUpdate(args);
 
     await ctx.db.patch(args.campaignId, updates);
     return campaign;
@@ -230,8 +217,10 @@ export const deleteCampaign = mutation({
       .withIndex("by_campaign_id", (q) => q.eq("campaignId", args.campaignId))
       .collect();
 
-    if (submissions.length > 0) {
-      return { success: false, message: "Campaign has existing submissions" };
+    // Validate deletion using service layer
+    const deletionValidation = canDeleteCampaign(campaign, submissions.length > 0);
+    if (!deletionValidation.canDelete) {
+      return { success: false, message: deletionValidation.reason };
     }
 
     await ctx.db.delete(args.campaignId);
@@ -290,41 +279,17 @@ export const getBrandStats = query({
       .withIndex("by_brand_id", (q) => q.eq("brandId", userId))
       .collect();
 
-    // Separate active and draft campaigns
-    const activeCampaigns = campaigns.filter(
-      (c) => c.status === "active" || c.status === "paused"
-    );
-    const draftCampaigns = campaigns.filter((c) => c.status === "draft");
+    // Group campaigns using service layer
+    const groupedCampaigns = groupCampaignsByStatus(campaigns);
 
-    const completedCampaigns = campaigns.filter(
-      (c) => c.status === "completed"
-    );
-
-    // Calculate aggregated stats
-    const totalSpent = campaigns.reduce(
-      (sum, c) => sum + (c.totalBudget - c.remainingBudget),
-      0
-    );
-    const totalViews = campaigns.reduce(
-      (sum, c) => sum + (c.totalViews || 0),
-      0
-    );
-    const totalSubmissions = campaigns.reduce(
-      (sum, c) => sum + (c.totalSubmissions || 0),
-      0
-    );
-    const avgCpm = totalViews > 0 ? (totalSpent / totalViews) * 1000 : 0;
+    // Calculate stats using service layer
+    const stats = calculateCampaignStats(campaigns);
 
     return {
-      activeCampaigns,
-      draftCampaigns,
-      completedCampaigns,
-      stats: {
-        totalSpent,
-        totalViews,
-        totalSubmissions,
-        avgCpm,
-      },
+      activeCampaigns: groupedCampaigns.active,
+      draftCampaigns: groupedCampaigns.draft,
+      completedCampaigns: groupedCampaigns.completed,
+      stats,
     };
   },
 });

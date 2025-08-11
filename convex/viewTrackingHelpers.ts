@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { internalMutation, internalQuery, query } from "./_generated/server";
+import { calculateEarnings, shouldCompleteCampaign } from "./lib/earnings";
 import { logger } from "./logger";
 
 // Get all active submissions that need view tracking
@@ -22,19 +23,6 @@ export const getActiveSubmissions = internalQuery({
 });
 
 // Update submission view count and log tracking entry
-// Helper function to calculate earnings based on view count and campaign settings
-function calculateEarnings(
-  viewCount: number,
-  cpmRate: number, // cpmRate is stored in cents
-  maxPayout?: number
-): number {
-  // Convert cpmRate from cents to dollars, calculate earnings, then convert back to cents
-  const cpmInDollars = cpmRate / 100;
-  const earningsInDollars = (viewCount / 1000) * cpmInDollars;
-  const earningsInCents = Math.round(earningsInDollars * 100);
-  
-  return maxPayout ? Math.min(earningsInCents, maxPayout) : earningsInCents;
-}
 
 // Helper function to process earnings updates and related database changes
 async function processEarningsUpdate(
@@ -69,8 +57,8 @@ async function processEarningsUpdate(
     remainingBudget: newRemainingBudget,
   };
 
-  // Mark campaign as completed if budget is exhausted
-  if (newRemainingBudget === 0 && campaign.status === "active") {
+  // Mark campaign as completed if budget is exhausted or too low for meaningful earnings
+  if (campaign.status === "active" && shouldCompleteCampaign(newRemainingBudget, campaign.cpmRate)) {
     campaignUpdates.status = "completed";
   }
 

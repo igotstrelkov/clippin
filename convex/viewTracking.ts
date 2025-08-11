@@ -123,7 +123,7 @@ class TikTokViewTracker {
       }
 
       console.log(response.data);
-      return response.data.data.play_count;
+      return response.data.data.play_count || 0;
     } catch (error) {
       // Check if it's a rate limit error
       if (axios.isAxiosError(error) && error.response?.status === 429) {
@@ -132,8 +132,10 @@ class TikTokViewTracker {
           retryAfter: error.response?.headers["retry-after"],
         });
 
-        // Wait 1 minute and retry once
-        await new Promise((resolve) => setTimeout(resolve, 60000));
+        // Wait according to retry-after header or default to 1 minute
+        const retryAfter = parseInt(error.response?.headers["retry-after"] || "60");
+        const waitTime = retryAfter * 1000; // Convert to milliseconds
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
         return this.getViews(videoUrl, ctx);
       }
 
@@ -151,6 +153,7 @@ class TikTokViewTracker {
       /\/v\/(\d+)/,
       /tiktok\.com\/.*\/video\/(\d+)/,
       /vm\.tiktok\.com\/(\w+)/,
+      /tiktok\.com\/t\/(\w+)/, // Add support for /t/ URLs
     ];
 
     for (const pattern of patterns) {
