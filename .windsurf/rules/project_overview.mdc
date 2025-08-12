@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Windsurf when working with code in this repository.
 
 ## Project Overview
 
@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Primary Workflow
+
 ```bash
 npm run dev           # Start both frontend (Vite) and backend (Convex) concurrently
 npm run dev:frontend  # Start only Vite development server with auto-open
@@ -22,12 +23,14 @@ npm run dev:backend   # Start only Convex backend in development mode
 ```
 
 ### Build & Validation
+
 ```bash
 npm run build         # Build frontend for production
 npm run lint          # Complete validation: TypeScript (frontend + Convex) + deployment test + build
 ```
 
 ### Testing
+
 ```bash
 npm run test          # Run all tests using Vitest with convex-test integration
 npm run test:coverage # Run tests with coverage reporting
@@ -37,6 +40,7 @@ npm run test:ui       # Run tests with Vitest UI interface
 ## Core Architecture
 
 ### Tech Stack
+
 - **Frontend**: React 19, TypeScript, Vite, React Router v7, shadcn/ui, Tailwind CSS
 - **Backend**: Convex (real-time database + serverless functions + auth + file storage)
 - **Payments**: Stripe with Connect for creator payouts
@@ -46,10 +50,12 @@ npm run test:ui       # Run tests with Vitest UI interface
 ### Business Model Implementation
 
 **User Types**:
+
 - **Creators**: Submit TikTok videos, verify accounts, receive payouts based on views
 - **Brands**: Create campaigns, set budgets, approve/reject submissions, fund campaigns
 
 **Campaign Lifecycle**:
+
 1. **Creation**: Brand creates campaign with budget, CPM rate, max payout limits
 2. **Discovery**: Campaign appears in marketplace for creators
 3. **Submission**: Creator submits TikTok URL (requires verification)
@@ -61,6 +67,7 @@ npm run test:ui       # Run tests with Vitest UI interface
 ### Data Model Relationships
 
 **Core Tables**:
+
 - `profiles` extends auth `users` with creator/brand-specific fields
 - `campaigns` owned by brands with budget management and status workflow
 - `submissions` link creators to campaigns with view counts and earnings
@@ -68,6 +75,7 @@ npm run test:ui       # Run tests with Vitest UI interface
 - `payments` tracks all financial transactions (campaign funding + creator payouts)
 
 **Key Relationships**:
+
 - `profiles.userId` → `users._id` (extends Convex Auth)
 - `campaigns.brandId` → `users._id` (brand ownership)
 - `submissions.campaignId` + `submissions.creatorId` → campaigns and users
@@ -77,6 +85,7 @@ npm run test:ui       # Run tests with Vitest UI interface
 ### Smart Monitoring System
 
 **Tiered View Tracking**:
+
 - **Hot Tier**: 15-minute intervals for rapid growth videos (>1000 views/hour)
 - **Warm Tier**: 1-hour intervals for moderate growth (100-1000 views/hour)
 - **Cold Tier**: 6-hour intervals for slow growth (10-100 views/hour)
@@ -104,6 +113,7 @@ export const functionName = query({
 ```
 
 **Requirements**:
+
 - ALL Convex functions MUST include `args` and `returns` validators
 - Use `v.null()` for functions that don't return values
 - Use `internalQuery/Mutation/Action` for private functions
@@ -112,6 +122,7 @@ export const functionName = query({
 ### Authentication Pattern
 
 Standard Convex Auth integration:
+
 ```typescript
 const identity = await ctx.auth.getUserIdentity();
 if (!identity) throw new Error("Unauthenticated");
@@ -125,6 +136,7 @@ const profile = await ctx.db
 ### TikTok API Integration
 
 **Modular Client Architecture** (`convex/lib/tiktokApiClient.ts`):
+
 - `RapidApiTikTokClient`: Production implementation using RapidAPI TikTok Scraper
 - `MockTikTokApiClient`: Testing implementation with configurable responses
 - `createTikTokApiClient()`: Factory function for environment-appropriate client
@@ -140,6 +152,7 @@ const profile = await ctx.db
 ## Testing Architecture
 
 ### Framework Setup
+
 - **Vitest** with `edge-runtime` environment for Convex compatibility
 - **convex-test** for testing Convex functions with in-memory databases
 - **Test timeout**: 30 seconds for long-running API tests
@@ -150,8 +163,8 @@ Comprehensive builder pattern in `tests/factories/testDataFactory.ts`:
 
 ```typescript
 // Create complete test scenarios
-const { brand, campaign, creators } = ScenarioBuilder.create()
-  .createCampaignLifecycleScenario();
+const { brand, campaign, creators } =
+  ScenarioBuilder.create().createCampaignLifecycleScenario();
 
 // Build individual entities
 const campaign = CampaignBuilder.create()
@@ -162,12 +175,14 @@ const campaign = CampaignBuilder.create()
 ```
 
 **Testing Patterns**:
+
 - Use `convexTest(schema)` for isolated database testing
 - Test complete workflows: campaign creation → submission → view tracking → payouts
 - Mock TikTok API calls using built-in `MockTikTokApiClient`
 - Focus on business logic, earnings calculations, and edge cases
 
 ### Key Test Categories
+
 - **Unit Tests**: Service layer functions (`convex/lib/` modules)
 - **Integration Tests**: End-to-end campaign workflows
 - **API Tests**: External API integration with mocking
@@ -176,18 +191,21 @@ const campaign = CampaignBuilder.create()
 ## Development Workflows
 
 ### File Organization
+
 - **Frontend**: PascalCase React components (`CampaignDetails.tsx`)
 - **Backend**: camelCase Convex functions with camelCase exports
 - **UI Components**: kebab-case in `components/ui/` (shadcn/ui convention)
 - **Business Logic**: Extracted to `convex/lib/` for testability
 
 ### Performance Optimization
+
 - **Lazy Loading**: Heavy components (`CampaignDetails`, `CampaignMarketplace`, `Dashboard`)
 - **Query Optimization**: Use indexed queries, avoid filters
 - **Real-time Updates**: Leverage Convex subscriptions for live data
 - **Bundle Analysis**: Monitor build output sizes
 
 ### State Management
+
 - **Convex Queries**: Real-time reactive state management
 - **React Hook Form**: Form state with Zod validation
 - **URL State**: React Router for navigation state
@@ -196,18 +214,21 @@ const campaign = CampaignBuilder.create()
 ## External Integrations
 
 ### TikTok API
+
 - **Purpose**: Video view count tracking and creator verification
 - **Implementation**: Modular client with production/mock variants
 - **Rate Limiting**: Exponential backoff with `lastApiCall` timestamp tracking
 - **Error Handling**: Graceful degradation with fallback strategies
 
 ### Stripe Integration
+
 - **Campaign Payments**: PaymentIntents for brand campaign funding
 - **Creator Payouts**: Stripe Connect for direct transfers to creators
 - **Webhooks**: Payment status updates and Connect account events
 - **Fee Structure**: Platform fees calculated on payouts
 
 ### Resend Email Service
+
 - **Campaign Notifications**: Updates on campaign status changes
 - **Payout Notifications**: Creator earnings and payment confirmations
 - **System Alerts**: Administrative notifications for monitoring
@@ -215,16 +236,19 @@ const campaign = CampaignBuilder.create()
 ## Performance & Monitoring
 
 ### Smart Monitoring
+
 - **Tier System**: Automatic adjustment of view tracking frequency
 - **Growth Rate Calculation**: Based on 24-hour rolling view history
 - **Resource Optimization**: Reduced API calls through intelligent scheduling
 
 ### Rate Limiting
+
 - **TikTok API**: Built-in rate limiting with retry logic
 - **Internal Rate Limiter**: `convex/rateLimiter.ts` for additional API protection
 - **Cron Job Scheduling**: Distributed load across time intervals
 
 ### Monitoring & Alerting
+
 - **Smart Monitoring Stats**: Dashboard component for monitoring system performance
 - **View Tracking Metrics**: Real-time charts for view growth analysis
 - **Payment Tracking**: Financial transaction monitoring and reconciliation

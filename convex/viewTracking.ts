@@ -67,8 +67,13 @@ type TikTokVideoData = {
   author: TikTokAuthor;
 };
 
-// Rate-limited TikTok API client respecting 120 requests/minute
-class TikTokViewTracker {
+// Public interface for an API client to fetch TikTok views.
+export interface TikTokApiClient {
+  getViews(videoUrl: string, ctx?: any): Promise<number>;
+}
+
+// Internal, default implementation. Rate-limited TikTok API client respecting 120 requests/minute
+class TikTokViewTracker implements TikTokApiClient {
   private async waitForRateLimit(ctx: any): Promise<void> {
     const rateLimitStatus = await ctx.runQuery(
       internal.rateLimiter.canMakeRequest
@@ -133,7 +138,9 @@ class TikTokViewTracker {
         });
 
         // Wait according to retry-after header or default to 1 minute
-        const retryAfter = parseInt(error.response?.headers["retry-after"] || "60");
+        const retryAfter = parseInt(
+          error.response?.headers["retry-after"] || "60"
+        );
         const waitTime = retryAfter * 1000; // Convert to milliseconds
         await new Promise((resolve) => setTimeout(resolve, waitTime));
         return this.getViews(videoUrl, ctx);
@@ -165,6 +172,17 @@ class TikTokViewTracker {
   }
 }
 
+// Injectable client instance (defaulting to the real client). Useful for tests.
+let tiktokApiClient: TikTokApiClient = new TikTokViewTracker();
+
+export function setTikTokApiClientForTesting(client: TikTokApiClient | null) {
+  tiktokApiClient = client ?? new TikTokViewTracker();
+}
+
+export function getTikTokApiClient(): TikTokApiClient {
+  return tiktokApiClient;
+}
+
 // Get initial view count for a new submission
 export const getInitialViewCount = internalAction({
   args: {
@@ -172,7 +190,7 @@ export const getInitialViewCount = internalAction({
     submissionId: v.optional(v.id("submissions")),
   },
   handler: async (ctx, args): Promise<{ viewCount: number }> => {
-    const tracker = new TikTokViewTracker();
+    const tracker = getTikTokApiClient();
     try {
       const viewCount = await tracker.getViews(args.tiktokUrl, ctx);
 
@@ -211,7 +229,7 @@ export const updateAllViewCounts = internalAction({
     errorCount: number;
     totalProcessed: number;
   }> => {
-    const tracker = new TikTokViewTracker();
+    const tracker = getTikTokApiClient();
 
     // Get all pending/approved submissions that need view updates
     const submissions: any[] = await ctx.runQuery(
@@ -312,7 +330,7 @@ export const refreshSubmissionViews = action({
       throw new Error("Submission not found or unauthorized");
     }
 
-    const tracker = new TikTokViewTracker();
+    const tracker = getTikTokApiClient();
     const currentViews = await tracker.getViews(submission.tiktokUrl, ctx);
 
     // Atomically update views and the rate-limiting timestamp

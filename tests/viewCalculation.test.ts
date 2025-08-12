@@ -10,57 +10,6 @@ describe("View Calculation and Earnings", () => {
     vi.clearAllMocks();
   });
 
-  describe("calculateEarnings function", () => {
-    // Extract the pure function for testing
-    const calculateEarnings = (
-      viewCount: number,
-      cpmRate: number,
-      maxPayout?: number
-    ): number => {
-      const cpmInDollars = cpmRate / 100;
-      const earningsInDollars = (viewCount / 1000) * cpmInDollars;
-      const earningsInCents = Math.round(earningsInDollars * 100);
-
-      return maxPayout ? Math.min(earningsInCents, maxPayout) : earningsInCents;
-    };
-
-    test("calculates basic CPM earnings correctly", () => {
-      // Test case from docs: 50,000 views at €0.05 CPM = €2.50
-      const result = calculateEarnings(50000, 5); // 5 cents CPM
-      expect(result).toBe(250); // 250 cents = €2.50
-    });
-
-    test("calculates earnings for small view counts", () => {
-      const result = calculateEarnings(1000, 10); // 1000 views at €0.10 CPM
-      expect(result).toBe(10); // 10 cents = €0.10 (1K views × €0.10/1K = €0.10)
-    });
-
-    test("calculates earnings for large view counts", () => {
-      const result = calculateEarnings(1000000, 5); // 1M views at €0.05 CPM
-      expect(result).toBe(5000); // 5000 cents = €50.00
-    });
-
-    test("applies maximum payout limit correctly", () => {
-      const result = calculateEarnings(100000, 10, 500); // Would be €10.00, but max €5.00
-      expect(result).toBe(500); // Limited to 500 cents = €5.00
-    });
-
-    test("handles zero views", () => {
-      const result = calculateEarnings(0, 5);
-      expect(result).toBe(0);
-    });
-
-    test("handles fractional earnings correctly", () => {
-      const result = calculateEarnings(1500, 3); // 1.5K views at €0.03 CPM = €0.045
-      expect(result).toBe(5); // Rounded to 5 cents
-    });
-
-    test("handles very small CPM rates", () => {
-      const result = calculateEarnings(10000, 1); // 10K views at €0.01 CPM = €0.10
-      expect(result).toBe(10); // 10 cents
-    });
-  });
-
   describe("View tracking and earnings integration", () => {
     test("creates campaign and submission with initial state", async () => {
       // Set up test data

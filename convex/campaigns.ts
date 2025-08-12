@@ -2,15 +2,13 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import {
-  validateCampaignCreation,
-  validateCampaignUpdate,
-  canDeleteCampaign,
   calculateCampaignStats,
+  canDeleteCampaign,
+  groupCampaignsByStatus,
   prepareCampaignCreation,
   prepareCampaignUpdate,
-  groupCampaignsByStatus,
-  type CampaignCreationArgs,
-  type CampaignUpdateArgs,
+  validateCampaignCreation,
+  validateCampaignUpdate,
 } from "./lib/campaignService";
 
 // Create a draft campaign (before payment)
@@ -43,7 +41,7 @@ export const createDraftCampaign = mutation({
     // Validate campaign data using service layer
     const validation = validateCampaignCreation(args);
     if (!validation.isValid) {
-      throw new Error(validation.errors.join(", "));
+      return { success: false, message: validation.errors.join(", ") };
     }
 
     // Prepare campaign data using service layer
@@ -52,7 +50,11 @@ export const createDraftCampaign = mutation({
     // Create draft campaign
     const campaignId = await ctx.db.insert("campaigns", campaignData);
 
-    return campaignId;
+    return {
+      success: true,
+      message: "Campaign saved in draft",
+      campaignId,
+    };
   },
 });
 
@@ -186,14 +188,18 @@ export const updateCampaign = mutation({
     // Validate updates using service layer
     const validation = validateCampaignUpdate(campaign, args);
     if (!validation.isValid) {
-      throw new Error(validation.errors.join(", "));
+      return { success: false, message: validation.errors.join(", ") };
     }
 
     // Prepare updates using service layer
     const updates = prepareCampaignUpdate(args);
 
     await ctx.db.patch(args.campaignId, updates);
-    return campaign;
+    return {
+      success: true,
+      message: "Campaign updated successfully",
+      campaignId: args.campaignId,
+    };
   },
 });
 
@@ -218,7 +224,10 @@ export const deleteCampaign = mutation({
       .collect();
 
     // Validate deletion using service layer
-    const deletionValidation = canDeleteCampaign(campaign, submissions.length > 0);
+    const deletionValidation = canDeleteCampaign(
+      campaign,
+      submissions.length > 0
+    );
     if (!deletionValidation.canDelete) {
       return { success: false, message: deletionValidation.reason };
     }
@@ -277,6 +286,7 @@ export const getBrandStats = query({
     const campaigns = await ctx.db
       .query("campaigns")
       .withIndex("by_brand_id", (q) => q.eq("brandId", userId))
+      .order("desc")
       .collect();
 
     // Group campaigns using service layer

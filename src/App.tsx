@@ -1,7 +1,13 @@
 import { Toaster } from "@/components/ui/sonner";
 import { Authenticated, Unauthenticated } from "convex/react";
-import React, { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+} from "react-router-dom";
 import { SignInForm } from "./components/auth/SignInForm";
 import { Navigation } from "./components/Navigation";
 import { ThemeProvider } from "./components/theme-provider";
@@ -57,6 +63,7 @@ function UnauthenticatedApp() {
   return (
     <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
       <SignInForm onSuccess={handleAuthSuccess} />
+      <Toaster />
     </div>
   );
 }

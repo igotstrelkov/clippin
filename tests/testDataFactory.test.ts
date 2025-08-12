@@ -17,7 +17,7 @@ describe("Test Data Factory", () => {
 
   describe("UserBuilder", () => {
     test("creates user with defaults", () => {
-      const user = UserBuilder.create().build();
+      const user = UserBuilder.create().buildWithSystemFields();
       
       expect(user._id).toBeDefined();
       expect(user._creationTime).toBeDefined();
@@ -404,9 +404,9 @@ describe("Test Data Factory", () => {
     });
 
     test("resets ID counter", () => {
-      const user1 = UserBuilder.create().build();
+      const user1 = UserBuilder.create().buildWithSystemFields();
       TestDataFactory.resetIdCounter();
-      const user2 = UserBuilder.create().build();
+      const user2 = UserBuilder.create().buildWithSystemFields();
       
       // IDs should start fresh after reset
       expect(user1._id).toMatch(/users_1000/);

@@ -9,13 +9,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { UICampaign, UISubmission } from "@/types/ui";
 import { useMutation, useQuery } from "convex/react";
 import { AlertTriangle } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import type { UICampaign, UISubmission } from "@/types/ui";
 import { CampaignList } from "./brand-dashboard/CampaignList";
 import { EditCampaignModal } from "./brand-dashboard/EditCampaignModal";
 import { SubmissionsList } from "./creator-dashboard/SubmissionsList";
@@ -25,9 +25,9 @@ import { LoadingSpinner } from "./ui/loading-spinner";
 
 export function BrandDashboard() {
   const brandStats = useQuery(api.campaigns.getBrandStats);
-  const submissions = useQuery(
-    api.submissions.getBrandSubmissions
-  ) as UISubmission[] | undefined;
+  const submissions = useQuery(api.submissions.getBrandSubmissions) as
+    | UISubmission[]
+    | undefined;
   const profile = useQuery(api.profiles.getCurrentProfile);
   const deleteCampaign = useMutation(api.campaigns.deleteCampaign);
   const updateSubmissionStatus = useMutation(
@@ -68,6 +68,10 @@ export function BrandDashboard() {
     async (campaignId: Id<"campaigns">) => {
       try {
         const response = await deleteCampaign({ campaignId });
+        if (!response.success) {
+          toast.error(response.message);
+          return false;
+        }
         toast.success(response.message);
         return true;
       } catch (error) {
@@ -91,8 +95,15 @@ export function BrandDashboard() {
   const handleApprove = useCallback(
     async (submissionId: Id<"submissions">) => {
       try {
-        await updateSubmissionStatus({ submissionId, status: "approved" });
-        toast.success("Submission approved");
+        const response = await updateSubmissionStatus({
+          submissionId,
+          status: "approved",
+        });
+        if (!response.success) {
+          toast.error(response.message);
+          return false;
+        }
+        toast.success(response.message);
         return true;
       } catch (error) {
         toast.error(
@@ -107,17 +118,18 @@ export function BrandDashboard() {
   );
 
   const handleReject = useCallback(
-    async (
-      submissionId: Id<"submissions">,
-      rejectionReason: string
-    ) => {
+    async (submissionId: Id<"submissions">, rejectionReason: string) => {
       try {
-        await updateSubmissionStatus({
+        const response = await updateSubmissionStatus({
           submissionId,
           status: "rejected",
           rejectionReason,
         });
-        toast.success("Submission rejected");
+        if (!response.success) {
+          toast.error(response.message);
+          return false;
+        }
+        toast.success(response.message);
         return true;
       } catch (error) {
         toast.error(
@@ -200,7 +212,6 @@ export function BrandDashboard() {
             userType={userType}
           />
         </TabsContent>
-
       </Tabs>
 
       {editingCampaign && (

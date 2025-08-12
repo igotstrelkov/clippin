@@ -53,7 +53,8 @@ export function ProfileSetup() {
       });
 
       if (!result.ok) {
-        throw new Error("Failed to upload logo");
+        toast.error("Failed to upload logo");
+        return;
       }
 
       const { storageId } = await result.json();
@@ -63,7 +64,7 @@ export function ProfileSetup() {
       if (process.env.NODE_ENV === "development") {
         console.error("Logo upload error:", error);
       }
-      throw new Error("Failed to upload logo");
+      toast.error("Failed to upload logo");
     }
   };
 
