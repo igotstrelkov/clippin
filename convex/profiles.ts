@@ -163,7 +163,59 @@ export const generateverificationCode = mutation({
   },
 });
 
-// Verify TikTok account by checking bio - triggers the verification process
+// Generate Instagram verification code
+export const generateInstagramVerificationCode = mutation({
+  args: { instagramUsername: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Get existing profile
+    const existingProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .unique();
+
+    // Check if Instagram username is already verified by another user
+    const existingInstagramProfile = await ctx.db
+      .query("profiles")
+      .filter((q) => q.eq(q.field("instagramUsername"), args.instagramUsername))
+      .filter((q) => q.eq(q.field("instagramVerified"), true))
+      .unique();
+
+    if (
+      existingInstagramProfile &&
+      existingInstagramProfile.userId !== userId
+    ) {
+      throw new Error(
+        "This Instagram username is already verified by another user"
+      );
+    }
+
+    // Generate a unique verification code
+    const verificationCode = `CLIPPIN${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    // Create or update profile with verification code
+    if (existingProfile) {
+      await ctx.db.patch(existingProfile._id, {
+        instagramUsername: args.instagramUsername,
+        verificationCode: verificationCode,
+        verificationError: undefined, // Clear any previous errors
+      });
+    } else {
+      await ctx.db.insert("profiles", {
+        userId,
+        userType: "creator", // Default to creator for Instagram verification
+        instagramUsername: args.instagramUsername,
+        verificationCode: verificationCode,
+      });
+    }
+
+    return { verificationCode };
+  },
+});
+
+// Verify Instagram account by checking bio - triggers the verification process
 export const verifyInstagramBio = mutation({
   args: { instagramUsername: v.string() },
   handler: async (ctx, args) => {
@@ -343,7 +395,8 @@ export const completeTikTokVerification = internalAction({
         profileId: args.profileId,
         verified: verificationResult.found,
         error: verificationResult.error,
-        bio: verificationResult.bio,
+
+        field: "tiktokVerified",
       });
     } catch {
       // Update profile with error
@@ -352,6 +405,7 @@ export const completeTikTokVerification = internalAction({
         verified: false,
         error:
           "Verification failed due to an unexpected error. Please try again.",
+        field: "tiktokVerified",
       });
     }
   },
@@ -381,7 +435,8 @@ export const completeInstagramVerification = internalAction({
         profileId: args.profileId,
         verified: verificationResult.found,
         error: verificationResult.error,
-        bio: verificationResult.bio,
+
+        field: "instagramVerified",
       });
     } catch {
       // Update profile with error
@@ -390,6 +445,7 @@ export const completeInstagramVerification = internalAction({
         verified: false,
         error:
           "Verification failed due to an unexpected error. Please try again.",
+        field: "instagramVerified",
       });
     }
   },
@@ -401,13 +457,13 @@ export const updateVerificationResult = internalMutation({
     profileId: v.id("profiles"),
     verified: v.boolean(),
     error: v.optional(v.string()),
-    bio: v.optional(v.string()),
+    field: v.string(),
   },
   handler: async (ctx, args) => {
     if (args.verified) {
       // Mark as verified and clear any previous errors
       await ctx.db.patch(args.profileId, {
-        tiktokVerified: true,
+        [args.field]: true,
         verificationCode: undefined,
         verificationError: undefined,
       });
@@ -415,7 +471,7 @@ export const updateVerificationResult = internalMutation({
       // Clear verification code, mark as not verified, and store error message
       await ctx.db.patch(args.profileId, {
         verificationCode: undefined,
-        tiktokVerified: false,
+        [args.field]: false,
         verificationError: args.error || "Code not found in bio",
       });
     }

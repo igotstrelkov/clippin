@@ -23,6 +23,7 @@ import { api } from "../../convex/_generated/api";
 import { PayoutHistory } from "./creator-dashboard/PayoutHistory";
 import { PayoutRequestModal } from "./creator-dashboard/PayoutRequestModal";
 import TikTokVerification from "./creator-dashboard/TikTokVerification";
+import ViewAccountsModal from "./creator-dashboard/ViewAccountsModal";
 import { CreatorStats } from "./DashboardStats";
 import { SubmissionCard } from "./SubmissionCard";
 import { EmptyState } from "./ui/empty-state";
@@ -32,6 +33,7 @@ import { ViewChart } from "./ViewChart";
 export function CreatorDashboard() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [showTikTokModal, setShowTikTokModal] = useState(false);
+  const [showViewAccountsModal, setShowViewAccountsModal] = useState(false);
   const [expandedSubmission, setExpandedSubmission] =
     useState<UISubmission | null>(null);
 
@@ -61,7 +63,12 @@ export function CreatorDashboard() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Creator Dashboard</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Creator Dashboard</h1>
+        <Button onClick={() => setShowViewAccountsModal(true)}>
+          Verified Accounts
+        </Button>
+      </div>
       {!profile?.tiktokVerified && (
         <Alert variant="destructive">
           <div className="flex justify-between items-center">
@@ -253,12 +260,15 @@ export function CreatorDashboard() {
         </DialogContent>
       </Dialog>
 
-      {showPayoutModal && (
-        <PayoutRequestModal
-          isOpen={showPayoutModal}
-          onClose={() => setShowPayoutModal(false)}
-        />
-      )}
+      <PayoutRequestModal
+        isOpen={showPayoutModal}
+        onClose={() => setShowPayoutModal(false)}
+      />
+
+      <ViewAccountsModal
+        isOpen={showViewAccountsModal}
+        onClose={() => setShowViewAccountsModal(false)}
+      />
     </div>
   );
 }

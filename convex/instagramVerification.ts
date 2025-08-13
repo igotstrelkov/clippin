@@ -42,7 +42,6 @@ async function checkBioWithPublicAPI(
 
   try {
     const response = await axios.request(options);
-    console.log(response.data);
     if (!response.data.status) {
       return {
         found: false,
