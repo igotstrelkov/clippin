@@ -131,6 +131,16 @@ const profile = await ctx.db
 
 **Rate Limiting**: Built-in rate limiting with exponential backoff and retry logic
 
+### Workflow Orchestrator Pattern
+
+**Complex Operations**: Multi-step business processes use workflow orchestration (`convex/lib/workflowOrchestrator.ts`):
+- **Submission Creation**: 9-step process with eligibility validation, TikTok verification, notifications
+- **Campaign Approval**: Multi-step approval process with permission validation and status transitions
+- **Step-by-step Execution**: Each step isolated with individual error handling and retry logic
+- **Granular Testing**: Each workflow step testable in isolation for comprehensive coverage
+
+**When to Use**: Complex operations with external APIs, multiple validation steps, partial failure recovery needs.
+
 ### Error Handling & Logging
 
 **Centralized Logging**: Use `convex/logger.ts` for all server-side logging with structured data
@@ -146,20 +156,27 @@ const profile = await ctx.db
 
 ### Test Data Factory
 
-Comprehensive builder pattern in `tests/factories/testDataFactory.ts`:
+Comprehensive builder pattern in `tests/factories/testDataFactory.ts` with system field separation:
 
 ```typescript
 // Create complete test scenarios
 const { brand, campaign, creators } = ScenarioBuilder.create()
   .createCampaignLifecycleScenario();
 
-// Build individual entities
+// Build individual entities for database insertion (no system fields)
 const campaign = CampaignBuilder.create()
   .withBrandId(brandId)
   .withBudget(10000)
   .asActive()
   .build();
+
+// Build with system fields for tests expecting complete documents
+const campaignWithId = CampaignBuilder.create()
+  .withBrandId(brandId)
+  .buildWithSystemFields(); // Includes _id and _creationTime
 ```
+
+**Critical Pattern**: Regular `build()` excludes system fields for database inserts, `buildWithSystemFields()` includes them for testing.
 
 **Testing Patterns**:
 - Use `convexTest(schema)` for isolated database testing
@@ -167,9 +184,31 @@ const campaign = CampaignBuilder.create()
 - Mock TikTok API calls using built-in `MockTikTokApiClient`
 - Focus on business logic, earnings calculations, and edge cases
 
+### Workflow Orchestrator Testing
+
+Complex business operations use the workflow orchestrator pattern (`convex/lib/workflowOrchestrator.ts`):
+
+```typescript
+// Test complete workflow execution
+const result = await executeSubmissionWorkflow(mockCtx, userId, {
+  campaignId: campaign._id,
+  tiktokUrl: "https://www.tiktok.com/@test/video/123"
+});
+
+expect(result.success).toBe(true);
+expect(result.metadata?.totalSteps).toBeGreaterThan(0);
+```
+
+**Workflow Testing Features**:
+- **Step-by-step execution**: Each workflow step tested individually
+- **Granular error handling**: Test failure scenarios at each step
+- **Mock context**: Proper Convex interface mocking with `runQuery: undefined`
+- **Execution metadata**: Comprehensive step tracking and timing
+
 ### Key Test Categories
 - **Unit Tests**: Service layer functions (`convex/lib/` modules)
 - **Integration Tests**: End-to-end campaign workflows
+- **Workflow Tests**: Multi-step business process testing (`tests/workflows.test.ts`)
 - **API Tests**: External API integration with mocking
 - **Business Logic Tests**: Earnings calculations, monitoring tier logic
 
