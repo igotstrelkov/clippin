@@ -21,8 +21,8 @@ const applicationTables = {
     tiktokVerified: v.optional(v.boolean()),
     // Verification fields
     verificationCode: v.optional(v.string()),
-
     verificationError: v.optional(v.string()),
+
     totalEarnings: v.optional(v.number()),
     totalSubmissions: v.optional(v.number()),
     // Brand fields

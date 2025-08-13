@@ -18,6 +18,7 @@ import type * as campaigns from "../campaigns.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
+import type * as instagramVerification from "../instagramVerification.js";
 import type * as lib_campaignService from "../lib/campaignService.js";
 import type * as lib_earnings from "../lib/earnings.js";
 import type * as lib_submissionService from "../lib/submissionService.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   emails: typeof emails;
   http: typeof http;
+  instagramVerification: typeof instagramVerification;
   "lib/campaignService": typeof lib_campaignService;
   "lib/earnings": typeof lib_earnings;
   "lib/submissionService": typeof lib_submissionService;

@@ -164,6 +164,61 @@ export const generateverificationCode = mutation({
 });
 
 // Verify TikTok account by checking bio - triggers the verification process
+export const verifyInstagramBio = mutation({
+  args: { instagramUsername: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Get the user's profile
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (!profile) {
+      throw new Error("Profile not found");
+    }
+
+    if (!profile.verificationCode) {
+      return {
+        success: false,
+        message: "No verification code found. Please generate a code first.",
+      };
+    }
+
+    if (profile.instagramUsername !== args.instagramUsername) {
+      return {
+        success: false,
+        message:
+          "Instagram username doesn't match the one used to generate the code",
+      };
+    }
+
+    try {
+      // Schedule the verification action
+      await ctx.scheduler.runAfter(
+        0,
+        internal.profiles.completeInstagramVerification,
+        {
+          userId,
+          username: args.instagramUsername,
+          verificationCode: profile.verificationCode,
+          profileId: profile._id,
+        }
+      );
+
+      return { success: true, message: "Verification started..." };
+    } catch {
+      return {
+        success: false,
+        message: "Failed to start verification process",
+      };
+    }
+  },
+});
+
+// Verify TikTok account by checking bio - triggers the verification process
 export const verifyTikTokBio = mutation({
   args: { tiktokUsername: v.string() },
   handler: async (ctx, args) => {
@@ -277,6 +332,44 @@ export const completeTikTokVerification = internalAction({
       // Call the TikTok verification API
       const verificationResult = await ctx.runAction(
         internal.tiktokVerification.checkTikTokBioForCode,
+        {
+          username: args.username,
+          verificationCode: args.verificationCode,
+        }
+      );
+
+      // Update the profile with the verification result
+      await ctx.runMutation(internal.profiles.updateVerificationResult, {
+        profileId: args.profileId,
+        verified: verificationResult.found,
+        error: verificationResult.error,
+        bio: verificationResult.bio,
+      });
+    } catch {
+      // Update profile with error
+      await ctx.runMutation(internal.profiles.updateVerificationResult, {
+        profileId: args.profileId,
+        verified: false,
+        error:
+          "Verification failed due to an unexpected error. Please try again.",
+      });
+    }
+  },
+});
+
+// Internal action to perform the actual TikTok verification
+export const completeInstagramVerification = internalAction({
+  args: {
+    userId: v.id("users"),
+    username: v.string(),
+    verificationCode: v.string(),
+    profileId: v.id("profiles"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Call the TikTok verification API
+      const verificationResult = await ctx.runAction(
+        internal.instagramVerification.checkInstagramBioForCode,
         {
           username: args.username,
           verificationCode: args.verificationCode,
