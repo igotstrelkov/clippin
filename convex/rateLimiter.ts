@@ -13,6 +13,11 @@ const RATE_LIMIT = {
 // Global rate limiter state (in production, this would be in a dedicated cache/db)
 let requestQueue: Array<{ timestamp: number; submissionId: string }> = [];
 
+// Test utility function to reset rate limiter state
+export function resetRateLimiterForTesting(): void {
+  requestQueue = [];
+}
+
 // Check if we can make an API request without exceeding rate limits
 export const canMakeRequest = internalQuery({
   args: {},
@@ -134,6 +139,15 @@ export const getRateLimiterStatus = internalQuery({
       utilizationPercent,
       canMakeRequest,
     };
+  },
+});
+
+// Test utility to reset rate limiter state
+export const resetForTesting = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    requestQueue = [];
   },
 });
 

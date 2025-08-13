@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { Doc, Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { logger } from "./logger";
 
@@ -11,163 +11,69 @@ export const submitToCampaign = mutation({
     campaignId: v.id("campaigns"),
     tiktokUrl: v.string(),
   },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    data: v.optional(v.object({
+      submissionId: v.optional(v.id("submissions")),
+    })),
+    metadata: v.optional(v.object({
+      steps: v.optional(v.number()),
+      executionTime: v.optional(v.number()),
+    })),
+  }),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    // Verify user is a creator
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile || profile.userType !== "creator") {
+    if (!userId) {
       return {
         success: false,
-        message: "Only creators can submit to campaigns",
+        message: "Not authenticated",
       };
     }
 
-    if (!profile.tiktokVerified) {
-      return {
-        success: false,
-        message: "Please verify your TikTok account first",
-      };
-    }
-
-    const isPostVerified = await ctx.runQuery(internal.profiles.verifyPost, {
-      postUrl: args.tiktokUrl,
-    });
-
-    if (!isPostVerified) {
-      return {
-        success: false,
-        message: "Post does not belong to your verified TikTok account",
-      };
-    }
-
-    // Verify campaign exists and is active
-    const campaign = await ctx.db.get(args.campaignId);
-    if (!campaign)
-      return {
-        success: false,
-        message: "Campaign not found",
-      };
-    if (campaign.status !== "active")
-      return {
-        success: false,
-        message: "Campaign is not active",
-      };
-
-    // Check if user already submitted to this campaign
-    // const existingSubmission = await ctx.db
-    //   .query("submissions")
-    //   .withIndex("by_campaign_id", (q) => q.eq("campaignId", args.campaignId))
-    //   .filter((q) => q.eq(q.field("creatorId"), userId))
-    //   .first();
-
-    // if (existingSubmission) {
-    //   throw new Error("You have already submitted to this campaign");
-    // }
-
-    // Validate TikTok URL format
-    if (!isValidTikTokUrl(args.tiktokUrl.trim())) {
-      return { success: false, message: "Please provide a valid TikTok URL" };
-    }
-
-    // Check if this exact URL was already submitted to any campaign
-    const existingUrlSubmission = await ctx.db
-      .query("submissions")
-      .filter((q) => q.eq(q.field("tiktokUrl"), args.tiktokUrl.trim()))
-      .first();
-
-    if (existingUrlSubmission) {
-      return {
-        success: false,
-        message: "This TikTok video has already been submitted to a campaign",
-      };
-    }
-
-    // Initial view count will be fetched after submission creation
-    const initialViews = 0;
-
-    // Create submission
-    const submissionId = await ctx.db.insert("submissions", {
-      campaignId: args.campaignId,
-      creatorId: userId,
-      tiktokUrl: args.tiktokUrl.trim(),
-      status: "pending",
-      viewCount: initialViews,
-      initialViewCount: initialViews,
-      submittedAt: Date.now(),
-      viewTrackingEnabled: true,
-      lastApiCall: 0, // Initialize rate limiting
-    });
-
-    // Log initial view tracking entry
-    if (initialViews > 0) {
-      await ctx.db.insert("viewTracking", {
-        submissionId,
-        viewCount: initialViews,
-        timestamp: Date.now(),
-        source: "submission_initial",
-      });
-    }
-
-    // Schedule initial view count fetch
-    await ctx.scheduler.runAfter(0, internal.viewTracking.getInitialViewCount, {
-      tiktokUrl: args.tiktokUrl.trim(),
-      submissionId,
-    });
-
-    // Update campaign stats
-    const campaignToUpdate = await ctx.db.get(args.campaignId);
-    if (campaignToUpdate) {
-      await ctx.db.patch(args.campaignId, {
-        totalSubmissions: (campaignToUpdate.totalSubmissions || 0) + 1,
-      });
-    }
-
-    // Update creator's total submissions count
-    if (profile) {
-      await ctx.db.patch(profile._id, {
-        totalSubmissions: (profile.totalSubmissions || 0) + 1,
-      });
-    }
-
-    // Send notification to brand (schedule as action)
+    // Use workflow orchestrator for complex submission process
+    const { executeSubmissionWorkflow } = await import("./lib/workflows/submissionWorkflow");
+    
     try {
-      const brandUser = await ctx.db.get(campaign.brandId);
-      const brandProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", campaign.brandId))
-        .unique();
+      const result = await executeSubmissionWorkflow(ctx, userId, {
+        campaignId: args.campaignId,
+        tiktokUrl: args.tiktokUrl,
+      });
 
-      if (brandUser?.email && brandProfile?.companyName) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.emails.sendSubmissionNotification,
-          {
-            brandEmail: brandUser.email,
-            brandName: brandProfile.companyName,
-            campaignTitle: campaign.title,
-            creatorName: profile.creatorName || "Unknown Creator",
-            tiktokUrl: args.tiktokUrl,
-          }
-        );
+      if (result.success) {
+        return {
+          success: true,
+          message: result.data?.message || "Submission successful! Awaiting brand approval.",
+          data: {
+            submissionId: result.data?.submissionId,
+          },
+          metadata: {
+            steps: result.metadata?.totalSteps,
+            executionTime: result.metadata?.executionTime,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          message: result.error || "Submission failed",
+          metadata: {
+            steps: result.metadata?.totalSteps,
+            executionTime: result.metadata?.executionTime,
+          },
+        };
       }
     } catch (error) {
-      logger.error("Failed to schedule submission notification", {
-        submissionId,
-        campaignId: campaign._id,
+      logger.error("Submission workflow failed", {
+        userId,
+        campaignId: args.campaignId,
         error: error instanceof Error ? error : new Error(String(error)),
       });
-    }
 
-    return {
-      success: true,
-      message: "Submission successful! Awaiting brand approval.",
-    };
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Submission failed",
+      };
+    }
   },
 });
 
@@ -254,109 +160,74 @@ export const updateSubmissionStatus = mutation({
     status: v.union(v.literal("approved"), v.literal("rejected")),
     rejectionReason: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    data: v.optional(v.object({
+      submissionId: v.id("submissions"),
+      status: v.string(),
+    })),
+    message: v.optional(v.string()),
+    metadata: v.optional(v.object({
+      steps: v.optional(v.number()),
+      executionTime: v.optional(v.number()),
+    })),
+  }),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    const submission = await ctx.db.get(args.submissionId);
-    if (!submission) throw new Error("Submission not found");
-
-    const campaign = await ctx.db.get(submission.campaignId);
-    if (!campaign) throw new Error("Campaign not found");
-
-    if (campaign.brandId !== userId) {
-      throw new Error("Not authorized to update this submission");
+    if (!userId) {
+      return {
+        success: false,
+        message: "Not authenticated",
+      };
     }
 
-    // For approval, check if submission meets minimum requirements
-    // if (args.status === "approved") {
-    //   if ((submission.viewCount || 0) < 1000) {
-    //     throw new Error(
-    //       "Submission must have at least 1,000 views to be approved"
-    //     );
-    //   }
-    // }
-
-    const updates: Partial<Doc<"submissions">> = {
-      status: args.status,
-    };
-
-    if (args.status === "approved") {
-      updates.approvedAt = Date.now();
-
-      // Update campaign's approved submission count
-      await ctx.db.patch(submission.campaignId, {
-        approvedSubmissions: (campaign.approvedSubmissions || 0) + 1,
-      });
-    } else if (args.status === "rejected" && args.rejectionReason) {
-      updates.rejectionReason = args.rejectionReason;
-    }
-
-    await ctx.db.patch(args.submissionId, updates);
-
-    // Send notification email to creator
+    // Use workflow orchestrator for complex approval process
+    const { executeApprovalWorkflow } = await import("./lib/workflows/approvalWorkflow");
+    
     try {
-      const creator = await ctx.db.get(submission.creatorId);
-      const creatorProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
-        .unique();
+      const result = await executeApprovalWorkflow(ctx, userId, {
+        submissionId: args.submissionId,
+        status: args.status,
+        rejectionReason: args.rejectionReason,
+      });
 
-      const brandProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", campaign.brandId))
-        .unique();
-
-      if (creator?.email && creatorProfile && brandProfile) {
-        if (args.status === "approved") {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.emails.sendApprovalNotification,
-            {
-              creatorEmail: creator.email,
-              creatorName: creatorProfile.creatorName || "Creator",
-              campaignTitle: campaign.title,
-              brandName: brandProfile.companyName || "Brand",
-              earnings: (updates.earnings || 0) / 100,
-              viewCount: submission.viewCount || 0,
-            }
-          );
-        } else if (args.status === "rejected" && args.rejectionReason) {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.emails.sendRejectionNotification,
-            {
-              creatorEmail: creator.email,
-              creatorName: creatorProfile.creatorName || "Creator",
-              campaignTitle: campaign.title,
-              brandName: brandProfile.companyName || "Brand",
-              rejectionReason: args.rejectionReason,
-              tiktokUrl: submission.tiktokUrl,
-            }
-          );
-        }
+      if (result.success) {
+        return {
+          success: true,
+          data: {
+            submissionId: args.submissionId,
+            status: args.status,
+          },
+          message: result.data?.message || `Submission ${args.status} successfully`,
+          metadata: {
+            steps: result.metadata?.totalSteps,
+            executionTime: result.metadata?.executionTime,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          message: result.error || "Status update failed",
+          metadata: {
+            steps: result.metadata?.totalSteps,
+            executionTime: result.metadata?.executionTime,
+          },
+        };
       }
     } catch (error) {
-      logger.error("Failed to send notification email", {
+      logger.error("Approval workflow failed", {
+        userId,
         submissionId: args.submissionId,
         error: error instanceof Error ? error : new Error(String(error)),
       });
-    }
 
-    return submission;
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Status update failed",
+      };
+    }
   },
 });
-
-// Helper function to validate TikTok URLs
-function isValidTikTokUrl(url: string): boolean {
-  const tiktokPatterns = [
-    /^https?:\/\/(www\.)?tiktok\.com\/@[\w.-]+\/video\/\d+/,
-    /^https?:\/\/vm\.tiktok\.com\/[\w]+/,
-    /^https?:\/\/(www\.)?tiktok\.com\/t\/[\w]+/,
-  ];
-
-  return tiktokPatterns.some((pattern) => pattern.test(url));
-}
 
 // Internal mutation to mark threshold as met
 export const markThresholdMet = internalMutation({

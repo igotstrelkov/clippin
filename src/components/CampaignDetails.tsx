@@ -3,10 +3,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { formatCurrency } from "@/lib/utils";
+import type { UICampaignWithBrand } from "@/types/ui";
 import { useMutation, useQuery } from "convex/react";
 import {
   ArrowLeft,
@@ -17,6 +25,7 @@ import {
   Info,
   Link,
   Percent,
+  PlusCircle,
   Target,
   Video,
 } from "lucide-react";
@@ -27,13 +36,14 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { SignInForm } from "./auth/SignInForm";
 import { LoadingSpinner } from "./ui/loading-spinner";
-import type { UICampaignWithBrand } from "@/types/ui";
 
 export function CampaignDetails() {
+  const isMobile = useIsMobile();
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
   const [tiktokUrl, setTiktokUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
 
   const campaign = useQuery(
     api.campaigns.getCampaign,
@@ -64,10 +74,13 @@ export function CampaignDetails() {
         campaignId: campaignId as Id<"campaigns">,
         tiktokUrl: url,
       });
-      toast.success(response.message);
-      if (response.success) {
-        void navigate("/marketplace");
+      if (!response.success) {
+        toast.error(response.message);
+        return;
       }
+      toast.success(response.message);
+      void navigate("/marketplace");
+      setIsSubmitModalOpen(false); // Close modal on success
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit");
     } finally {
@@ -110,7 +123,7 @@ export function CampaignDetails() {
       </div>
 
       {/* Campaign Header */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-start justify-between gap-4">
         <Avatar className="w-16 h-16 border">
           <AvatarImage src={campaign.brandLogo ?? ""} />
           <AvatarFallback>
@@ -123,8 +136,16 @@ export function CampaignDetails() {
             <span>
               by <span className="font-semibold">{campaign.brandName}</span>
             </span>
-            <Badge variant="secondary">{campaign.category}</Badge>
+            {!isMobile && (
+              <Badge variant="secondary">{campaign.category}</Badge>
+            )}
           </div>
+        </div>
+        <div>
+          <Button onClick={() => setIsSubmitModalOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            {isMobile ? "Create" : "Create Submission"}
+          </Button>
         </div>
       </div>
 
@@ -232,11 +253,11 @@ export function CampaignDetails() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Submit Your Video</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Dialog open={isSubmitModalOpen} onOpenChange={setIsSubmitModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Submit Your Clip</DialogTitle>
+            </DialogHeader>
             {profile ? (
               canSubmit ? (
                 <form
@@ -246,7 +267,7 @@ export function CampaignDetails() {
                   className="space-y-4"
                 >
                   <div>
-                    <Label htmlFor="tiktokUrl">TikTok Post URL</Label>
+                    <Label htmlFor="tiktokUrl">TikTok Clip URL</Label>
                     <div className="flex gap-2 mt-1">
                       <Input
                         id="tiktokUrl"
@@ -285,8 +306,8 @@ export function CampaignDetails() {
                 </AlertDescription>
               </Alert>
             )}
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
@@ -307,20 +328,18 @@ function StatCard({
 }) {
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center gap-3">
-          <Icon className="w-8 h-8 text-primary" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
-            {progress !== undefined && (
-              <Progress value={progress} className="mt-2 h-2" />
-            )}
-          </div>
-        </div>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        {description && (
+          <p className="text-xs text-muted-foreground">{description}</p>
+        )}
+        {progress !== undefined && (
+          <Progress value={progress} className="mt-2 h-2" />
+        )}
       </CardContent>
     </Card>
   );

@@ -95,7 +95,7 @@ export function EditCampaignModal({
                 campaignId={campaign._id}
                 amount={campaign.totalBudget / 100}
                 onSuccess={() => {
-                  toast.success("Campaign activated");
+                  toast.success("Campaign funded and activated");
                   onSuccess();
                   onClose();
                 }}
@@ -219,7 +219,7 @@ export function EditCampaignModal({
 
     setLoading(true);
     try {
-      await updateCampaign({
+      const response = await updateCampaign({
         campaignId: campaign._id,
         title: formData.title,
         description: formData.description,
@@ -231,8 +231,11 @@ export function EditCampaignModal({
         requirements: formData.requirements.filter((req) => req.trim()),
         status: formData.status,
       });
-
-      toast.success("Campaign updated");
+      if (!response.success) {
+        toast.error(response.message);
+        return;
+      }
+      toast.success(response.message);
       onSuccess();
     } catch (error) {
       toast.error(

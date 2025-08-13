@@ -57,8 +57,9 @@ export function CreateCampaignModal({
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [step, setStep] = useState<"form" | "payment">("form");
   const [loading, setLoading] = useState(false);
-  const [draftCampaignId, setDraftCampaignId] =
-    useState<Id<"campaigns"> | null>(null);
+  const [draftCampaignId, setDraftCampaignId] = useState<
+    Id<"campaigns"> | undefined
+  >(undefined);
   const [formData, setFormData] = useState<CampaignFormData>({
     title: "",
     description: "",
@@ -141,7 +142,7 @@ export function CreateCampaignModal({
 
     setLoading(true);
     try {
-      const campaignId = await createDraftCampaign({
+      const response = await createDraftCampaign({
         title: formData.title,
         description: formData.description,
         category: formData.category,
@@ -155,9 +156,13 @@ export function CreateCampaignModal({
         requirements: formData.requirements.filter((req) => req.trim()),
       });
 
-      setDraftCampaignId(campaignId);
+      if (!response.success) {
+        toast.error(response.message);
+        return;
+      }
+      toast.success(response.message);
+      setDraftCampaignId(response.campaignId);
       setStep("payment");
-      toast.success("Campaign saved in draft!");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to create campaign"
@@ -175,7 +180,7 @@ export function CreateCampaignModal({
 
   const handleClose = () => {
     setStep("form");
-    setDraftCampaignId(null);
+    setDraftCampaignId(undefined);
     setFormData({
       title: "",
       description: "",
