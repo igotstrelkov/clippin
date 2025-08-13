@@ -29,13 +29,13 @@ function TikTokVerification() {
 
   const profile = useQuery(api.profiles.getCurrentProfile);
 
-  const generateCode = useMutation(api.profiles.generateTikTokVerificationCode);
+  const generateCode = useMutation(api.profiles.generateverificationCode);
   const verifyBio = useMutation(api.profiles.verifyTikTokBio);
 
   // Determine current step from database state
   const getStep = () => {
     if (profile?.tiktokVerified) return "success";
-    if (profile?.tiktokVerificationCode) return "bio";
+    if (profile?.verificationCode) return "bio";
     if (profile?.tiktokUsername) return "generate";
     return "username";
   };
@@ -44,10 +44,10 @@ function TikTokVerification() {
 
   // Show error toast when verification fails
   useEffect(() => {
-    if (profile?.tiktokVerificationError) {
-      toast.error(profile.tiktokVerificationError);
+    if (profile?.verificationError) {
+      toast.error(profile.verificationError);
     }
-  }, [profile?.tiktokVerificationError]);
+  }, [profile?.verificationError]);
 
   if (step === "success" && profile?.tiktokVerified) {
     return (
@@ -188,15 +188,15 @@ function TikTokVerification() {
                 <div className="bg-background/50 dark:bg-background/80 rounded-lg p-3 my-3">
                   <div className="flex items-center justify-between">
                     <code className="text-lg font-mono text-foreground tracking-wider">
-                      {profile?.tiktokVerificationCode}
+                      {profile?.verificationCode}
                     </code>
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => {
-                        if (profile?.tiktokVerificationCode) {
+                        if (profile?.verificationCode) {
                           void navigator.clipboard.writeText(
-                            profile.tiktokVerificationCode
+                            profile.verificationCode
                           );
                           toast.success("Code copied to clipboard!");
                         }

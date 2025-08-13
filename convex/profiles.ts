@@ -51,7 +51,11 @@ export const generateUploadUrl = mutation({
 // Create or update profile
 export const updateProfile = mutation({
   args: {
-    userType: v.union(v.literal("creator"), v.literal("brand"), v.literal("admin")),
+    userType: v.union(
+      v.literal("creator"),
+      v.literal("brand"),
+      v.literal("admin")
+    ),
     // Creator fields
     creatorName: v.optional(v.string()),
     //tiktokUsername: v.optional(v.string()),
@@ -99,7 +103,7 @@ export const updateProfile = mutation({
 });
 
 // Generate verification code for TikTok bio verification
-export const generateTikTokVerificationCode = mutation({
+export const generateverificationCode = mutation({
   args: { tiktokUsername: v.string() },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -143,17 +147,15 @@ export const generateTikTokVerificationCode = mutation({
     if (existingProfile) {
       await ctx.db.patch(existingProfile._id, {
         tiktokUsername: args.tiktokUsername,
-        tiktokVerificationCode: verificationCode,
-        verificationCodeGeneratedAt: now,
-        tiktokVerificationError: undefined, // Clear any previous errors
+        verificationCode: verificationCode,
+        verificationError: undefined, // Clear any previous errors
       });
     } else {
       await ctx.db.insert("profiles", {
         userId,
         userType: "creator", // Default to creator for TikTok verification
         tiktokUsername: args.tiktokUsername,
-        tiktokVerificationCode: verificationCode,
-        verificationCodeGeneratedAt: now,
+        verificationCode: verificationCode,
       });
     }
 
@@ -178,20 +180,10 @@ export const verifyTikTokBio = mutation({
       throw new Error("Profile not found");
     }
 
-    if (!profile.tiktokVerificationCode) {
+    if (!profile.verificationCode) {
       return {
         success: false,
         message: "No verification code found. Please generate a code first.",
-      };
-    }
-
-    // Check if verification code is expired (1 hour)
-    const codeAge = Date.now() - (profile.verificationCodeGeneratedAt || 0);
-    const oneHour = 60 * 60 * 1000;
-    if (codeAge > oneHour) {
-      return {
-        success: false,
-        message: "Verification code has expired. Please generate a new code.",
       };
     }
 
@@ -211,7 +203,7 @@ export const verifyTikTokBio = mutation({
         {
           userId,
           username: args.tiktokUsername,
-          verificationCode: profile.tiktokVerificationCode,
+          verificationCode: profile.verificationCode,
           profileId: profile._id,
         }
       );
@@ -323,18 +315,15 @@ export const updateVerificationResult = internalMutation({
       // Mark as verified and clear any previous errors
       await ctx.db.patch(args.profileId, {
         tiktokVerified: true,
-        tiktokVerificationCode: undefined,
-        verificationCodeGeneratedAt: undefined,
-        tiktokVerificationError: undefined,
-        verifiedAt: Date.now(),
+        verificationCode: undefined,
+        verificationError: undefined,
       });
     } else {
       // Clear verification code, mark as not verified, and store error message
       await ctx.db.patch(args.profileId, {
-        tiktokVerificationCode: undefined,
-        verificationCodeGeneratedAt: undefined,
+        verificationCode: undefined,
         tiktokVerified: false,
-        tiktokVerificationError: args.error || "Code not found in bio",
+        verificationError: args.error || "Code not found in bio",
       });
     }
   },
@@ -461,24 +450,24 @@ export const getAdminStats = query({
     const totalUsers = await ctx.db.query("profiles").collect();
     const totalCampaigns = await ctx.db.query("campaigns").collect();
     const totalSubmissions = await ctx.db.query("submissions").collect();
-    
+
     const userTypeCounts = {
-      creators: totalUsers.filter(u => u.userType === "creator").length,
-      brands: totalUsers.filter(u => u.userType === "brand").length,
-      admins: totalUsers.filter(u => u.userType === "admin").length
+      creators: totalUsers.filter((u) => u.userType === "creator").length,
+      brands: totalUsers.filter((u) => u.userType === "brand").length,
+      admins: totalUsers.filter((u) => u.userType === "admin").length,
     };
 
     const campaignStatusCounts = {
-      active: totalCampaigns.filter(c => c.status === "active").length,
-      completed: totalCampaigns.filter(c => c.status === "completed").length,
-      draft: totalCampaigns.filter(c => c.status === "draft").length,
-      paused: totalCampaigns.filter(c => c.status === "paused").length
+      active: totalCampaigns.filter((c) => c.status === "active").length,
+      completed: totalCampaigns.filter((c) => c.status === "completed").length,
+      draft: totalCampaigns.filter((c) => c.status === "draft").length,
+      paused: totalCampaigns.filter((c) => c.status === "paused").length,
     };
 
     const submissionStatusCounts = {
-      pending: totalSubmissions.filter(s => s.status === "pending").length,
-      approved: totalSubmissions.filter(s => s.status === "approved").length,
-      rejected: totalSubmissions.filter(s => s.status === "rejected").length
+      pending: totalSubmissions.filter((s) => s.status === "pending").length,
+      approved: totalSubmissions.filter((s) => s.status === "approved").length,
+      rejected: totalSubmissions.filter((s) => s.status === "rejected").length,
     };
 
     return {
@@ -487,7 +476,7 @@ export const getAdminStats = query({
       totalCampaigns: totalCampaigns.length,
       campaignStatusCounts,
       totalSubmissions: totalSubmissions.length,
-      submissionStatusCounts
+      submissionStatusCounts,
     };
   },
 });

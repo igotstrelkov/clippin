@@ -6,16 +6,23 @@ const applicationTables = {
   // User profiles extending auth
   profiles: defineTable({
     userId: v.id("users"),
-    userType: v.union(v.literal("creator"), v.literal("brand"), v.literal("admin")),
+    userType: v.union(
+      v.literal("creator"),
+      v.literal("brand"),
+      v.literal("admin")
+    ),
     // Creator fields
     creatorName: v.optional(v.string()),
+    // Instagram fields
+    instagramUsername: v.optional(v.string()),
+    instagramVerified: v.optional(v.boolean()),
+    // TikTok fields
     tiktokUsername: v.optional(v.string()),
     tiktokVerified: v.optional(v.boolean()),
-    // TikTok verification fields
-    tiktokVerificationCode: v.optional(v.string()),
-    verificationCodeGeneratedAt: v.optional(v.number()),
-    verifiedAt: v.optional(v.number()),
-    tiktokVerificationError: v.optional(v.string()),
+    // Verification fields
+    verificationCode: v.optional(v.string()),
+
+    verificationError: v.optional(v.string()),
     totalEarnings: v.optional(v.number()),
     totalSubmissions: v.optional(v.number()),
     // Brand fields
@@ -85,18 +92,24 @@ const applicationTables = {
     viewTrackingEnabled: v.optional(v.boolean()),
     lastApiCall: v.optional(v.number()), // Rate limiting
     // Smart monitoring tier system
-    monitoringTier: v.optional(v.union(
-      v.literal("hot"),     // 15min intervals - rapid growth
-      v.literal("warm"),    // 1hr intervals - moderate growth
-      v.literal("cold"),    // 6hr intervals - slow/stable growth
-      v.literal("archived") // 24hr intervals - minimal/no growth
-    )),
+    monitoringTier: v.optional(
+      v.union(
+        v.literal("hot"), // 15min intervals - rapid growth
+        v.literal("warm"), // 1hr intervals - moderate growth
+        v.literal("cold"), // 6hr intervals - slow/stable growth
+        v.literal("archived") // 24hr intervals - minimal/no growth
+      )
+    ),
     lastTierUpdate: v.optional(v.number()),
     growthRate: v.optional(v.number()), // Views per hour over last 24h
-    viewHistory: v.optional(v.array(v.object({
-      timestamp: v.number(),
-      viewCount: v.number()
-    }))), // Last 7 days for growth calculation
+    viewHistory: v.optional(
+      v.array(
+        v.object({
+          timestamp: v.number(),
+          viewCount: v.number(),
+        })
+      )
+    ), // Last 7 days for growth calculation
   })
     .index("by_campaign_id", ["campaignId"])
     .index("by_creator_id", ["creatorId"])
