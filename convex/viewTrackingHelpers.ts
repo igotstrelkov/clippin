@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { calculateEarnings, shouldCompleteCampaign } from "./lib/earnings";
+import { shouldMarkThresholdMet } from "./lib/submissionService";
 import { logger } from "./logger";
 
 // Get all active submissions that need view tracking
@@ -156,11 +157,10 @@ export const updateSubmissionViews = internalMutation({
         });
       });
 
-    // Handle threshold crossing for pending submissions
+    // Handle threshold crossing for pending and verifying_owner submissions
     if (
-      submission.status === "pending" &&
-      args.previousViews < 1000 &&
-      args.viewCount >= 1000
+      (submission.status === "pending" || submission.status === "verifying_owner") &&
+      shouldMarkThresholdMet(submission, args.viewCount, 1000)
     ) {
       await ctx.runMutation(internal.viewTrackingHelpers.markThresholdMet, {
         submissionId: args.submissionId,

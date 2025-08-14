@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import {
   internalMutation,
   internalQuery,
@@ -9,13 +9,16 @@ import {
   query,
 } from "./_generated/server";
 import {
-  canUpdateSubmissionStatus,
-  checkUrlDuplication,
   prepareSubmissionCreation,
-  prepareSubmissionUpdate,
   validateCreatorEligibility,
-  validateStatusTransition,
   validateSubmissionData,
+  checkUrlDuplication,
+  validateStatusTransition,
+  canUpdateSubmissionStatus,
+  prepareSubmissionUpdate,
+  calculateSubmissionStats,
+  groupSubmissionsByStatus,
+  findExpiredPendingSubmissions,
   type SubmissionCreationArgs,
   type SubmissionUpdateArgs,
 } from "./lib/submissionService";
@@ -46,7 +49,7 @@ export const submitToCampaign = mutation({
     if (!eligibilityValidation.isValid) {
       return {
         success: false,
-        message: eligibilityValidation.errors[0], // Return first error
+        message: eligibilityValidation.errors.join(", "), // Return all errors
       };
     }
 
@@ -62,7 +65,7 @@ export const submitToCampaign = mutation({
     if (!dataValidation.isValid) {
       return {
         success: false,
-        message: dataValidation.errors[0], // Return first error
+        message: dataValidation.errors.join(", "), // Return all errors
       };
     }
 
@@ -239,13 +242,19 @@ export const updateSubmissionStatus = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) {
+      throw new Error("Authentication required");
+    }
 
     const submission = await ctx.db.get(args.submissionId);
-    if (!submission) throw new Error("Submission not found");
+    if (!submission) {
+      throw new Error("Submission not found");
+    }
 
     const campaign = await ctx.db.get(submission.campaignId);
-    if (!campaign) throw new Error("Campaign not found");
+    if (!campaign) {
+      throw new Error("Campaign not found");
+    }
 
     // Validate permissions using service layer
     const permissionCheck = canUpdateSubmissionStatus(
@@ -255,7 +264,7 @@ export const updateSubmissionStatus = mutation({
     );
     if (!permissionCheck.hasPermission) {
       throw new Error(
-        permissionCheck.reason || "Not authorized to update this submission"
+        permissionCheck.reason || "Unauthorized to update submission status"
       );
     }
 
@@ -276,7 +285,7 @@ export const updateSubmissionStatus = mutation({
       rejectionReason: args.rejectionReason,
     };
 
-    const updates = prepareSubmissionUpdate(updateArgs, args.status);
+    const updates = prepareSubmissionUpdate(updateArgs, submission.status);
 
     // Update campaign's approved submission count if approving
     if (args.status === "approved") {
@@ -409,16 +418,26 @@ export const autoApproveExpiredSubmissions = internalMutation({
     approved: v.number(),
   }),
   handler: async (ctx) => {
-    const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
+    const HOURS_THRESHOLD = 48;
 
-    // Find pending submissions older than 48 hours
-    const expiredSubmissions = await ctx.db
+    // Get all pending submissions
+    const pendingSubmissions = await ctx.db
       .query("submissions")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .filter((q) => q.lt(q.field("submittedAt"), fortyEightHoursAgo))
       .collect();
 
+    // Find submissions eligible for auto-approval using service layer utility
+    const expiredSubmissions = findExpiredPendingSubmissions(
+      pendingSubmissions,
+      HOURS_THRESHOLD
+    );
+
     let approvedCount = 0;
+
+    logger.info("Starting auto-approval process", {
+      totalProcessed: pendingSubmissions.length,
+      processedCount: expiredSubmissions.length,
+    });
 
     for (const submission of expiredSubmissions) {
       try {
@@ -564,3 +583,73 @@ export const getSubmissionById = internalQuery({
     return await ctx.db.get(args.submissionId);
   },
 });
+
+// Get submission statistics for dashboard
+export const getSubmissionStats = query({
+  args: { campaignId: v.optional(v.id("campaigns")) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Authentication required");
+    }
+
+    let submissions: Doc<"submissions">[];
+
+    if (args.campaignId) {
+      // Get stats for specific campaign (brand view)
+      const campaign = await ctx.db.get(args.campaignId);
+      if (!campaign || campaign.brandId !== userId) {
+        throw new Error("Unauthorized access to campaign");
+      }
+
+      submissions = await ctx.db
+        .query("submissions")
+        .withIndex("by_campaign_id", (q) => q.eq("campaignId", args.campaignId!))
+        .collect();
+    } else {
+      // Get stats for creator's submissions
+      submissions = await ctx.db
+        .query("submissions")
+        .withIndex("by_creator_id", (q) => q.eq("creatorId", userId))
+        .collect();
+    }
+
+    return calculateSubmissionStats(submissions);
+  },
+});
+
+// Get submissions grouped by status for dashboard
+export const getGroupedSubmissions = query({
+  args: { campaignId: v.optional(v.id("campaigns")) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Authentication required");
+    }
+
+    let submissions: Doc<"submissions">[];
+
+    if (args.campaignId) {
+      // Get submissions for specific campaign (brand view)
+      const campaign = await ctx.db.get(args.campaignId);
+      if (!campaign || campaign.brandId !== userId) {
+        throw new Error("Unauthorized access to campaign");
+      }
+
+      submissions = await ctx.db
+        .query("submissions")
+        .withIndex("by_campaign_id", (q) => q.eq("campaignId", args.campaignId!))
+        .collect();
+    } else {
+      // Get submissions for creator
+      submissions = await ctx.db
+        .query("submissions")
+        .withIndex("by_creator_id", (q) => q.eq("creatorId", userId))
+        .collect();
+    }
+
+    return groupSubmissionsByStatus(submissions);
+  },
+});
+
+

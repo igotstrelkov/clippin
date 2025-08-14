@@ -45,6 +45,14 @@ crons.interval(
   {}
 );
 
+// Auto-approve submissions that have been pending for over 48 hours
+crons.interval(
+  "auto approve expired submissions",
+  { hours: 6 }, // Run every 6 hours
+  internal.submissions.autoApproveExpiredSubmissions,
+  {}
+);
+
 // Daily cleanup of old view tracking records (keep last 30 days)
 crons.interval(
   "cleanup old view records",
@@ -52,6 +60,5 @@ crons.interval(
   internal.viewTracking.cleanupOldRecords,
   {}
 );
-
 
 export default crons;

@@ -109,7 +109,7 @@ describe("SubmissionService", () => {
 
     test("rejects invalid URLs", () => {
       expect(isValidContentUrl("https://youtube.com/watch?v=123")).toBe(false);
-      expect(isValidContentUrl("https://instagram.com/p/123")).toBe(false);
+      expect(isValidContentUrl("https://instagram.com/123")).toBe(false);
       expect(isValidContentUrl("https://tiktok.com/invalid")).toBe(false);
       expect(isValidContentUrl("not-a-url")).toBe(false);
       expect(isValidContentUrl("")).toBe(false);
@@ -239,7 +239,7 @@ describe("SubmissionService", () => {
 
       const result = validateSubmissionData(args);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("TikTok URL is required");
+      expect(result.errors).toContain("Content URL is required");
     });
 
     test("rejects invalid TikTok URL", () => {
@@ -252,7 +252,9 @@ describe("SubmissionService", () => {
 
       const result = validateSubmissionData(args);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Please provide a valid TikTok URL");
+      expect(result.errors).toContain(
+        "Please provide a valid TikTok or Instagram URL"
+      );
     });
 
     test("trims whitespace from URL", () => {

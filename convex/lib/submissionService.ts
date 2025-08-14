@@ -38,7 +38,7 @@ export interface PermissionResult {
 }
 
 /**
- * Validate TikTok URL format
+ * Validate content URL format for supported platforms
  */
 export function isValidContentUrl(url: string): boolean {
   const tiktokPatterns = [
@@ -47,7 +47,14 @@ export function isValidContentUrl(url: string): boolean {
     /^https?:\/\/(www\.)?tiktok\.com\/t\/[\w]+/,
   ];
 
-  return tiktokPatterns.some((pattern) => pattern.test(url));
+  const instagramPatterns = [
+    /^https?:\/\/(www\.)?instagram\.com\/p\/[A-Za-z0-9_-]+/,
+    /^https?:\/\/(www\.)?instagram\.com\/reel\/[A-Za-z0-9_-]+/,
+    /^https?:\/\/(www\.)?instagram\.com\/tv\/[A-Za-z0-9_-]+/,
+  ];
+
+  const allPatterns = [...tiktokPatterns, ...instagramPatterns];
+  return allPatterns.some((pattern) => pattern.test(url));
 }
 
 /**
@@ -105,12 +112,12 @@ export function validateSubmissionData(
 ): ValidationResult {
   const errors: string[] = [];
 
-  // Validate TikTok URL
+  // Validate content URL
   const trimmedUrl = args.contentUrl.trim();
   if (!trimmedUrl) {
-    errors.push("TikTok URL is required");
+    errors.push("Content URL is required");
   } else if (!isValidContentUrl(trimmedUrl)) {
-    errors.push("Please provide a valid TikTok URL");
+    errors.push("Please provide a valid TikTok or Instagram URL");
   }
 
   return {
