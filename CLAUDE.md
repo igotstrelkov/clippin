@@ -2,190 +2,247 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Overview
 
-This is a **Clippin** influencer marketing platform built with [Convex](https://convex.dev) as its backend. The project is connected to the Convex deployment named `enduring-snail-194`.
+**Clippin** is a creator economy platform that connects brands with TikTok creators for sponsored video campaigns. The platform manages the complete campaign lifecycle from creation to creator payments, featuring real-time view tracking, automated earnings calculation, and Stripe-powered payouts.
 
 ## Development Commands
 
-### Primary Development
+### Essential Commands
 
-- `npm run dev` - Start both frontend (Vite) and backend (Convex) development servers concurrently
-- `npm run dev:frontend` - Start only the Vite frontend development server with auto-open
-- `npm run dev:backend` - Start only the Convex backend in development mode
+- `npm run dev` - Start development servers (frontend + Convex backend in parallel)
+- `npm run build` - Build frontend for production
+- `npm run lint` - Run comprehensive validation (TypeScript check + Convex dev + Vite build)
+- `npm test` - Run test suite with Vitest
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:ui` - Run tests with UI interface
 
-### Build & Validation
+### Convex-Specific Commands
 
-- `npm run build` - Build the frontend application for production
-- `npm run lint` - Complete validation: TypeScript check (both frontend and Convex), Convex deployment test, and Vite build
+- `npm run dev:backend` - Start only Convex development server
+- `npm run dev:frontend` - Start only Vite development server
 
-## Architecture Overview
+### Testing Individual Components
 
-### Tech Stack
+- `npx vitest run tests/campaignService.test.ts` - Run specific test file
+- `npx vitest run --grep "validateCampaignCreation"` - Run specific test pattern
 
-This is a **Clippin** influencer marketing platform built with:
+## Platform Architecture
 
-- **Frontend**: React 19 + TypeScript + Vite + React Router + shadcn/ui components
-- **Backend**: Convex (real-time database with built-in functions)
-- **Styling**: Tailwind CSS with dark/light theme support
-- **Authentication**: Convex Auth
-- **Payments**: Stripe integration for campaign payments and creator payouts
-- **External APIs**: TikTok API for view tracking and verification
+### Technology Stack
 
-### Application Flow
+- **Frontend**: React 19 + TypeScript + Vite + TailwindCSS + shadcn/ui
+- **Backend**: Convex (real-time database with serverless functions)
+- **Authentication**: Convex Auth (configured in `convex/auth.ts`)
+- **Payments**: Stripe with Stripe Connect for creator payouts
+- **External APIs**: TikTok and Instagram Scraper API via RapidAPI for view tracking
+- **Testing**: Vitest with edge-runtime environment for Convex compatibility
 
-**Clippin** connects brands with TikTok creators through paid campaigns:
+### Key Directories
 
-1. **User Types**:
+- `convex/` - Backend functions, schema, and business logic
+- `convex/lib/` - Pure business logic services (campaignService, submissionService, earnings)
+- `src/components/` - React components organized by domain
+- `src/components/ui/` - Reusable shadcn/ui components
+- `tests/` - Test files matching convex structure
+- `docs/` - Technical documentation (view-calculation.md, stripe-integration.md)
 
-   - **Brands** create campaigns, set budgets, upload YouTube assets
-   - **Creators** submit TikTok videos, get paid based on views
+## Core Business Logic
 
-2. **Campaign Lifecycle**:
+### User Roles & Access Patterns
 
-   - Brand creates campaign → Creator discovers in marketplace → Creator submits TikTok video → Brand approves/rejects → View tracking begins → Creator gets paid based on CPM rate
+- **Creators**: Submit content to campaigns, track earnings, request payouts
+- **Brands**: Create campaigns, manage budgets, approve submissions
+- **Admins**: Platform oversight and analytics
 
-3. **Key Features**:
-   - Real-time view tracking from TikTok API
-   - Automated payouts when view thresholds are met
-   - TikTok username verification system
-   - Stripe Connect for creator payments
+### Campaign Lifecycle
 
-### Directory Structure
+1. **Draft** → Brand creates campaign (pending payment)
+2. **Active** → Campaign accepting creator submissions
+3. **Paused** → Temporarily stopped (can resume)
+4. **Completed** → Ended (budget exhausted or manually closed)
 
-#### Frontend (`src/`)
+### View Tracking System
 
-- **Main App**: `App.tsx` - Route handling with lazy loading, authentication wrapper, theme provider
-- **Authentication**: `auth/SignInForm.tsx`, `auth/SignOutButton.tsx`
-- **Core Components**: `components/` directory with:
-  - `Dashboard.tsx` - Main dashboard dispatcher (delegates to brand/creator dashboards)
-  - `BrandDashboard.tsx`, `CreatorDashboard.tsx` - Role-specific dashboard views
-  - `CampaignMarketplace.tsx` - Public campaign discovery
-  - `CampaignDetails.tsx` - Individual campaign view with submission interface
-  - `Navigation.tsx` - Main navigation bar with theme toggle
-  - `ViewChart.tsx`, `ViewTracker.tsx` - View tracking visualizations
-  - `brand-dashboard/` - Brand-specific components (campaign creation, payment modals)
-  - `creator-dashboard/` - Creator-specific components (payouts, verification, submissions)
-  - `campaign-marketplace/` - Marketplace-specific components
-  - `ui/` - shadcn/ui components library (40+ components)
-- **Utilities**: `lib/` directory with validation, error handling, constants, and utility functions
-- **Hooks**: Custom hooks for mobile detection and debouncing
+- **Smart Monitoring Tiers**: Hot (15min) → Warm (1hr) → Cold (6hr) → Archived (24hr)
+- **Rate Limiting**: 120 requests/minute to TikTok and InstagramAPI with automatic retry
+- **Real-time Calculations**: View increases → earnings updates → budget decreases
 
-#### Backend (`convex/`)
-
-- **Schema**: `schema.ts` - Database schema extending Convex Auth tables with application-specific tables
-- **Core Functions**:
-  - `profiles.ts` - User profile management (creator/brand types)
-  - `campaigns.ts` - Campaign CRUD, budget management
-  - `submissions.ts` - Video submission handling, approval workflow
-  - `viewTracking.ts` + `viewTrackingHelpers.ts` - TikTok API integration, automated view updates
-  - `payouts.ts` + `payoutHelpers.ts` - Stripe payment processing, payout calculations
-  - `tiktokVerification.ts` - Creator username verification via TikTok profile updates
-  - `optimizedQueries.ts` - Performance-optimized queries for complex data retrieval
-- **Infrastructure**:
-  - `auth.ts` + `auth.config.ts` - Convex Auth configuration
-  - `http.ts` - HTTP endpoints (webhooks, external integrations)
-  - `crons.ts` - Scheduled jobs for view tracking updates
-  - `emails.ts` - Email notifications (Resend integration)
-  - `logger.ts` - Centralized logging utilities
-  - `migrations/` - Database migration files
-
-### Key Data Models
-
-**profiles** - User profiles extending Convex Auth:
-
-- `userType`: "creator" | "brand"
-- Creator: `tiktokUsername`, `tiktokVerified`, earnings tracking
-- Brand: `companyName`, `companyLogo`, Stripe customer data
-
-**campaigns** - Brand-created campaigns:
-
-- Budget management: `totalBudget`, `remainingBudget`, `cpmRate`
-- Assets: `assetLinks` (brands upload external drive links)
-- Status workflow: "draft" → "active" → "completed"/"paused"
-
-**submissions** - Creator video submissions:
-
-- Links TikTok URLs to campaigns
-- View tracking: `viewCount`, `initialViewCount`, `thresholdMetAt`
-- Earnings: `earnings`, `paidOutAmount` (calculated from views × CPM)
-- Status: "pending" → "approved"/"rejected"
-
-**viewTracking** - Historical view data from TikTok API
-**payments** - Stripe payment records for both campaign funding and creator payouts
-
-### Important Patterns
-
-#### Convex Function Syntax
-
-**CRITICAL**: Always use the new Convex function syntax from `.cursor/rules/convex_rules.mdc`. This is enforced project-wide:
+### Earnings Formula
 
 ```typescript
-import { query } from "./_generated/server";
+// CPM-based calculation (stored in cents)
+const earningsInCents = Math.round((viewCount / 1000) * (cpmRate / 100) * 100);
+const finalEarnings = Math.min(earningsInCents, maxPayoutPerSubmission);
+```
+
+## Critical Convex Development Rules
+
+### Function Syntax (ALWAYS use new syntax)
+
+```typescript
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const functionName = query({
-  args: { param: v.string() },
-  returns: v.object({ result: v.string() }),
+export const exampleQuery = query({
+  args: { userId: v.id("users") },
+  returns: v.array(v.object({ name: v.string() })),
   handler: async (ctx, args) => {
-    // function body
+    // Function body
   },
 });
 ```
 
-**Key Requirements**:
+### Validation Requirements
 
-- Always include `args` and `returns` validators for ALL Convex functions
-- Use `v.null()` for functions that don't return anything
-- Use `internalQuery`, `internalMutation`, `internalAction` for private functions
-- Use `query`, `mutation`, `action` for public API functions
-- HTTP endpoints use `httpAction` decorator in `convex/http.ts`
+- **ALWAYS** include `args` and `returns` validators for ALL functions
+- Use `v.null()` for functions that don't return values
+- Use `v.id(tableName)` for document IDs, not `v.string()`
+- Include `as const` for string literals in discriminated unions
 
-#### Authentication Pattern
+### Database Operations
+
+- **NO** `.filter()` in queries - use indexed queries with `.withIndex()`
+- **NO** `.delete()` on query results - use `.collect()` then iterate with `ctx.db.delete()`
+- Use `.unique()` for single document queries (throws if multiple found)
+- Use `ctx.db.patch()` for partial updates, `ctx.db.replace()` for full replacement
+
+### Function References & Calling
+
+- Use `api.filename.functionName` for public functions
+- Use `internal.filename.functionName` for internal functions
+- Include type annotations when calling functions in same file to avoid TypeScript circularity
+
+### Schema Design Principles
+
+- System fields `_id` and `_creationTime` automatically added
+- Index names must include all fields: `by_field1_and_field2`
+- Query index fields in same order as defined
+- Use appropriate validators: `v.id()`, `v.union()`, `v.optional()`, `v.array()`
+
+## Service Layer Architecture
+
+### Business Logic Separation
+
+Pure business logic is extracted to `convex/lib/` services:
+
+- `campaignService.ts` - Campaign validation, status transitions, statistics
+- `submissionService.ts` - Submission processing, view updates, earnings
+- `earnings.ts` - Budget validation, earnings calculations
+
+### Testing Strategy
+
+- Test business logic in isolation using imported service functions
+- Use `convex-test` for integration testing with database operations
+- Mock external APIs (TikTok, Instagram, Stripe) in test environment
+- Test edge cases: budget exhaustion, rate limiting, invalid transitions
+
+## Authentication & Security
+
+### Convex Auth Setup
+
+- OAuth providers configured in `convex/auth.config.ts`
+- User sessions managed automatically by Convex Auth
+- Role-based access control through `profiles` table linking to `users`
+
+### Access Control Patterns
 
 ```typescript
-// Check if user is authenticated and get profile
-const identity = await ctx.auth.getUserIdentity();
-if (!identity) throw new Error("Unauthenticated");
-
+// Always verify user permissions
 const profile = await ctx.db
   .query("profiles")
-  .withIndex("by_user_id", (q) => q.eq("userId", identity.subject))
+  .withIndex("by_user_id", (q) => q.eq("userId", ctx.auth.getUserId()))
   .unique();
+
+if (profile?.userType !== "brand") {
+  throw new Error("Unauthorized");
+}
 ```
 
-#### Real-time Updates
+## External API Integration
 
-The app uses Convex's real-time subscriptions extensively - changes to campaigns, submissions, and view counts automatically update across all connected clients.
+### TikTok View Tracking
 
-#### File Naming Conventions
+- **Rate Limit**: 120 requests/minute via internal rate limiter
+- **Error Handling**: Retry on 429, graceful degradation on failure
+- **URL Patterns**: Supports tiktok.com/@user/video/id and vm.tiktok.com/shortcode
+- **Monitoring**: Smart tier system reduces API calls for stable videos
 
-- React components: PascalCase (`CampaignDetails.tsx`)
-- Convex functions: camelCase files with camelCase exports
-- shadcn/ui components: kebab-case in `components/ui/`
+### Instagram View Tracking
 
-### Development Notes
+- **Rate Limit**: 120 requests/minute via internal rate limiter
+- **Error Handling**: Retry on 429, graceful degradation on failure
+- **URL Patterns**: Supports instagram.com/reel/id and vm.instagram.com/p/id
+- **Monitoring**: Smart tier system reduces API calls for stable videos
 
-- **Testing**: No existing test framework - check `package.json` for testing setup before writing tests
-- **Deployment**: Uses Convex deployment "enduring-snail-194" for development
-- **Theming**: Dark/light theme support via `next-themes` and shadcn/ui with system preference detection
-- **Forms**: Form handling with `react-hook-form` + `zod` validation (validation schemas in `lib/validation.ts`)
-- **Charts**: Analytics and visualizations via `recharts`
-- **Performance**: Lazy loading implemented for heavy components (`CampaignDetails`, `CampaignMarketplace`, `Dashboard`)
-- **Error Handling**: Centralized error handling utilities in `lib/errorHandling.ts`
-- **Logging**: Server-side logging via `convex/logger.ts`
+### Stripe Integration
 
-### External Integrations
+- **Campaign Payments**: PaymentIntents for brand campaign funding
+- **Creator Payouts**: Stripe Connect transfers to creator accounts
+- **Webhook Handling**: Real-time payment status updates via `convex/http.ts`
 
-- **TikTok API**: Video view count tracking (rate limited, handled in `viewTrackingHelpers.ts`)
-- **Stripe**: Payment processing, Connect accounts for creator payouts, webhooks for payment status
-- **Resend**: Email notifications for campaign updates and user communications
-- **YouTube**: Asset URLs for campaign reference videos (brands upload existing content links)
+## Component Architecture
 
-### Important Implementation Notes
+### Domain Organization
 
-- **Database Indexes**: Schema includes comprehensive indexes for performance - always query using indexed fields
-- **File Storage**: Uses Convex file storage for user uploads (company logos, assets)
-- **Scheduled Jobs**: Cron jobs handle automated view tracking updates and payout processing
-- **Real-time Subscriptions**: Extensive use of Convex real-time updates for live data synchronization
-- **Type Safety**: Strict TypeScript with proper ID types (`Id<"tableName">`) throughout the application
+- `auth/` - Authentication forms and components
+- `brand-dashboard/` - Campaign management, payments
+- `creator-dashboard/` - Submissions, earnings, payouts
+- `campaign-marketplace/` - Public campaign browsing
+
+### State Management
+
+- Convex provides real-time subscriptions - avoid external state managers
+- Use React Query pattern with Convex hooks: `useQuery(api.campaigns.list)`
+- Local state only for UI interactions, not data synchronization
+
+### UI Components
+
+- Built on shadcn/ui component library
+- Consistent theming via CSS variables in `src/index.css`
+- Dark/light mode support through `next-themes`
+
+## Development Workflow
+
+### Convex Development
+
+- Connected to deployment: `enduring-snail-194`
+- Schema changes auto-generate types in `convex/_generated/`
+- Functions deployed automatically on save during development
+- Use `convex dev --once` for CI/CD validation
+
+### Database Migrations
+
+- Place migration files in `convex/migrations/`
+- Test migrations thoroughly - they run on production data
+- Consider backwards compatibility for schema changes
+
+### Performance Considerations
+
+- Convex functions have execution time limits
+- Use pagination for large result sets: `paginationOptsValidator`
+- Index queries properly to avoid slow table scans
+- Rate limit external API calls to prevent quota exhaustion
+
+## Common Gotchas
+
+### Convex-Specific Issues
+
+- Functions must be pure - no file system access or global state
+- Use `"use node";` directive for Node.js APIs in actions only
+- HTTP endpoints defined in `convex/http.ts` with exact path matching
+- Cron jobs use `cronJobs()` builder pattern, not helper methods
+
+### Business Logic Pitfalls
+
+- Always validate budget constraints before updating earnings
+- Check campaign status before accepting new submissions
+- Verify TikTok and Instagram URL ownership before approving submissions
+- Handle race conditions in view update calculations
+
+### Testing Considerations
+
+- Use edge-runtime environment for Convex function compatibility
+- Mock external APIs to avoid rate limits and costs
+- Test error boundaries and fallback behaviors
+- Validate both happy path and edge cases for business logic

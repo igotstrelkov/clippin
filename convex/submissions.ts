@@ -8,17 +8,18 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import { canAcceptSubmissions } from "./lib/campaignService";
 import {
-  prepareSubmissionCreation,
-  validateCreatorEligibility,
-  validateSubmissionData,
-  checkUrlDuplication,
-  validateStatusTransition,
-  canUpdateSubmissionStatus,
-  prepareSubmissionUpdate,
   calculateSubmissionStats,
-  groupSubmissionsByStatus,
+  canUpdateSubmissionStatus,
+  checkUrlDuplication,
   findExpiredPendingSubmissions,
+  groupSubmissionsByStatus,
+  prepareSubmissionCreation,
+  prepareSubmissionUpdate,
+  validateEligibility,
+  validateStatusTransition,
+  validateSubmissionData,
   type SubmissionCreationArgs,
   type SubmissionUpdateArgs,
 } from "./lib/submissionService";
@@ -45,11 +46,19 @@ export const submitToCampaign = mutation({
     const campaign = await ctx.db.get(args.campaignId);
 
     // Validate creator eligibility using service layer
-    const eligibilityValidation = validateCreatorEligibility(profile, campaign);
-    if (!eligibilityValidation.isValid) {
+    const { isValid, errors } = validateEligibility(profile);
+    if (!isValid) {
       return {
         success: false,
-        message: eligibilityValidation.errors.join(", "), // Return all errors
+        message: errors.join(", "), // Return all errors
+      };
+    }
+
+    const { canAccept, reason } = canAcceptSubmissions(campaign);
+    if (!canAccept) {
+      return {
+        success: false,
+        message: reason,
       };
     }
 
@@ -184,7 +193,6 @@ export const getCreatorSubmissions = query({
         return {
           ...s,
           campaignTitle: campaign?.title,
-          hasReachedThreshold: (s.viewCount || 0) >= 1000,
           brandName: brandProfile?.companyName,
         };
       })
@@ -224,7 +232,6 @@ export const getCampaignSubmissions = query({
           ...submission,
           creatorName: creatorProfile?.creatorName || "Unknown Creator",
           tiktokUsername: creatorProfile?.tiktokUsername,
-          hasReachedThreshold: (submission.viewCount || 0) >= 1000,
         };
       })
     );
@@ -349,16 +356,6 @@ export const updateSubmissionStatus = mutation({
   },
 });
 
-// Internal mutation to mark threshold as met
-export const markThresholdMet = internalMutation({
-  args: { submissionId: v.id("submissions") },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.submissionId, {
-      thresholdMetAt: Date.now(),
-    });
-  },
-});
-
 // Get all submissions for a brand's campaigns
 export const getBrandSubmissions = query({
   args: {},
@@ -397,7 +394,6 @@ export const getBrandSubmissions = query({
               campaignTitle: campaign.title,
               creatorName: creatorProfile?.creatorName || "Unknown Creator",
               tiktokUsername: creatorProfile?.tiktokUsername,
-              hasReachedThreshold: (submission.viewCount || 0) >= 1000,
             };
           })
         );
@@ -604,7 +600,9 @@ export const getSubmissionStats = query({
 
       submissions = await ctx.db
         .query("submissions")
-        .withIndex("by_campaign_id", (q) => q.eq("campaignId", args.campaignId!))
+        .withIndex("by_campaign_id", (q) =>
+          q.eq("campaignId", args.campaignId!)
+        )
         .collect();
     } else {
       // Get stats for creator's submissions
@@ -638,7 +636,9 @@ export const getGroupedSubmissions = query({
 
       submissions = await ctx.db
         .query("submissions")
-        .withIndex("by_campaign_id", (q) => q.eq("campaignId", args.campaignId!))
+        .withIndex("by_campaign_id", (q) =>
+          q.eq("campaignId", args.campaignId!)
+        )
         .collect();
     } else {
       // Get submissions for creator
@@ -652,4 +652,18 @@ export const getGroupedSubmissions = query({
   },
 });
 
-
+// Get all active submissions that need view tracking
+export const getActiveSubmissions = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("submissions")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "approved")
+        )
+      )
+      .collect();
+  },
+});

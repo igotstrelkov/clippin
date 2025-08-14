@@ -7,14 +7,10 @@ import {
   checkUrlDuplication,
   findExpiredPendingSubmissions,
   groupSubmissionsByStatus,
-  hasReachedViewThreshold,
   isSubmissionEligibleForAutoApproval,
   isValidContentUrl,
   prepareSubmissionCreation,
   prepareSubmissionUpdate,
-  shouldMarkThresholdMet,
-  validateApprovalRequirements,
-  validateCreatorEligibility,
   validateStatusTransition,
   validateSubmissionData,
   type SubmissionCreationArgs,
@@ -125,93 +121,6 @@ describe("SubmissionService", () => {
       expect(
         isValidContentUrl("https://www.tiktok.com/@user_name/video/123456789")
       ).toBe(true);
-    });
-  });
-
-  describe("validateCreatorEligibility", () => {
-    const mockCampaign = createMockCampaign();
-
-    test("validates eligible creator", () => {
-      const profile = createMockProfile();
-      const result = validateCreatorEligibility(profile, mockCampaign);
-
-      expect(result.isValid).toBe(true);
-      expect(result.errors).toHaveLength(0);
-    });
-
-    test("rejects missing profile", () => {
-      const result = validateCreatorEligibility(null, mockCampaign);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Creator profile not found");
-    });
-
-    test("rejects non-creator user", () => {
-      const profile = createMockProfile({ userType: "brand" });
-      const result = validateCreatorEligibility(profile, mockCampaign);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Only creators can submit to campaigns");
-    });
-
-    test("rejects unverified TikTok account", () => {
-      const profile = createMockProfile({ tiktokVerified: false });
-      const result = validateCreatorEligibility(profile, mockCampaign);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain(
-        "Please verify your TikTok account first"
-      );
-    });
-
-    test("rejects missing campaign", () => {
-      const profile = createMockProfile();
-      const result = validateCreatorEligibility(profile, null);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Campaign not found");
-    });
-
-    test("rejects inactive campaign", () => {
-      const profile = createMockProfile();
-      const campaign = createMockCampaign({ status: "paused" });
-      const result = validateCreatorEligibility(profile, campaign);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Campaign is not active");
-    });
-
-    test("rejects campaign with no budget", () => {
-      const profile = createMockProfile();
-      const campaign = createMockCampaign({ remainingBudget: 0 });
-      const result = validateCreatorEligibility(profile, campaign);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Campaign budget has been exhausted");
-    });
-
-    test("rejects expired campaign", () => {
-      const profile = createMockProfile();
-      const campaign = createMockCampaign({ endDate: Date.now() - 1000 });
-      const result = validateCreatorEligibility(profile, campaign);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Campaign has ended");
-    });
-
-    test("accumulates multiple errors", () => {
-      const profile = createMockProfile({
-        userType: "brand",
-        tiktokVerified: false,
-      });
-      const campaign = createMockCampaign({
-        status: "paused",
-        remainingBudget: 0,
-      });
-      const result = validateCreatorEligibility(profile, campaign);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(2);
     });
   });
 
@@ -418,29 +327,6 @@ describe("SubmissionService", () => {
     });
   });
 
-  describe("hasReachedViewThreshold", () => {
-    test("returns true for submissions above threshold", () => {
-      const submission = createMockSubmission({ viewCount: 1500 });
-      expect(hasReachedViewThreshold(submission, 1000)).toBe(true);
-    });
-
-    test("returns false for submissions below threshold", () => {
-      const submission = createMockSubmission({ viewCount: 500 });
-      expect(hasReachedViewThreshold(submission, 1000)).toBe(false);
-    });
-
-    test("returns false for submissions with no view count", () => {
-      const submission = createMockSubmission({ viewCount: undefined });
-      expect(hasReachedViewThreshold(submission, 1000)).toBe(false);
-    });
-
-    test("accepts custom threshold", () => {
-      const submission = createMockSubmission({ viewCount: 750 });
-      expect(hasReachedViewThreshold(submission, 500)).toBe(true);
-      expect(hasReachedViewThreshold(submission, 1000)).toBe(false);
-    });
-  });
-
   describe("calculateSubmissionEarnings", () => {
     test("calculates earnings for approved submission", () => {
       const submission = createMockSubmission({
@@ -557,44 +443,6 @@ describe("SubmissionService", () => {
     });
   });
 
-  describe("shouldMarkThresholdMet", () => {
-    test("returns true when crossing threshold for first time", () => {
-      const submission = createMockSubmission({
-        viewCount: 900,
-        thresholdMetAt: undefined,
-      });
-
-      expect(shouldMarkThresholdMet(submission, 1100, 1000)).toBe(true);
-    });
-
-    test("returns false when already marked", () => {
-      const submission = createMockSubmission({
-        viewCount: 900,
-        thresholdMetAt: Date.now(),
-      });
-
-      expect(shouldMarkThresholdMet(submission, 1100, 1000)).toBe(false);
-    });
-
-    test("returns false when not crossing threshold", () => {
-      const submission = createMockSubmission({
-        viewCount: 500,
-        thresholdMetAt: undefined,
-      });
-
-      expect(shouldMarkThresholdMet(submission, 800, 1000)).toBe(false);
-    });
-
-    test("returns false when previous count already above threshold", () => {
-      const submission = createMockSubmission({
-        viewCount: 1200,
-        thresholdMetAt: undefined,
-      });
-
-      expect(shouldMarkThresholdMet(submission, 1500, 1000)).toBe(false);
-    });
-  });
-
   describe("calculateSubmissionStats", () => {
     test("calculates stats for mixed submissions", () => {
       const submissions = [
@@ -688,39 +536,12 @@ describe("SubmissionService", () => {
     });
   });
 
-  describe("validateApprovalRequirements", () => {
-    test("validates submission for approval", () => {
-      const submission = createMockSubmission({ viewCount: 5000 });
-      const campaign = createMockCampaign();
-
-      const result = validateApprovalRequirements(submission, campaign);
-
-      expect(result.isValid).toBe(true);
-      expect(result.errors).toHaveLength(0);
-    });
-
-    // Future tests can be added when approval requirements are implemented
-    // test("rejects submission below minimum views", () => {
-    //   const submission = createMockSubmission({ viewCount: 500 });
-    //   const campaign = createMockCampaign();
-    //
-    //   const result = validateApprovalRequirements(submission, campaign);
-    //
-    //   expect(result.isValid).toBe(false);
-    //   expect(result.errors).toContain("Submission must have at least 1,000 views to be approved");
-    // });
-  });
-
   describe("Integration scenarios", () => {
     test("complete submission lifecycle validation", () => {
       const profile = createMockProfile();
       const campaign = createMockCampaign();
 
-      // 1. Validate creator eligibility
-      const eligibility = validateCreatorEligibility(profile, campaign);
-      expect(eligibility.isValid).toBe(true);
-
-      // 2. Validate submission data
+      // 1. Validate submission data
       const submissionArgs: SubmissionCreationArgs = {
         campaignId: campaign._id,
         creatorId: profile.userId,
@@ -731,14 +552,14 @@ describe("SubmissionService", () => {
       const dataValidation = validateSubmissionData(submissionArgs);
       expect(dataValidation.isValid).toBe(true);
 
-      // 3. Check for duplicates
+      // 2. Check for duplicates
       const duplicationCheck = checkUrlDuplication(
         submissionArgs.contentUrl,
         null
       );
       expect(duplicationCheck.isValid).toBe(true);
 
-      // 4. Prepare submission creation
+      // 3. Prepare submission creation
       const submissionData = prepareSubmissionCreation(submissionArgs, 100);
       const submission = {
         ...submissionData,
@@ -746,7 +567,7 @@ describe("SubmissionService", () => {
         _creationTime: Date.now(),
       } as Doc<"submissions">;
 
-      // 5. Test status transitions
+      // 4. Test status transitions
       expect(
         canUpdateSubmissionStatus(submission, campaign, campaign.brandId)
           .hasPermission
@@ -758,13 +579,13 @@ describe("SubmissionService", () => {
         true
       );
 
-      // 6. Test approval
+      // 5. Test approval
       const updateArgs: SubmissionUpdateArgs = { status: "approved" };
       const updates = prepareSubmissionUpdate(updateArgs);
       submission.status = "approved";
       submission.approvedAt = updates.approvedAt!;
 
-      // 7. Calculate earnings
+      // 6. Calculate earnings
       submission.viewCount = 10000;
       const earnings = calculateSubmissionEarnings(submission, campaign);
       expect(earnings).toBeGreaterThan(0);

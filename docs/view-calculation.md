@@ -186,8 +186,7 @@ submissions: {
   // ... existing fields
   viewCount: number,                // Current view count
   lastViewUpdate: number,           // Last time views were updated
-  initialViewCount?: number,        // Views when first submitted
-  thresholdMetAt?: number,          // When 1K views reached
+  initialViewCount?: number,        // Views when first submitted        // When 1K views reached
   earnings?: number,                // Total earnings in cents
   paidOutAmount?: number,           // Amount already paid out           // Rate limiting timestamp
   viewHistory?: Array<{             // Smart monitoring history
@@ -277,21 +276,7 @@ await Promise.all([
 - Used for growth rate calculation
 - Automatic cleanup of old data
 
-## Threshold Management
-
-### 1,000 View Milestone
-
-**Automatic Threshold Detection**:
-
-```typescript
-// Trigger when crossing 1K views
-if (previousViews < 1000 && newViewCount >= 1000) {
-  await markThresholdMet(submissionId);
-  // Triggers brand notification
-  // Updates UI indicators
-  // Logs milestone achievement
-}
-```
+````
 
 **Threshold Benefits**:
 
@@ -348,7 +333,7 @@ try {
     return 0;
   }
 }
-```
+````
 
 ### Data Consistency
 

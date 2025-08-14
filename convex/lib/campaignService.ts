@@ -41,7 +41,10 @@ export interface CampaignStats {
 /**
  * Validate campaign creation parameters
  */
-export function validateCampaignCreation(args: CampaignCreationArgs): { isValid: boolean; errors: string[] } {
+export function validateCampaignCreation(args: CampaignCreationArgs): {
+  isValid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   // Title validation
@@ -64,7 +67,16 @@ export function validateCampaignCreation(args: CampaignCreationArgs): { isValid:
   }
 
   // Category validation
-  const validCategories = ["lifestyle", "tech", "beauty", "fitness", "food", "travel", "fashion", "gaming"];
+  const validCategories = [
+    "lifestyle",
+    "tech",
+    "beauty",
+    "fitness",
+    "food",
+    "travel",
+    "fashion",
+    "gaming",
+  ];
   if (!validCategories.includes(args.category)) {
     errors.push("Invalid campaign category");
   }
@@ -84,7 +96,7 @@ export function validateCampaignCreation(args: CampaignCreationArgs): { isValid:
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -122,7 +134,16 @@ export function validateCampaignUpdate(
 
   // Category validation (if provided)
   if (args.category !== undefined) {
-    const validCategories = ["lifestyle", "tech", "beauty", "fitness", "food", "travel", "fashion", "gaming"];
+    const validCategories = [
+      "lifestyle",
+      "tech",
+      "beauty",
+      "fitness",
+      "food",
+      "travel",
+      "fashion",
+      "gaming",
+    ];
     if (!validCategories.includes(args.category)) {
       errors.push("Invalid campaign category");
     }
@@ -135,7 +156,10 @@ export function validateCampaignUpdate(
 
   // Status transition validation
   if (args.status !== undefined) {
-    const transition = validateStatusTransition(currentCampaign.status, args.status);
+    const transition = validateStatusTransition(
+      currentCampaign.status,
+      args.status
+    );
     if (!transition.isValid) {
       errors.push(transition.error || "Invalid status transition");
     }
@@ -143,7 +167,7 @@ export function validateCampaignUpdate(
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -162,11 +186,11 @@ export function validateStatusTransition(
   };
 
   const allowedTransitions = validTransitions[fromStatus];
-  
+
   if (!allowedTransitions.includes(toStatus)) {
     return {
       isValid: false,
-      error: `Invalid status transition from ${fromStatus} to ${toStatus}`
+      error: `Invalid status transition from ${fromStatus} to ${toStatus}`,
     };
   }
 
@@ -176,25 +200,28 @@ export function validateStatusTransition(
 /**
  * Check if campaign can accept new submissions
  */
-export function canAcceptSubmissions(campaign: Doc<"campaigns">): { canAccept: boolean; reason?: string } {
-  if (campaign.status !== "active") {
+export function canAcceptSubmissions(campaign: Doc<"campaigns"> | null): {
+  canAccept: boolean;
+  reason?: string;
+} {
+  if (campaign?.status !== "active") {
     return {
       canAccept: false,
-      reason: `Campaign is ${campaign.status}`
+      reason: `Campaign is ${campaign?.status}`,
     };
   }
 
-  if (campaign.remainingBudget <= 0) {
+  if (campaign?.remainingBudget <= 0) {
     return {
       canAccept: false,
-      reason: "Campaign budget exhausted"
+      reason: "Campaign budget exhausted",
     };
   }
 
-  if (campaign.endDate && campaign.endDate <= Date.now()) {
+  if (campaign?.endDate && campaign?.endDate <= Date.now()) {
     return {
       canAccept: false,
-      reason: "Campaign has ended"
+      reason: "Campaign has ended",
     };
   }
 
@@ -211,21 +238,21 @@ export function canDeleteCampaign(
   if (hasSubmissions) {
     return {
       canDelete: false,
-      reason: "Campaign has existing submissions"
+      reason: "Campaign has existing submissions",
     };
   }
 
   if (campaign.status === "active") {
     return {
       canDelete: false,
-      reason: "Cannot delete active campaign"
+      reason: "Cannot delete active campaign",
     };
   }
 
   if (campaign.status === "completed") {
     return {
       canDelete: false,
-      reason: "Cannot delete completed campaign"
+      reason: "Cannot delete completed campaign",
     };
   }
 
@@ -235,17 +262,16 @@ export function canDeleteCampaign(
 /**
  * Calculate campaign statistics
  */
-export function calculateCampaignStats(campaigns: Doc<"campaigns">[]): CampaignStats {
+export function calculateCampaignStats(
+  campaigns: Doc<"campaigns">[]
+): CampaignStats {
   const totalSpent = campaigns.reduce(
     (sum, c) => sum + (c.totalBudget - c.remainingBudget),
     0
   );
-  
-  const totalViews = campaigns.reduce(
-    (sum, c) => sum + (c.totalViews || 0),
-    0
-  );
-  
+
+  const totalViews = campaigns.reduce((sum, c) => sum + (c.totalViews || 0), 0);
+
   const totalSubmissions = campaigns.reduce(
     (sum, c) => sum + (c.totalSubmissions || 0),
     0
@@ -291,16 +317,21 @@ export function prepareCampaignCreation(
 /**
  * Prepare campaign data for updates
  */
-export function prepareCampaignUpdate(args: CampaignUpdateArgs): Partial<Doc<"campaigns">> {
+export function prepareCampaignUpdate(
+  args: CampaignUpdateArgs
+): Partial<Doc<"campaigns">> {
   const updates: Partial<Doc<"campaigns">> = {};
 
   if (args.title !== undefined) updates.title = args.title.trim();
-  if (args.description !== undefined) updates.description = args.description.trim();
+  if (args.description !== undefined)
+    updates.description = args.description.trim();
   if (args.category !== undefined) updates.category = args.category;
   if (args.endDate !== undefined) updates.endDate = args.endDate;
   if (args.assetLinks !== undefined) updates.assetLinks = args.assetLinks;
   if (args.requirements !== undefined) {
-    updates.requirements = args.requirements.filter((req) => req.trim().length > 0);
+    updates.requirements = args.requirements.filter(
+      (req) => req.trim().length > 0
+    );
   }
   if (args.status !== undefined) updates.status = args.status;
 
@@ -317,9 +348,11 @@ export function isCampaignExpired(campaign: Doc<"campaigns">): boolean {
 /**
  * Get campaigns that should be automatically paused due to expiration
  */
-export function findExpiredActiveCampaigns(campaigns: Doc<"campaigns">[]): Doc<"campaigns">[] {
-  return campaigns.filter(campaign => 
-    campaign.status === "active" && isCampaignExpired(campaign)
+export function findExpiredActiveCampaigns(
+  campaigns: Doc<"campaigns">[]
+): Doc<"campaigns">[] {
+  return campaigns.filter(
+    (campaign) => campaign.status === "active" && isCampaignExpired(campaign)
   );
 }
 
@@ -328,8 +361,10 @@ export function findExpiredActiveCampaigns(campaigns: Doc<"campaigns">[]): Doc<"
  */
 export function groupCampaignsByStatus(campaigns: Doc<"campaigns">[]) {
   return {
-    active: campaigns.filter(c => c.status === "active" || c.status === "paused"),
-    draft: campaigns.filter(c => c.status === "draft"),
-    completed: campaigns.filter(c => c.status === "completed"),
+    active: campaigns.filter(
+      (c) => c.status === "active" || c.status === "paused"
+    ),
+    draft: campaigns.filter((c) => c.status === "draft"),
+    completed: campaigns.filter((c) => c.status === "completed"),
   };
 }

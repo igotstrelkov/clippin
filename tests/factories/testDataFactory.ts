@@ -324,11 +324,6 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
     return this;
   }
 
-  withThresholdMet(timestamp: number): SubmissionBuilder {
-    this.data.thresholdMetAt = timestamp;
-    return this;
-  }
-
   withLastViewUpdate(timestamp: number): SubmissionBuilder {
     this.data.lastViewUpdate = timestamp;
     return this;
@@ -370,9 +365,7 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
   }
 
   withHighViews(viewCount: number = 50000): SubmissionBuilder {
-    return this.withViewCount(viewCount).withThresholdMet(
-      Date.now() - 86400000
-    );
+    return this.withViewCount(viewCount);
   }
 
   asHotTier(): SubmissionBuilder {

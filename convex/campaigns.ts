@@ -4,6 +4,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import {
   calculateCampaignStats,
   canDeleteCampaign,
+  findExpiredActiveCampaigns,
   groupCampaignsByStatus,
   prepareCampaignCreation,
   prepareCampaignUpdate,
@@ -343,5 +344,25 @@ export const getMarketplaceStats = query({
         activeCampaignsCount: campaigns.length,
       },
     };
+  },
+});
+
+export const autoCompleteExpiredCampaigns = internalMutation({
+  handler: async (ctx) => {
+    // Get all active campaigns
+    const activeCampaigns = await ctx.db
+      .query("campaigns")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    // Find expired campaigns using service layer utility
+    const expiredCampaigns = findExpiredActiveCampaigns(activeCampaigns);
+
+    // Auto-complete each expired campaign
+    for (const campaign of expiredCampaigns) {
+      await ctx.db.patch(campaign._id, {
+        status: "completed" as const,
+      });
+    }
   },
 });

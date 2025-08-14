@@ -296,7 +296,7 @@ export const updateTierSubmissions = internalAction({
     let updatedCount = 0;
     let errorCount = 0;
     const totalSubmissions = await ctx.runQuery(
-      internal.viewTrackingHelpers.getActiveSubmissions
+      internal.submissions.getActiveSubmissions
     );
 
     // Calculate API calls saved by smart monitoring vs checking all submissions

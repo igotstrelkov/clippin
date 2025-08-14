@@ -1,23 +1,25 @@
 import { describe, expect, test } from "vitest";
+import { Doc, Id } from "../convex/_generated/dataModel";
 import {
+  calculateCampaignStats,
+  canAcceptSubmissions,
+  canDeleteCampaign,
+  findExpiredActiveCampaigns,
+  groupCampaignsByStatus,
+  isCampaignExpired,
+  prepareCampaignCreation,
+  prepareCampaignUpdate,
   validateCampaignCreation,
   validateCampaignUpdate,
   validateStatusTransition,
-  canAcceptSubmissions,
-  canDeleteCampaign,
-  calculateCampaignStats,
-  prepareCampaignCreation,
-  prepareCampaignUpdate,
-  isCampaignExpired,
-  findExpiredActiveCampaigns,
-  groupCampaignsByStatus,
   type CampaignCreationArgs,
   type CampaignUpdateArgs,
 } from "../convex/lib/campaignService";
-import { Doc, Id } from "../convex/_generated/dataModel";
 
 // Helper to create mock campaign
-function createMockCampaign(overrides: Partial<Doc<"campaigns">> = {}): Doc<"campaigns"> {
+function createMockCampaign(
+  overrides: Partial<Doc<"campaigns">> = {}
+): Doc<"campaigns"> {
   return {
     _id: "campaign123" as Id<"campaigns">,
     _creationTime: Date.now(),
@@ -74,7 +76,9 @@ describe("CampaignService", () => {
         title: "Hi",
       });
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Campaign title must be at least 3 characters");
+      expect(result.errors).toContain(
+        "Campaign title must be at least 3 characters"
+      );
     });
 
     test("rejects title too long", () => {
@@ -83,7 +87,9 @@ describe("CampaignService", () => {
         title: "A".repeat(101),
       });
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Campaign title must be less than 100 characters");
+      expect(result.errors).toContain(
+        "Campaign title must be less than 100 characters"
+      );
     });
 
     test("rejects empty description", () => {
@@ -101,7 +107,9 @@ describe("CampaignService", () => {
         description: "Short",
       });
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Campaign description must be at least 10 characters");
+      expect(result.errors).toContain(
+        "Campaign description must be at least 10 characters"
+      );
     });
 
     test("rejects invalid category", () => {
@@ -119,7 +127,9 @@ describe("CampaignService", () => {
         endDate: Date.now() - 1000, // Past date
       });
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Campaign end date must be in the future");
+      expect(result.errors).toContain(
+        "Campaign end date must be in the future"
+      );
     });
 
     test("accepts valid end date", () => {
@@ -154,13 +164,13 @@ describe("CampaignService", () => {
 
   describe("validateCampaignUpdate", () => {
     const mockCampaign = createMockCampaign();
-    
+
     test("validates correct update", () => {
       const updateArgs: CampaignUpdateArgs = {
         title: "Updated Campaign Title",
         description: "Updated campaign description",
       };
-      
+
       const result = validateCampaignUpdate(mockCampaign, updateArgs);
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -179,9 +189,13 @@ describe("CampaignService", () => {
 
     test("rejects invalid status transition", () => {
       const completedCampaign = createMockCampaign({ status: "completed" });
-      const result = validateCampaignUpdate(completedCampaign, { status: "active" });
+      const result = validateCampaignUpdate(completedCampaign, {
+        status: "active",
+      });
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Invalid status transition from completed to active");
+      expect(result.errors).toContain(
+        "Invalid status transition from completed to active"
+      );
     });
 
     test("allows undefined values", () => {
@@ -194,27 +208,40 @@ describe("CampaignService", () => {
     test("allows valid transitions", () => {
       expect(validateStatusTransition("draft", "active").isValid).toBe(true);
       expect(validateStatusTransition("active", "paused").isValid).toBe(true);
-      expect(validateStatusTransition("active", "completed").isValid).toBe(true);
+      expect(validateStatusTransition("active", "completed").isValid).toBe(
+        true
+      );
       expect(validateStatusTransition("paused", "active").isValid).toBe(true);
-      expect(validateStatusTransition("paused", "completed").isValid).toBe(true);
+      expect(validateStatusTransition("paused", "completed").isValid).toBe(
+        true
+      );
     });
 
     test("rejects invalid transitions", () => {
       expect(validateStatusTransition("draft", "paused").isValid).toBe(false);
-      expect(validateStatusTransition("completed", "active").isValid).toBe(false);
-      expect(validateStatusTransition("completed", "paused").isValid).toBe(false);
+      expect(validateStatusTransition("completed", "active").isValid).toBe(
+        false
+      );
+      expect(validateStatusTransition("completed", "paused").isValid).toBe(
+        false
+      );
       expect(validateStatusTransition("active", "draft").isValid).toBe(false);
     });
 
     test("provides error messages for invalid transitions", () => {
       const result = validateStatusTransition("completed", "active");
-      expect(result.error).toBe("Invalid status transition from completed to active");
+      expect(result.error).toBe(
+        "Invalid status transition from completed to active"
+      );
     });
   });
 
   describe("canAcceptSubmissions", () => {
     test("allows submissions for active campaign with budget", () => {
-      const campaign = createMockCampaign({ status: "active", remainingBudget: 5000 });
+      const campaign = createMockCampaign({
+        status: "active",
+        remainingBudget: 5000,
+      });
       const result = canAcceptSubmissions(campaign);
       expect(result.canAccept).toBe(true);
     });
@@ -234,7 +261,10 @@ describe("CampaignService", () => {
     });
 
     test("rejects submissions when budget exhausted", () => {
-      const campaign = createMockCampaign({ status: "active", remainingBudget: 0 });
+      const campaign = createMockCampaign({
+        status: "active",
+        remainingBudget: 0,
+      });
       const result = canAcceptSubmissions(campaign);
       expect(result.canAccept).toBe(false);
       expect(result.reason).toBe("Campaign budget exhausted");
@@ -367,7 +397,7 @@ describe("CampaignService", () => {
       };
 
       const result = prepareCampaignCreation(brandId, args);
-      
+
       expect(result.brandId).toBe(brandId);
       expect(result.title).toBe("Test Campaign"); // Trimmed
       expect(result.description).toBe("Test description"); // Trimmed
@@ -393,7 +423,7 @@ describe("CampaignService", () => {
       };
 
       const result = prepareCampaignUpdate(args);
-      
+
       expect(result.title).toBe("Updated Title"); // Trimmed
       expect(result.description).toBe("Updated description"); // Trimmed
       expect(result.requirements).toEqual(["New req", "Another req"]); // Filtered
@@ -426,7 +456,10 @@ describe("CampaignService", () => {
   describe("findExpiredActiveCampaigns", () => {
     test("finds expired active campaigns", () => {
       const campaigns = [
-        createMockCampaign({ status: "active", endDate: Date.now() + 86400000 }), // Future
+        createMockCampaign({
+          status: "active",
+          endDate: Date.now() + 86400000,
+        }), // Future
         createMockCampaign({ status: "active", endDate: Date.now() - 1000 }), // Expired
         createMockCampaign({ status: "paused", endDate: Date.now() - 1000 }), // Expired but not active
         createMockCampaign({ status: "active", endDate: undefined }), // No end date
@@ -476,23 +509,35 @@ describe("CampaignService", () => {
       // Prepare campaign data
       const brandId = "brand123" as Id<"users">;
       const campaignData = prepareCampaignCreation(brandId, creationArgs);
-      const campaign = { ...campaignData, _id: "campaign123" as Id<"campaigns">, _creationTime: Date.now() } as Doc<"campaigns">;
+      const campaign = {
+        ...campaignData,
+        _id: "campaign123" as Id<"campaigns">,
+        _creationTime: Date.now(),
+      } as Doc<"campaigns">;
 
       // Test transitions: draft -> active -> paused -> active -> completed
-      expect(validateStatusTransition(campaign.status, "active").isValid).toBe(true);
+      expect(validateStatusTransition(campaign.status, "active").isValid).toBe(
+        true
+      );
       campaign.status = "active";
 
       expect(canAcceptSubmissions(campaign).canAccept).toBe(true);
 
-      expect(validateStatusTransition(campaign.status, "paused").isValid).toBe(true);
+      expect(validateStatusTransition(campaign.status, "paused").isValid).toBe(
+        true
+      );
       campaign.status = "paused";
 
       expect(canAcceptSubmissions(campaign).canAccept).toBe(false);
 
-      expect(validateStatusTransition(campaign.status, "active").isValid).toBe(true);
+      expect(validateStatusTransition(campaign.status, "active").isValid).toBe(
+        true
+      );
       campaign.status = "active";
 
-      expect(validateStatusTransition(campaign.status, "completed").isValid).toBe(true);
+      expect(
+        validateStatusTransition(campaign.status, "completed").isValid
+      ).toBe(true);
       campaign.status = "completed";
 
       expect(canAcceptSubmissions(campaign).canAccept).toBe(false);
@@ -513,7 +558,9 @@ describe("CampaignService", () => {
       // Exhaust budget
       campaign.remainingBudget = 0;
       expect(canAcceptSubmissions(campaign).canAccept).toBe(false);
-      expect(canAcceptSubmissions(campaign).reason).toBe("Campaign budget exhausted");
+      expect(canAcceptSubmissions(campaign).reason).toBe(
+        "Campaign budget exhausted"
+      );
     });
   });
 });

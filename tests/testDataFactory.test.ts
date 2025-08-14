@@ -188,7 +188,6 @@ describe("Test Data Factory", () => {
         .build();
 
       expect(submission.viewCount).toBe(75000);
-      expect(submission.thresholdMetAt).toBeDefined();
     });
 
     test("creates hot tier submission", () => {

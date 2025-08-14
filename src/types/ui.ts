@@ -17,7 +17,6 @@ export type UISubmission = Doc<"submissions"> & {
   creatorName: string;
   campaignTitle: string;
   tiktokUsername?: string;
-  hasReachedThreshold?: boolean;
   // Some queries may return `submittedAt`; otherwise use `_creationTime`
   submittedAt?: number;
 };
@@ -31,5 +30,4 @@ export type CreatorUISubmission = UISubmission & {
 export type CreatorQuerySubmission = Doc<"submissions"> & {
   campaignTitle?: string;
   brandName?: string;
-  hasReachedThreshold?: boolean;
 };

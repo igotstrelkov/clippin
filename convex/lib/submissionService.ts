@@ -60,9 +60,8 @@ export function isValidContentUrl(url: string): boolean {
 /**
  * Validate if creator can submit to campaign
  */
-export function validateCreatorEligibility(
-  profile: Doc<"profiles"> | null,
-  campaign: Doc<"campaigns"> | null
+export function validateEligibility(
+  profile: Doc<"profiles"> | null
 ): ValidationResult {
   const errors: string[] = [];
 
@@ -75,27 +74,8 @@ export function validateCreatorEligibility(
     errors.push("Only creators can submit to campaigns");
   }
 
-  if (!profile.tiktokVerified) {
-    errors.push("Please verify your TikTok account first");
-  }
-
-  if (!campaign) {
-    errors.push("Campaign not found");
-    return { isValid: false, errors };
-  }
-
-  if (campaign.status !== "active") {
-    errors.push("Campaign is not active");
-  }
-
-  // Check if campaign has remaining budget
-  if (campaign.remainingBudget <= 0) {
-    errors.push("Campaign budget has been exhausted");
-  }
-
-  // Check if campaign has expired
-  if (campaign.endDate && campaign.endDate <= Date.now()) {
-    errors.push("Campaign has ended");
+  if (!profile.tiktokVerified || !profile.instagramVerified) {
+    errors.push("Please verify your TikTok or Instagram account first");
   }
 
   return {
@@ -209,16 +189,6 @@ export function isSubmissionEligibleForAutoApproval(
 }
 
 /**
- * Check if submission has reached view threshold
- */
-export function hasReachedViewThreshold(
-  submission: Doc<"submissions">,
-  threshold: number = 1000
-): boolean {
-  return (submission.viewCount || 0) >= threshold;
-}
-
-/**
  * Calculate submission earnings based on current view count
  */
 export function calculateSubmissionEarnings(
@@ -293,21 +263,6 @@ export function prepareSubmissionUpdate(
 }
 
 /**
- * Determine if threshold should be marked as met
- */
-export function shouldMarkThresholdMet(
-  submission: Doc<"submissions">,
-  newViewCount: number,
-  threshold: number = 1000
-): boolean {
-  return (
-    !submission.thresholdMetAt && // Not already marked
-    newViewCount >= threshold && // Has reached threshold
-    (submission.viewCount || 0) < threshold // Previous count was below threshold
-  );
-}
-
-/**
  * Calculate stats for a collection of submissions
  */
 export function calculateSubmissionStats(submissions: Doc<"submissions">[]): {
@@ -379,21 +334,21 @@ export function findExpiredPendingSubmissions(
 /**
  * Validate minimum approval requirements (if any future requirements are added)
  */
-export function validateApprovalRequirements(
-  submission: Doc<"submissions">,
-  _campaign: Doc<"campaigns">
-): ValidationResult {
-  const errors: string[] = [];
+// export function validateApprovalRequirements(
+//   submission: Doc<"submissions">,
+//   _campaign: Doc<"campaigns">
+// ): ValidationResult {
+//   const errors: string[] = [];
 
-  // Future: Could add minimum view count requirements
-  // if ((submission.viewCount || 0) < 1000) {
-  //   errors.push("Submission must have at least 1,000 views to be approved");
-  // }
+//   // Future: Could add minimum view count requirements
+//   // if ((submission.viewCount || 0) < 1000) {
+//   //   errors.push("Submission must have at least 1,000 views to be approved");
+//   // }
 
-  // Future: Could add other approval criteria
+//   // Future: Could add other approval criteria
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-}
+//   return {
+//     isValid: errors.length === 0,
+//     errors,
+//   };
+// }

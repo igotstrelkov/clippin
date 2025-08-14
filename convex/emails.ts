@@ -313,10 +313,7 @@ export const sendSubmissionNotification = internalAction({
                 <a href="${args.contentUrl}" style="color: #a855f7; word-break: break-all;">${args.contentUrl}</a>
               </div>
             </div>
-            
-            <p style="font-size: 16px; line-height: 1.6;">
-              Review the submission and approve it once it meets your requirements and reaches the minimum view threshold.
-            </p>
+          
             
             <div style="text-align: center; margin: 30px 0;">
               <a href="https://clippin.app/dashboard" style="background-color: #a855f7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">

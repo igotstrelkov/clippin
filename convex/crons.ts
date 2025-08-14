@@ -61,4 +61,12 @@ crons.interval(
   {}
 );
 
+// Auto-complete campaigns that have passed their end date
+crons.interval(
+  "auto complete expired campaigns",
+  { hours: 24 }, // Check hourly for expired campaigns
+  internal.campaigns.autoCompleteExpiredCampaigns,
+  {}
+);
+
 export default crons;

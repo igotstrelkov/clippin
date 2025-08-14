@@ -4,24 +4,7 @@ import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { calculateEarnings, shouldCompleteCampaign } from "./lib/earnings";
-import { shouldMarkThresholdMet } from "./lib/submissionService";
 import { logger } from "./logger";
-
-// Get all active submissions that need view tracking
-export const getActiveSubmissions = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("submissions")
-      .filter((q) =>
-        q.or(
-          q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "approved")
-        )
-      )
-      .collect();
-  },
-});
 
 // Update submission view count and log tracking entry
 
@@ -32,6 +15,16 @@ async function processEarningsUpdate(
   campaign: Doc<"campaigns">,
   newViewCount: number
 ) {
+  // Only process earnings for approved submissions
+  if (submission.status !== "approved") {
+    return null;
+  }
+
+  // Validate campaign is still active and has budget
+  if (campaign.status !== "active" || campaign.remainingBudget <= 0) {
+    return null;
+  }
+
   const newEarnings = calculateEarnings(
     newViewCount,
     campaign.cpmRate,
@@ -41,16 +34,41 @@ async function processEarningsUpdate(
   const currentEarnings = submission.earnings || 0;
   const earningsDelta = newEarnings - currentEarnings;
 
-  // Only proceed if earnings actually changed
-  if (earningsDelta === 0) {
+  // Only proceed if earnings actually increased
+  if (earningsDelta <= 0) {
     return null;
   }
 
+  // Validate campaign has sufficient budget for the earnings increase
+  if (earningsDelta > campaign.remainingBudget) {
+    logger.warn(
+      "Earnings delta exceeds remaining budget, capping to available budget",
+      {
+        submissionId: submission._id,
+        campaignId: campaign._id,
+        amount: earningsDelta,
+        metadata: {
+          remainingBudget: campaign.remainingBudget,
+        },
+      }
+    );
+
+    // Cap earnings to available budget
+    const cappedEarningsDelta = campaign.remainingBudget;
+    const cappedNewEarnings = currentEarnings + cappedEarningsDelta;
+
+    return {
+      submissionUpdates: { earnings: cappedNewEarnings },
+      campaignUpdates: {
+        remainingBudget: 0,
+        status: "completed" as const,
+      },
+      earningsDelta: cappedEarningsDelta,
+    };
+  }
+
   // Calculate new campaign budget
-  const newRemainingBudget = Math.max(
-    0,
-    campaign.remainingBudget - earningsDelta
-  );
+  const newRemainingBudget = campaign.remainingBudget - earningsDelta;
 
   // Prepare updates
   const submissionUpdates = { earnings: newEarnings };
@@ -66,21 +84,11 @@ async function processEarningsUpdate(
     campaignUpdates.status = "completed";
   }
 
-  // Update creator's total earnings in their profile
-  const creatorProfile = await ctx.db
-    .query("profiles")
-    .withIndex("by_user_id", (q: any) => q.eq("userId", submission.creatorId))
-    .unique();
-
-  if (creatorProfile) {
-    const newTotalEarnings =
-      (creatorProfile.totalEarnings || 0) + earningsDelta;
-    await ctx.db.patch(creatorProfile._id, {
-      totalEarnings: Math.max(0, newTotalEarnings), // Ensure non-negative
-    });
-  }
-
-  return { submissionUpdates, campaignUpdates };
+  return {
+    submissionUpdates,
+    campaignUpdates,
+    earningsDelta,
+  };
 }
 
 export const updateSubmissionViews = internalMutation({
@@ -90,6 +98,18 @@ export const updateSubmissionViews = internalMutation({
     previousViews: v.number(),
   },
   handler: async (ctx, args) => {
+    // Input validation
+    if (args.viewCount < 0) {
+      throw new Error("View count cannot be negative");
+    }
+
+    if (args.viewCount < args.previousViews) {
+      logger.warn("View count decreased, skipping update", {
+        submissionId: args.submissionId,
+      });
+      return;
+    }
+
     // Fetch required entities
     const submission = await ctx.db.get(args.submissionId);
     if (!submission) {
@@ -101,6 +121,12 @@ export const updateSubmissionViews = internalMutation({
       throw new Error("Campaign not found");
     }
 
+    // Skip update if no actual change
+    const viewDelta = args.viewCount - args.previousViews;
+    if (viewDelta === 0) {
+      return;
+    }
+
     const now = Date.now();
 
     // Prepare submission updates
@@ -110,23 +136,42 @@ export const updateSubmissionViews = internalMutation({
     };
 
     // Prepare campaign updates
-    const viewDelta = args.viewCount - args.previousViews;
     const campaignUpdates: Partial<Doc<"campaigns">> = {
       totalViews: (campaign.totalViews || 0) + viewDelta,
     };
 
     // Handle earnings and budget updates for approved submissions
-    if (args.viewCount !== (submission.viewCount || 0)) {
-      const earningsUpdate = await processEarningsUpdate(
-        ctx,
-        submission,
-        campaign,
-        args.viewCount
-      );
+    // Use consistent previousViews parameter instead of database state
+    const earningsUpdate = await processEarningsUpdate(
+      ctx,
+      submission,
+      campaign,
+      args.viewCount
+    );
 
-      if (earningsUpdate) {
-        Object.assign(submissionUpdates, earningsUpdate.submissionUpdates);
-        Object.assign(campaignUpdates, earningsUpdate.campaignUpdates);
+    if (earningsUpdate) {
+      Object.assign(submissionUpdates, earningsUpdate.submissionUpdates);
+      Object.assign(campaignUpdates, earningsUpdate.campaignUpdates);
+
+      // Update creator's total earnings in their profile
+      if (earningsUpdate.earningsDelta > 0) {
+        const creatorProfile = await ctx.db
+          .query("profiles")
+          .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
+          .unique();
+
+        if (creatorProfile) {
+          const newTotalEarnings =
+            (creatorProfile.totalEarnings || 0) + earningsUpdate.earningsDelta;
+          await ctx.db.patch(creatorProfile._id, {
+            totalEarnings: Math.max(0, newTotalEarnings), // Ensure non-negative
+          });
+        } else {
+          logger.warn("Creator profile not found for earnings update", {
+            submissionId: args.submissionId,
+            creatorId: submission.creatorId,
+          });
+        }
       }
     }
 
@@ -157,39 +202,9 @@ export const updateSubmissionViews = internalMutation({
         });
       });
 
-    // Handle threshold crossing for pending and verifying_owner submissions
-    if (
-      (submission.status === "pending" || submission.status === "verifying_owner") &&
-      shouldMarkThresholdMet(submission, args.viewCount, 1000)
-    ) {
-      await ctx.runMutation(internal.viewTrackingHelpers.markThresholdMet, {
-        submissionId: args.submissionId,
-      });
-    }
-  },
-});
-
-// Mark submission as having reached 1K view threshold
-export const markThresholdMet = internalMutation({
-  args: { submissionId: v.id("submissions") },
-  handler: async (ctx, args) => {
-    const submission = await ctx.db.get(args.submissionId);
-    if (!submission) return;
-
-    // Add a flag to indicate threshold was met (for UI purposes)
-    await ctx.db.patch(args.submissionId, {
-      thresholdMetAt: Date.now(),
+    logger.info("View count updated successfully", {
+      submissionId: args.submissionId,
     });
-
-    // Send notification to brand about threshold being met
-    const campaign = await ctx.db.get(submission.campaignId);
-    if (campaign) {
-      // Could trigger email notification here
-      logger.info("Submission reached 1K views threshold", {
-        submissionId: args.submissionId,
-        campaignId: campaign._id,
-      });
-    }
   },
 });
 
