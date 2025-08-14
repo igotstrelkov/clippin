@@ -41,7 +41,7 @@ export function CampaignDetails() {
   const isMobile = useIsMobile();
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
-  const [tiktokUrl, setTiktokUrl] = useState("");
+  const [contentUrl, setContentUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
 
@@ -52,19 +52,36 @@ export function CampaignDetails() {
   const profile = useQuery(api.profiles.getCurrentProfile);
   const submitToCampaign = useMutation(api.submissions.submitToCampaign);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = tiktokUrl.trim();
-    if (!url) return;
-
+  const detectPlatform = (url: string): "tiktok" | "instagram" | null => {
     const tiktokPatterns = [
       /^https?:\/\/(www\.)?tiktok\.com\/@[-.\w]+\/video\/\d+/,
       /^https?:\/\/vm\.tiktok\.com\/[\w]+/,
       /^https?:\/\/(www\.)?tiktok\.com\/t\/[\w]+/,
     ];
 
-    if (!tiktokPatterns.some((p) => p.test(url))) {
-      toast.error("Please provide a valid TikTok URL");
+    const instagramPatterns = [
+      /^https?:\/\/(www\.)?instagram\.com\/p\/[\w-]+/,
+      /^https?:\/\/(www\.)?instagram\.com\/reel\/[\w-]+/,
+      /^https?:\/\/(www\.)?instagram\.com\/tv\/[\w-]+/,
+    ];
+
+    if (tiktokPatterns.some((p) => p.test(url))) {
+      return "tiktok";
+    }
+    if (instagramPatterns.some((p) => p.test(url))) {
+      return "instagram";
+    }
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const url = contentUrl.trim();
+    if (!url) return;
+
+    const platform = detectPlatform(url);
+    if (!platform) {
+      toast.error("Please provide a valid URL");
       return;
     }
 
@@ -72,7 +89,8 @@ export function CampaignDetails() {
     try {
       const response = await submitToCampaign({
         campaignId: campaignId as Id<"campaigns">,
-        tiktokUrl: url,
+        contentUrl: url,
+        platform,
       });
       if (!response.success) {
         toast.error(response.message);
@@ -267,13 +285,13 @@ export function CampaignDetails() {
                   className="space-y-4"
                 >
                   <div>
-                    <Label htmlFor="tiktokUrl">Clip URL</Label>
+                    <Label htmlFor="contentUrl">Clip URL</Label>
                     <div className="flex gap-2 mt-1">
                       <Input
-                        id="tiktokUrl"
+                        id="contentUrl"
                         type="url"
-                        value={tiktokUrl}
-                        onChange={(e) => setTiktokUrl(e.target.value)}
+                        value={contentUrl}
+                        onChange={(e) => setContentUrl(e.target.value)}
                         placeholder="https://www.tiktok.com/@username/video/..."
                         required
                       />

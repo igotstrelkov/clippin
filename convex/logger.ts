@@ -13,7 +13,7 @@ interface LogContext {
   eventType?: string;
   eventId?: string;
   templateType?: string;
-  tiktokUrl?: string;
+  contentUrl?: string;
   updatedCount?: number;
   errorCount?: number;
   totalProcessed?: number;

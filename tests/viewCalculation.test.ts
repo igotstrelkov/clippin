@@ -118,11 +118,12 @@ describe("View Calculation and Earnings", () => {
         return await ctx.db.insert("submissions", {
           campaignId,
           creatorId: creatorUserId,
-          tiktokUrl: "https://www.tiktok.com/@testuser/video/1234567890",
+          contentUrl: "https://www.tiktok.com/@testuser/video/1234567890",
           status: "approved",
           viewCount: 0,
           earnings: 0,
           submittedAt: Date.now(),
+          platform: "tiktok",
         });
       });
 
@@ -182,11 +183,12 @@ describe("View Calculation and Earnings", () => {
           const submissionId = await ctx.db.insert("submissions", {
             campaignId,
             creatorId: creatorUserId,
-            tiktokUrl: "https://www.tiktok.com/@testuser/video/1234567890",
+            contentUrl: "https://www.tiktok.com/@testuser/video/1234567890",
             status: "approved",
             viewCount: 0,
             earnings: 0,
             submittedAt: Date.now(),
+            platform: "tiktok",
           });
 
           return { campaignId, submissionId, creatorUserId };
@@ -198,7 +200,6 @@ describe("View Calculation and Earnings", () => {
         submissionId,
         viewCount: 10000,
         previousViews: 0,
-        source: "test",
       });
 
       // Check updated earnings
@@ -265,11 +266,12 @@ describe("View Calculation and Earnings", () => {
         const submissionId = await ctx.db.insert("submissions", {
           campaignId,
           creatorId: creatorUserId,
-          tiktokUrl: "https://www.tiktok.com/@testuser/video/1234567890",
+          contentUrl: "https://www.tiktok.com/@testuser/video/1234567890",
           status: "approved",
           viewCount: 0,
           earnings: 0,
           submittedAt: Date.now(),
+          platform: "tiktok",
         });
 
         return { submissionId, campaignId };
@@ -280,7 +282,6 @@ describe("View Calculation and Earnings", () => {
         submissionId,
         viewCount: 100000,
         previousViews: 0,
-        source: "test",
       });
 
       const submission = await t.run(async (ctx) => {
@@ -337,11 +338,12 @@ describe("View Calculation and Earnings", () => {
         const submissionId = await ctx.db.insert("submissions", {
           campaignId,
           creatorId: creatorUserId,
-          tiktokUrl: "https://www.tiktok.com/@testuser/video/1234567890",
+          contentUrl: "https://www.tiktok.com/@testuser/video/1234567890",
           status: "approved",
           viewCount: 0,
           earnings: 0,
           submittedAt: Date.now(),
+          platform: "tiktok",
         });
 
         return { submissionId, campaignId };
@@ -352,7 +354,6 @@ describe("View Calculation and Earnings", () => {
         submissionId,
         viewCount: 10000,
         previousViews: 0,
-        source: "test",
       });
 
       const campaign = await t.run(async (ctx) => {
@@ -410,10 +411,11 @@ describe("View Calculation and Earnings", () => {
         const submissionId = await ctx.db.insert("submissions", {
           campaignId,
           creatorId: creatorUserId,
-          tiktokUrl: "https://www.tiktok.com/@testuser/video/1234567890",
+          contentUrl: "https://www.tiktok.com/@testuser/video/1234567890",
           status: "pending", // Start as pending
           viewCount: 500, // Below threshold
           submittedAt: Date.now(),
+          platform: "tiktok",
         });
 
         return { submissionId };
@@ -424,7 +426,6 @@ describe("View Calculation and Earnings", () => {
         submissionId,
         viewCount: 1500,
         previousViews: 500,
-        source: "test",
       });
 
       const submission = await t.run(async (ctx) => {

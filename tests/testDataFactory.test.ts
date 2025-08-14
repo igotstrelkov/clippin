@@ -1,13 +1,13 @@
-import { describe, expect, test, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 import {
+  CampaignBuilder,
+  PaymentBuilder,
+  ProfileBuilder,
+  ScenarioBuilder,
+  SubmissionBuilder,
   TestDataFactory,
   UserBuilder,
-  ProfileBuilder,
-  CampaignBuilder,
-  SubmissionBuilder,
   ViewTrackingBuilder,
-  PaymentBuilder,
-  ScenarioBuilder,
 } from "./factories/testDataFactory";
 
 describe("Test Data Factory", () => {
@@ -18,7 +18,7 @@ describe("Test Data Factory", () => {
   describe("UserBuilder", () => {
     test("creates user with defaults", () => {
       const user = UserBuilder.create().build();
-      
+
       expect(user._id).toBeDefined();
       expect(user._creationTime).toBeDefined();
       expect(user.email).toMatch(/user\d+@test\.com/);
@@ -30,7 +30,7 @@ describe("Test Data Factory", () => {
         .withEmail("custom@test.com")
         .withName("Custom User")
         .build();
-      
+
       expect(user.email).toBe("custom@test.com");
       expect(user.name).toBe("Custom User");
     });
@@ -43,7 +43,7 @@ describe("Test Data Factory", () => {
         .withUserId(userId)
         .asCreator()
         .build();
-      
+
       expect(profile.userId).toBe(userId);
       expect(profile.userType).toBe("creator");
       expect(profile.creatorName).toBeDefined();
@@ -59,7 +59,7 @@ describe("Test Data Factory", () => {
         .asBrand()
         .withCompanyName("Test Company")
         .build();
-      
+
       expect(profile.userId).toBe(userId);
       expect(profile.userType).toBe("brand");
       expect(profile.companyName).toBe("Test Company");
@@ -75,10 +75,8 @@ describe("Test Data Factory", () => {
   describe("CampaignBuilder", () => {
     test("creates campaign with defaults", () => {
       const brandId = "brand123" as any;
-      const campaign = CampaignBuilder.create()
-        .withBrandId(brandId)
-        .build();
-      
+      const campaign = CampaignBuilder.create().withBrandId(brandId).build();
+
       expect(campaign.brandId).toBe(brandId);
       expect(campaign.title).toMatch(/Test Campaign \d+/);
       expect(campaign.description).toBeDefined();
@@ -100,7 +98,7 @@ describe("Test Data Factory", () => {
         .withBrandId(brandId)
         .asDraft()
         .build();
-      
+
       expect(campaign.status).toBe("draft");
       expect(campaign.paymentStatus).toBe("pending");
     });
@@ -111,7 +109,7 @@ describe("Test Data Factory", () => {
         .withBrandId(brandId)
         .asCompleted()
         .build();
-      
+
       expect(campaign.status).toBe("completed");
       expect(campaign.paymentStatus).toBe("paid");
       expect(campaign.remainingBudget).toBe(0);
@@ -123,7 +121,7 @@ describe("Test Data Factory", () => {
         .withBrandId(brandId)
         .asExpired()
         .build();
-      
+
       expect(campaign.endDate).toBeLessThan(Date.now());
     });
 
@@ -142,10 +140,12 @@ describe("Test Data Factory", () => {
         .withCampaignId(campaignId)
         .withCreatorId(creatorId)
         .build();
-      
+
       expect(submission.campaignId).toBe(campaignId);
       expect(submission.creatorId).toBe(creatorId);
-      expect(submission.tiktokUrl).toMatch(/https:\/\/www\.tiktok\.com\/@testuser\/video\/\d+/);
+      expect(submission.contentUrl).toMatch(
+        /https:\/\/www\.tiktok\.com\/@testuser\/video\/\d+/
+      );
       expect(submission.status).toBe("pending");
       expect(submission.viewCount).toBe(0);
       expect(submission.initialViewCount).toBe(0);
@@ -161,7 +161,7 @@ describe("Test Data Factory", () => {
         .withCreatorId(creatorId)
         .asApproved()
         .build();
-      
+
       expect(submission.status).toBe("approved");
       expect(submission.approvedAt).toBeDefined();
     });
@@ -174,7 +174,7 @@ describe("Test Data Factory", () => {
         .withCreatorId(creatorId)
         .asRejected("Custom rejection reason")
         .build();
-      
+
       expect(submission.status).toBe("rejected");
       expect(submission.rejectionReason).toBe("Custom rejection reason");
     });
@@ -187,7 +187,7 @@ describe("Test Data Factory", () => {
         .withCreatorId(creatorId)
         .withHighViews(75000)
         .build();
-      
+
       expect(submission.viewCount).toBe(75000);
       expect(submission.thresholdMetAt).toBeDefined();
     });
@@ -200,7 +200,7 @@ describe("Test Data Factory", () => {
         .withCreatorId(creatorId)
         .asHotTier()
         .build();
-      
+
       expect(submission.monitoringTier).toBe("hot");
       expect(submission.growthRate).toBe(1000);
       expect(submission.lastTierUpdate).toBeDefined();
@@ -208,13 +208,17 @@ describe("Test Data Factory", () => {
 
     test("throws error without campaignId", () => {
       expect(() => {
-        SubmissionBuilder.create().withCreatorId("creator123" as any).build();
+        SubmissionBuilder.create()
+          .withCreatorId("creator123" as any)
+          .build();
       }).toThrow("Submission must have a campaignId");
     });
 
     test("throws error without creatorId", () => {
       expect(() => {
-        SubmissionBuilder.create().withCampaignId("campaign123" as any).build();
+        SubmissionBuilder.create()
+          .withCampaignId("campaign123" as any)
+          .build();
       }).toThrow("Submission must have a creatorId");
     });
   });
@@ -225,11 +229,10 @@ describe("Test Data Factory", () => {
       const viewTracking = ViewTrackingBuilder.create()
         .withSubmissionId(submissionId)
         .build();
-      
+
       expect(viewTracking.submissionId).toBe(submissionId);
       expect(viewTracking.viewCount).toBe(0);
       expect(viewTracking.timestamp).toBeDefined();
-      expect(viewTracking.source).toBe("test");
     });
 
     test("creates view tracking with custom data", () => {
@@ -239,13 +242,13 @@ describe("Test Data Factory", () => {
         .withSubmissionId(submissionId)
         .withViewCount(15000)
         .withTimestamp(timestamp)
-        .withSource("tiktok_api")
+
         .withMetadata({ additionalInfo: "test" })
         .build();
-      
+
       expect(viewTracking.viewCount).toBe(15000);
       expect(viewTracking.timestamp).toBe(timestamp);
-      expect(viewTracking.source).toBe("tiktok_api");
+
       expect(viewTracking.metadata).toEqual({ additionalInfo: "test" });
     });
 
@@ -259,10 +262,8 @@ describe("Test Data Factory", () => {
   describe("PaymentBuilder", () => {
     test("creates payment with defaults", () => {
       const userId = "user123" as any;
-      const payment = PaymentBuilder.create()
-        .withUserId(userId)
-        .build();
-      
+      const payment = PaymentBuilder.create().withUserId(userId).build();
+
       expect(payment.userId).toBe(userId);
       expect(payment.type).toBe("creator_payout");
       expect(payment.amount).toBe(1000);
@@ -280,7 +281,7 @@ describe("Test Data Factory", () => {
         .withAmount(50000)
         .withStripePaymentIntentId("pi_test123")
         .build();
-      
+
       expect(payment.type).toBe("campaign_payment");
       expect(payment.status).toBe("completed");
       expect(payment.campaignId).toBe(campaignId);
@@ -302,7 +303,7 @@ describe("Test Data Factory", () => {
           stripeFee: 100,
         })
         .build();
-      
+
       expect(payment.type).toBe("creator_payout");
       expect(payment.status).toBe("pending");
       expect(payment.amount).toBe(2500);
@@ -327,7 +328,7 @@ describe("Test Data Factory", () => {
         campaignStatus: "active",
         budget: 25000,
       });
-      
+
       expect(scenario.brand.email).toBe("test-brand@example.com");
       expect(scenario.brandProfile.companyName).toBe("Test Brand Inc");
       expect(scenario.brandProfile.userId).toBe(scenario.brand._id);
@@ -339,13 +340,16 @@ describe("Test Data Factory", () => {
 
     test("creates creator with submission scenario", () => {
       const campaignId = "campaign123" as any;
-      const scenario = ScenarioBuilder.create().createCreatorWithSubmission(campaignId, {
-        creatorEmail: "test-creator@example.com",
-        tiktokUsername: "@testcreator",
-        submissionStatus: "approved",
-        viewCount: 15000,
-      });
-      
+      const scenario = ScenarioBuilder.create().createCreatorWithSubmission(
+        campaignId,
+        {
+          creatorEmail: "test-creator@example.com",
+          tiktokUsername: "@testcreator",
+          submissionStatus: "approved",
+          viewCount: 15000,
+        }
+      );
+
       expect(scenario.creator.email).toBe("test-creator@example.com");
       expect(scenario.creatorProfile.tiktokUsername).toBe("@testcreator");
       expect(scenario.creatorProfile.userId).toBe(scenario.creator._id);
@@ -356,38 +360,46 @@ describe("Test Data Factory", () => {
     });
 
     test("creates complete campaign lifecycle scenario", () => {
-      const scenario = ScenarioBuilder.create().createCampaignLifecycleScenario();
-      
+      const scenario =
+        ScenarioBuilder.create().createCampaignLifecycleScenario();
+
       // Check brand and campaign
       expect(scenario.brand.user).toBeDefined();
       expect(scenario.brand.profile).toBeDefined();
       expect(scenario.campaign).toBeDefined();
       expect(scenario.campaign.brandId).toBe(scenario.brand.user._id);
-      
+
       // Check creators and submissions
       expect(scenario.creators).toHaveLength(3);
       expect(scenario.creators[0].submission.status).toBe("approved");
       expect(scenario.creators[1].submission.status).toBe("pending");
       expect(scenario.creators[2].submission.status).toBe("rejected");
-      
+
       // Check all submissions belong to the campaign
-      scenario.creators.forEach(creator => {
+      scenario.creators.forEach((creator) => {
         expect(creator.submission.campaignId).toBe(scenario.campaign._id);
         expect(creator.submission.creatorId).toBe(creator.user._id);
         expect(creator.profile.userId).toBe(creator.user._id);
       });
-      
+
       // Check view tracking
       expect(scenario.viewTracking).toHaveLength(2);
-      expect(scenario.viewTracking[0].submissionId).toBe(scenario.creators[0].submission._id);
-      expect(scenario.viewTracking[1].submissionId).toBe(scenario.creators[0].submission._id);
+      expect(scenario.viewTracking[0].submissionId).toBe(
+        scenario.creators[0].submission._id
+      );
+      expect(scenario.viewTracking[1].submissionId).toBe(
+        scenario.creators[0].submission._id
+      );
     });
   });
 
   describe("TestDataFactory helper functions", () => {
     test("creates brand quickly", () => {
-      const { user, profile } = TestDataFactory.createBrand("brand@test.com", "Quick Brand");
-      
+      const { user, profile } = TestDataFactory.createBrand(
+        "brand@test.com",
+        "Quick Brand"
+      );
+
       expect(user.email).toBe("brand@test.com");
       expect(profile.companyName).toBe("Quick Brand");
       expect(profile.userType).toBe("brand");
@@ -395,8 +407,11 @@ describe("Test Data Factory", () => {
     });
 
     test("creates creator quickly", () => {
-      const { user, profile } = TestDataFactory.createCreator("creator@test.com", "@quickcreator");
-      
+      const { user, profile } = TestDataFactory.createCreator(
+        "creator@test.com",
+        "@quickcreator"
+      );
+
       expect(user.email).toBe("creator@test.com");
       expect(profile.tiktokUsername).toBe("@quickcreator");
       expect(profile.userType).toBe("creator");
@@ -407,7 +422,7 @@ describe("Test Data Factory", () => {
       const user1 = UserBuilder.create().build();
       TestDataFactory.resetIdCounter();
       const user2 = UserBuilder.create().build();
-      
+
       // IDs should start fresh after reset
       expect(user1._id).toMatch(/users_1000/);
       expect(user2._id).toMatch(/users_1000/);
@@ -416,10 +431,11 @@ describe("Test Data Factory", () => {
 
   describe("Realistic data relationships", () => {
     test("maintains referential integrity", () => {
-      const { brand, brandProfile, campaign } = ScenarioBuilder.create().createBrandWithCampaign();
-      const { creator, creatorProfile, submission } = ScenarioBuilder.create()
-        .createCreatorWithSubmission(campaign._id);
-      
+      const { brand, brandProfile, campaign } =
+        ScenarioBuilder.create().createBrandWithCampaign();
+      const { creator, creatorProfile, submission } =
+        ScenarioBuilder.create().createCreatorWithSubmission(campaign._id);
+
       // Verify relationships
       expect(brandProfile.userId).toBe(brand._id);
       expect(campaign.brandId).toBe(brand._id);
@@ -435,7 +451,7 @@ describe("Test Data Factory", () => {
         .withCpmRate(750) // €7.50 CPM
         .withMaxPayout(5000) // €50 max
         .build();
-      
+
       expect(campaign.totalBudget).toBe(50000);
       expect(campaign.remainingBudget).toBe(30000);
       expect(campaign.cpmRate).toBe(750);
@@ -449,22 +465,22 @@ describe("Test Data Factory", () => {
           .withSubmissionId(submissionId)
           .withViewCount(1000)
           .withTimestamp(Date.now() - 172800000) // 2 days ago
-          .withSource("initial_fetch")
+
           .build(),
         ViewTrackingBuilder.create()
           .withSubmissionId(submissionId)
           .withViewCount(5000)
           .withTimestamp(Date.now() - 86400000) // 1 day ago
-          .withSource("tiktok_api")
+
           .build(),
         ViewTrackingBuilder.create()
           .withSubmissionId(submissionId)
           .withViewCount(12000)
           .withTimestamp(Date.now())
-          .withSource("tiktok_api")
+
           .build(),
       ];
-      
+
       // Verify progression
       expect(viewHistory[0].viewCount).toBeLessThan(viewHistory[1].viewCount);
       expect(viewHistory[1].viewCount).toBeLessThan(viewHistory[2].viewCount);

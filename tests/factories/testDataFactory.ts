@@ -3,11 +3,11 @@
  * Provides builder pattern for creating realistic test data with proper relationships
  */
 
-import { Doc, Id } from "../../convex/_generated/dataModel";
+import { Doc, Id, TableNames } from "../../convex/_generated/dataModel";
 
 // Helper to generate mock IDs
 let idCounter = 1000;
-function generateId<T extends string>(prefix: T): Id<T> {
+function generateId<T extends TableNames>(prefix: T): Id<T> {
   return `${prefix}_${idCounter++}` as Id<T>;
 }
 
@@ -61,7 +61,8 @@ export class ProfileBuilder implements Builder<Doc<"profiles">> {
   asCreator(): ProfileBuilder {
     this.data.userType = "creator";
     this.data.creatorName = this.data.creatorName || `TestCreator${idCounter}`;
-    this.data.tiktokUsername = this.data.tiktokUsername || `@testcreator${idCounter}`;
+    this.data.tiktokUsername =
+      this.data.tiktokUsername || `@testcreator${idCounter}`;
     this.data.tiktokVerified = this.data.tiktokVerified ?? true;
     this.data.totalEarnings = this.data.totalEarnings ?? 0;
     this.data.totalSubmissions = this.data.totalSubmissions ?? 0;
@@ -70,7 +71,8 @@ export class ProfileBuilder implements Builder<Doc<"profiles">> {
 
   asBrand(): ProfileBuilder {
     this.data.userType = "brand";
-    this.data.companyName = this.data.companyName || `Test Company ${idCounter}`;
+    this.data.companyName =
+      this.data.companyName || `Test Company ${idCounter}`;
     return this;
   }
 
@@ -163,12 +165,16 @@ export class CampaignBuilder implements Builder<Doc<"campaigns">> {
     return this;
   }
 
-  withStatus(status: "draft" | "active" | "paused" | "completed"): CampaignBuilder {
+  withStatus(
+    status: "draft" | "active" | "paused" | "completed"
+  ): CampaignBuilder {
     this.data.status = status;
     return this;
   }
 
-  withPaymentStatus(paymentStatus: "pending" | "paid" | "failed"): CampaignBuilder {
+  withPaymentStatus(
+    paymentStatus: "pending" | "paid" | "failed"
+  ): CampaignBuilder {
     this.data.paymentStatus = paymentStatus;
     return this;
   }
@@ -188,7 +194,11 @@ export class CampaignBuilder implements Builder<Doc<"campaigns">> {
     return this;
   }
 
-  withStats(totalViews: number, totalSubmissions: number, approvedSubmissions: number): CampaignBuilder {
+  withStats(
+    totalViews: number,
+    totalSubmissions: number,
+    approvedSubmissions: number
+  ): CampaignBuilder {
     this.data.totalViews = totalViews;
     this.data.totalSubmissions = totalSubmissions;
     this.data.approvedSubmissions = approvedSubmissions;
@@ -214,7 +224,9 @@ export class CampaignBuilder implements Builder<Doc<"campaigns">> {
   }
 
   asCompleted(): CampaignBuilder {
-    return this.withStatus("completed").withPaymentStatus("paid").withBudget(10000, 0);
+    return this.withStatus("completed")
+      .withPaymentStatus("paid")
+      .withBudget(10000, 0);
   }
 
   asExpired(): CampaignBuilder {
@@ -223,7 +235,9 @@ export class CampaignBuilder implements Builder<Doc<"campaigns">> {
 
   build(): Doc<"campaigns"> {
     if (!this.data.brandId) {
-      throw new Error("Campaign must have a brandId. Use withBrandId() method.");
+      throw new Error(
+        "Campaign must have a brandId. Use withBrandId() method."
+      );
     }
 
     return {
@@ -231,10 +245,12 @@ export class CampaignBuilder implements Builder<Doc<"campaigns">> {
       _creationTime: Date.now(),
       brandId: this.data.brandId,
       title: this.data.title || `Test Campaign ${idCounter}`,
-      description: this.data.description || `Test campaign description ${idCounter}`,
+      description:
+        this.data.description || `Test campaign description ${idCounter}`,
       category: this.data.category || "lifestyle",
       totalBudget: this.data.totalBudget || 10000, // €100
-      remainingBudget: this.data.remainingBudget ?? this.data.totalBudget ?? 10000,
+      remainingBudget:
+        this.data.remainingBudget ?? this.data.totalBudget ?? 10000,
       cpmRate: this.data.cpmRate || 500, // €5 CPM
       maxPayoutPerSubmission: this.data.maxPayoutPerSubmission || 2500, // €25
       assetLinks: this.data.assetLinks || [],
@@ -267,8 +283,8 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
     return this;
   }
 
-  withTikTokUrl(tiktokUrl: string): SubmissionBuilder {
-    this.data.tiktokUrl = tiktokUrl;
+  withContentUrl(contentUrl: string): SubmissionBuilder {
+    this.data.contentUrl = contentUrl;
     return this;
   }
 
@@ -277,7 +293,10 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
     return this;
   }
 
-  withViewCount(viewCount: number, initialViewCount?: number): SubmissionBuilder {
+  withViewCount(
+    viewCount: number,
+    initialViewCount?: number
+  ): SubmissionBuilder {
     this.data.viewCount = viewCount;
     this.data.initialViewCount = initialViewCount ?? viewCount;
     return this;
@@ -320,7 +339,9 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
     return this;
   }
 
-  withMonitoringTier(tier: "hot" | "warm" | "cold" | "archived"): SubmissionBuilder {
+  withMonitoringTier(
+    tier: "hot" | "warm" | "cold" | "archived"
+  ): SubmissionBuilder {
     this.data.monitoringTier = tier;
     this.data.lastTierUpdate = Date.now();
     return this;
@@ -331,7 +352,9 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
     return this;
   }
 
-  withViewHistory(history: Array<{ timestamp: number; viewCount: number }>): SubmissionBuilder {
+  withViewHistory(
+    history: Array<{ timestamp: number; viewCount: number }>
+  ): SubmissionBuilder {
     this.data.viewHistory = history;
     return this;
   }
@@ -346,11 +369,15 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
   }
 
   asRejected(reason?: string): SubmissionBuilder {
-    return this.withStatus("rejected").withRejectionReason(reason || "Does not meet requirements");
+    return this.withStatus("rejected").withRejectionReason(
+      reason || "Does not meet requirements"
+    );
   }
 
   withHighViews(viewCount: number = 50000): SubmissionBuilder {
-    return this.withViewCount(viewCount).withThresholdMet(Date.now() - 86400000);
+    return this.withViewCount(viewCount).withThresholdMet(
+      Date.now() - 86400000
+    );
   }
 
   asHotTier(): SubmissionBuilder {
@@ -371,18 +398,25 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
 
   build(): Doc<"submissions"> {
     if (!this.data.campaignId) {
-      throw new Error("Submission must have a campaignId. Use withCampaignId() method.");
+      throw new Error(
+        "Submission must have a campaignId. Use withCampaignId() method."
+      );
     }
     if (!this.data.creatorId) {
-      throw new Error("Submission must have a creatorId. Use withCreatorId() method.");
+      throw new Error(
+        "Submission must have a creatorId. Use withCreatorId() method."
+      );
     }
 
     return {
       _id: generateId("submissions"),
       _creationTime: Date.now(),
       campaignId: this.data.campaignId,
+      platform: this.data.platform || "tiktok",
       creatorId: this.data.creatorId,
-      tiktokUrl: this.data.tiktokUrl || `https://www.tiktok.com/@testuser/video/${Date.now()}`,
+      contentUrl:
+        this.data.contentUrl ||
+        `https://www.tiktok.com/@testuser/video/${Date.now()}`,
       status: this.data.status || "pending",
       viewCount: this.data.viewCount || 0,
       initialViewCount: this.data.initialViewCount || this.data.viewCount || 0,
@@ -417,11 +451,6 @@ export class ViewTrackingBuilder implements Builder<Doc<"viewTracking">> {
     return this;
   }
 
-  withSource(source: string): ViewTrackingBuilder {
-    this.data.source = source;
-    return this;
-  }
-
   withMetadata(metadata: object): ViewTrackingBuilder {
     this.data.metadata = metadata;
     return this;
@@ -429,7 +458,9 @@ export class ViewTrackingBuilder implements Builder<Doc<"viewTracking">> {
 
   build(): Doc<"viewTracking"> {
     if (!this.data.submissionId) {
-      throw new Error("ViewTracking must have a submissionId. Use withSubmissionId() method.");
+      throw new Error(
+        "ViewTracking must have a submissionId. Use withSubmissionId() method."
+      );
     }
 
     return {
@@ -438,7 +469,7 @@ export class ViewTrackingBuilder implements Builder<Doc<"viewTracking">> {
       submissionId: this.data.submissionId,
       viewCount: this.data.viewCount || 0,
       timestamp: this.data.timestamp || Date.now(),
-      source: this.data.source || "test",
+
       ...this.data,
     };
   }
@@ -536,13 +567,15 @@ export class ScenarioBuilder {
   }
 
   // Creates a complete brand with campaign scenario
-  createBrandWithCampaign(overrides: {
-    brandEmail?: string;
-    companyName?: string;
-    campaignTitle?: string;
-    campaignStatus?: "draft" | "active" | "paused" | "completed";
-    budget?: number;
-  } = {}) {
+  createBrandWithCampaign(
+    overrides: {
+      brandEmail?: string;
+      companyName?: string;
+      campaignTitle?: string;
+      campaignStatus?: "draft" | "active" | "paused" | "completed";
+      budget?: number;
+    } = {}
+  ) {
     const brand = UserBuilder.create()
       .withEmail(overrides.brandEmail || "brand@test.com")
       .withName("Test Brand User")
@@ -565,12 +598,15 @@ export class ScenarioBuilder {
   }
 
   // Creates a complete creator scenario
-  createCreatorWithSubmission(campaignId: Id<"campaigns">, overrides: {
-    creatorEmail?: string;
-    tiktokUsername?: string;
-    submissionStatus?: "pending" | "approved" | "rejected";
-    viewCount?: number;
-  } = {}) {
+  createCreatorWithSubmission(
+    campaignId: Id<"campaigns">,
+    overrides: {
+      creatorEmail?: string;
+      tiktokUsername?: string;
+      submissionStatus?: "pending" | "approved" | "rejected";
+      viewCount?: number;
+    } = {}
+  ) {
     const creator = UserBuilder.create()
       .withEmail(overrides.creatorEmail || "creator@test.com")
       .withName("Test Creator User")
@@ -628,13 +664,13 @@ export class ScenarioBuilder {
         .withSubmissionId(creator1Scenario.submission._id)
         .withViewCount(15000)
         .withTimestamp(Date.now() - 86400000) // 1 day ago
-        .withSource("tiktok_api")
+
         .build(),
       ViewTrackingBuilder.create()
         .withSubmissionId(creator1Scenario.submission._id)
         .withViewCount(25000)
         .withTimestamp(Date.now())
-        .withSource("tiktok_api")
+
         .build(),
     ];
 
@@ -642,9 +678,21 @@ export class ScenarioBuilder {
       brand: { user: brand, profile: brandProfile },
       campaign,
       creators: [
-        { user: creator1Scenario.creator, profile: creator1Scenario.creatorProfile, submission: creator1Scenario.submission },
-        { user: creator2Scenario.creator, profile: creator2Scenario.creatorProfile, submission: creator2Scenario.submission },
-        { user: creator3Scenario.creator, profile: creator3Scenario.creatorProfile, submission: creator3Scenario.submission },
+        {
+          user: creator1Scenario.creator,
+          profile: creator1Scenario.creatorProfile,
+          submission: creator1Scenario.submission,
+        },
+        {
+          user: creator2Scenario.creator,
+          profile: creator2Scenario.creatorProfile,
+          submission: creator2Scenario.submission,
+        },
+        {
+          user: creator3Scenario.creator,
+          profile: creator3Scenario.creatorProfile,
+          submission: creator3Scenario.submission,
+        },
       ],
       viewTracking,
     };
@@ -664,13 +712,24 @@ export const TestDataFactory = {
   // Quick create functions
   createBrand: (email = "brand@test.com", companyName = "Test Company") => {
     const user = UserBuilder.create().withEmail(email).build();
-    const profile = ProfileBuilder.create().withUserId(user._id).asBrand().withCompanyName(companyName).build();
+    const profile = ProfileBuilder.create()
+      .withUserId(user._id)
+      .asBrand()
+      .withCompanyName(companyName)
+      .build();
     return { user, profile };
   },
 
-  createCreator: (email = "creator@test.com", tiktokUsername = "@testcreator") => {
+  createCreator: (
+    email = "creator@test.com",
+    tiktokUsername = "@testcreator"
+  ) => {
     const user = UserBuilder.create().withEmail(email).build();
-    const profile = ProfileBuilder.create().withUserId(user._id).asCreator().withTikTokUsername(tiktokUsername).build();
+    const profile = ProfileBuilder.create()
+      .withUserId(user._id)
+      .asCreator()
+      .withTikTokUsername(tiktokUsername)
+      .build();
     return { user, profile };
   },
 

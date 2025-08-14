@@ -1,28 +1,27 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { Doc, Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { logger } from "./logger";
 import {
-  validateCreatorEligibility,
-  validateSubmissionData,
-  checkUrlDuplication,
   canUpdateSubmissionStatus,
-  validateStatusTransition,
+  checkUrlDuplication,
   prepareSubmissionCreation,
   prepareSubmissionUpdate,
-  isValidTikTokUrl,
-  calculateSubmissionEarnings,
+  validateCreatorEligibility,
+  validateStatusTransition,
+  validateSubmissionData,
   type SubmissionCreationArgs,
   type SubmissionUpdateArgs,
 } from "./lib/submissionService";
+import { logger } from "./logger";
 
 // Submit to campaign
 export const submitToCampaign = mutation({
   args: {
     campaignId: v.id("campaigns"),
-    tiktokUrl: v.string(),
+    contentUrl: v.string(),
+    platform: v.union(v.literal("tiktok"), v.literal("instagram")),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -50,9 +49,10 @@ export const submitToCampaign = mutation({
     const submissionArgs: SubmissionCreationArgs = {
       campaignId: args.campaignId,
       creatorId: userId,
-      tiktokUrl: args.tiktokUrl,
+      contentUrl: args.contentUrl,
+      platform: args.platform,
     };
-    
+
     const dataValidation = validateSubmissionData(submissionArgs);
     if (!dataValidation.isValid) {
       return {
@@ -61,25 +61,29 @@ export const submitToCampaign = mutation({
       };
     }
 
-    // Verify post ownership with TikTok verification
-    const isPostVerified = await ctx.runQuery(internal.profiles.verifyPost, {
-      postUrl: args.tiktokUrl,
-    });
+    // Verify post ownership
+    // const isPostVerified = await ctx.runQuery(internal.profiles.verifyPost, {
+    //   contentUrl: args.contentUrl,
+    //   platform: args.platform,
+    // });
 
-    if (!isPostVerified) {
-      return {
-        success: false,
-        message: "Post does not belong to your verified TikTok account",
-      };
-    }
+    // if (!isPostVerified) {
+    //   return {
+    //     success: false,
+    //     message: "Post does not belong to your verified TikTok account",
+    //   };
+    // }
 
     // Check if this exact URL was already submitted to any campaign
     const existingUrlSubmission = await ctx.db
       .query("submissions")
-      .filter((q) => q.eq(q.field("tiktokUrl"), args.tiktokUrl.trim()))
+      .filter((q) => q.eq(q.field("contentUrl"), args.contentUrl.trim()))
       .first();
 
-    const duplicationCheck = checkUrlDuplication(args.tiktokUrl, existingUrlSubmission);
+    const duplicationCheck = checkUrlDuplication(
+      args.contentUrl,
+      existingUrlSubmission
+    );
     if (!duplicationCheck.isValid) {
       return {
         success: false,
@@ -89,25 +93,19 @@ export const submitToCampaign = mutation({
 
     // Prepare submission data using service layer
     const initialViews = 0;
-    const submissionData = prepareSubmissionCreation(submissionArgs, initialViews);
+    const submissionData = prepareSubmissionCreation(
+      submissionArgs,
+      initialViews
+    );
 
     // Create submission
     const submissionId = await ctx.db.insert("submissions", submissionData);
 
-    // Log initial view tracking entry
-    if (initialViews > 0) {
-      await ctx.db.insert("viewTracking", {
-        submissionId,
-        viewCount: initialViews,
-        timestamp: Date.now(),
-        source: "submission_initial",
-      });
-    }
-
     // Schedule initial view count fetch
-    await ctx.scheduler.runAfter(0, internal.viewTracking.getInitialViewCount, {
-      tiktokUrl: args.tiktokUrl.trim(),
+    await ctx.scheduler.runAfter(0, internal.viewTracking.getViewCount, {
+      contentUrl: args.contentUrl.trim(),
       submissionId,
+      platform: args.platform,
     });
 
     // Update campaign stats - campaign is guaranteed to exist due to validation
@@ -142,7 +140,7 @@ export const submitToCampaign = mutation({
               brandName: brandProfile.companyName,
               campaignTitle: campaign.title,
               creatorName: profile.creatorName || "Unknown Creator",
-              tiktokUrl: args.tiktokUrl,
+              contentUrl: args.contentUrl,
             }
           );
         }
@@ -256,15 +254,26 @@ export const updateSubmissionStatus = mutation({
     if (!campaign) throw new Error("Campaign not found");
 
     // Validate permissions using service layer
-    const permissionCheck = canUpdateSubmissionStatus(submission, campaign, userId);
+    const permissionCheck = canUpdateSubmissionStatus(
+      submission,
+      campaign,
+      userId
+    );
     if (!permissionCheck.hasPermission) {
-      throw new Error(permissionCheck.reason || "Not authorized to update this submission");
+      throw new Error(
+        permissionCheck.reason || "Not authorized to update this submission"
+      );
     }
 
     // Validate status transition using service layer
-    const transitionValidation = validateStatusTransition(submission.status, args.status);
+    const transitionValidation = validateStatusTransition(
+      submission.status,
+      args.status
+    );
     if (!transitionValidation.isValid) {
-      throw new Error(transitionValidation.error || "Invalid status transition");
+      throw new Error(
+        transitionValidation.error || "Invalid status transition"
+      );
     }
 
     // Prepare updates using service layer
@@ -272,7 +281,7 @@ export const updateSubmissionStatus = mutation({
       status: args.status,
       rejectionReason: args.rejectionReason,
     };
-    
+
     const updates = prepareSubmissionUpdate(updateArgs, args.status);
 
     // Update campaign's approved submission count if approving
@@ -321,7 +330,7 @@ export const updateSubmissionStatus = mutation({
               campaignTitle: campaign.title,
               brandName: brandProfile.companyName || "Brand",
               rejectionReason: args.rejectionReason,
-              tiktokUrl: submission.tiktokUrl,
+              contentUrl: submission.contentUrl,
             }
           );
         }
@@ -336,7 +345,6 @@ export const updateSubmissionStatus = mutation({
     return submission;
   },
 });
-
 
 // Internal mutation to mark threshold as met
 export const markThresholdMet = internalMutation({

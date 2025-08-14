@@ -93,7 +93,7 @@ export const sendRejectionNotification = internalAction({
     campaignTitle: v.string(),
     brandName: v.string(),
     rejectionReason: v.string(),
-    tiktokUrl: v.string(),
+    contentUrl: v.string(),
   },
   handler: async (ctx, args) => {
     try {
@@ -122,7 +122,7 @@ export const sendRejectionNotification = internalAction({
               <h3 style="margin-top: 0; color: #a855f7;">Submission Details</h3>
               <div style="margin-bottom: 10px;">
                 <span>TikTok URL:</span><br>
-                <a href="${args.tiktokUrl}" style="color: #a855f7; word-break: break-all;">${args.tiktokUrl}</a>
+                <a href="${args.contentUrl}" style="color: #a855f7; word-break: break-all;">${args.contentUrl}</a>
               </div>
               <div style="margin-bottom: 10px;">
                 <span style="font-weight: bold;">Feedback:</span><br>
@@ -278,7 +278,7 @@ export const sendSubmissionNotification = internalAction({
     brandName: v.string(),
     campaignTitle: v.string(),
     creatorName: v.string(),
-    tiktokUrl: v.string(),
+    contentUrl: v.string(),
   },
   handler: async (ctx, args) => {
     try {
@@ -310,7 +310,7 @@ export const sendSubmissionNotification = internalAction({
               </div>
               <div style="margin-bottom: 10px;">
                 <span>TikTok URL:</span><br>
-                <a href="${args.tiktokUrl}" style="color: #a855f7; word-break: break-all;">${args.tiktokUrl}</a>
+                <a href="${args.contentUrl}" style="color: #a855f7; word-break: break-all;">${args.contentUrl}</a>
               </div>
             </div>
             

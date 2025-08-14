@@ -162,7 +162,7 @@ export const SubmissionCard = memo(
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <a
-                      href={submission.tiktokUrl}
+                      href={submission.contentUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -224,10 +224,6 @@ export const SubmissionCard = memo(
                       </Alert>
                     )}
                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                    {/* <ViewTracker
-                    submissionId={expandedSubmission._id}
-                    showRefreshButton
-                  /> */}
                     <ViewChart submissionId={expandedSubmission._id} />
                   </div>
                 </div>

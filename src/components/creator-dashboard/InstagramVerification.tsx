@@ -48,8 +48,8 @@ function InstagramVerification() {
   useEffect(() => {
     if (profile?.verificationError) {
       toast.error(profile.verificationError);
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }, [profile?.verificationError]);
 
   if (step === "success" && profile?.instagramVerified) {
@@ -114,11 +114,11 @@ function InstagramVerification() {
   const handleVerifyBio = async () => {
     setIsLoading(true);
     try {
-      const result = await verifyBio({
+      await verifyBio({
         instagramUsername:
           profile?.instagramUsername || instagramUsername.trim(),
       });
-      toast.success(result.message);
+      //toast.success(result.message);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Verification failed."

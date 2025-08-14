@@ -17,20 +17,26 @@ export const getCampaignSummary = query({
 
     // Calculate metrics efficiently
     const totalBudget = campaigns.reduce((sum, c) => sum + c.totalBudget, 0);
-    const avgCpm = campaigns.length > 0 
-      ? campaigns.reduce((sum, c) => sum + c.cpmRate, 0) / campaigns.length 
-      : 0;
+    const avgCpm =
+      campaigns.length > 0
+        ? campaigns.reduce((sum, c) => sum + c.cpmRate, 0) / campaigns.length
+        : 0;
 
     // Group by categories
     const categoryMap = new Map<string, number>();
-    campaigns.forEach(campaign => {
-      categoryMap.set(campaign.category, (categoryMap.get(campaign.category) || 0) + 1);
+    campaigns.forEach((campaign) => {
+      categoryMap.set(
+        campaign.category,
+        (categoryMap.get(campaign.category) || 0) + 1
+      );
     });
 
-    const categories = Array.from(categoryMap.entries()).map(([category, count]) => ({
-      category,
-      count,
-    }));
+    const categories = Array.from(categoryMap.entries()).map(
+      ([category, count]) => ({
+        category,
+        count,
+      })
+    );
 
     return {
       totalActiveCampaigns: campaigns.length,
@@ -59,19 +65,27 @@ export const getCreatorMetrics = query({
     }
 
     const [profile, submissions] = await Promise.all([
-      ctx.db.query("profiles")
+      ctx.db
+        .query("profiles")
         .withIndex("by_user_id", (q) => q.eq("userId", userId))
         .unique(),
-      ctx.db.query("submissions")
+      ctx.db
+        .query("submissions")
         .withIndex("by_creator_id", (q) => q.eq("creatorId", userId))
         .collect(),
     ]);
 
     // Calculate metrics efficiently
     const totalSubmissions = submissions.length;
-    const approvedSubmissions = submissions.filter(s => s.status === "approved").length;
-    const totalViews = submissions.reduce((sum, s) => sum + (s.viewCount || 0), 0);
-    const averageViews = totalSubmissions > 0 ? totalViews / totalSubmissions : 0;
+    const approvedSubmissions = submissions.filter(
+      (s) => s.status === "approved"
+    ).length;
+    const totalViews = submissions.reduce(
+      (sum, s) => sum + (s.viewCount || 0),
+      0
+    );
+    const averageViews =
+      totalSubmissions > 0 ? totalViews / totalSubmissions : 0;
 
     return {
       totalEarnings: profile?.totalEarnings || 0,
@@ -95,29 +109,31 @@ export const getRecentSubmissions = query({
     if (!userId) return [];
 
     // Get recent submissions
-    const submissions = await ctx.db.query("submissions")
+    const submissions = await ctx.db
+      .query("submissions")
       .withIndex("by_creator_id", (q) => q.eq("creatorId", userId))
       .order("desc")
       .take(args.limit || 10);
 
     // Get campaign titles in batch
-    const campaignIds = submissions.map(s => s.campaignId);
+    const campaignIds = submissions.map((s) => s.campaignId);
     const campaigns = await Promise.all(
-      campaignIds.map(id => ctx.db.get(id))
+      campaignIds.map((id) => ctx.db.get(id))
     );
 
     const campaignTitleMap = new Map(
-      campaigns.filter(Boolean).map(c => [c!._id, c!.title])
+      campaigns.filter(Boolean).map((c) => [c!._id, c!.title])
     );
 
-    return submissions.map(submission => ({
+    return submissions.map((submission) => ({
       _id: submission._id,
-      campaignTitle: campaignTitleMap.get(submission.campaignId) || "Unknown Campaign",
+      campaignTitle:
+        campaignTitleMap.get(submission.campaignId) || "Unknown Campaign",
       status: submission.status,
       viewCount: submission.viewCount || 0,
       earnings: submission.earnings || 0,
       submittedAt: submission.submittedAt,
-      tiktokUrl: submission.tiktokUrl,
+      contentUrl: submission.contentUrl,
     }));
   },
 });
@@ -139,15 +155,27 @@ export const getBrandMetrics = query({
       };
     }
 
-    const campaigns = await ctx.db.query("campaigns")
+    const campaigns = await ctx.db
+      .query("campaigns")
       .withIndex("by_brand_id", (q) => q.eq("brandId", userId))
       .collect();
 
     const totalCampaigns = campaigns.length;
-    const activeCampaigns = campaigns.filter(c => c.status === "active").length;
-    const totalSpent = campaigns.reduce((sum, c) => sum + (c.totalBudget - c.remainingBudget), 0);
-    const totalViews = campaigns.reduce((sum, c) => sum + (c.totalViews || 0), 0);
-    const totalSubmissions = campaigns.reduce((sum, c) => sum + (c.totalSubmissions || 0), 0);
+    const activeCampaigns = campaigns.filter(
+      (c) => c.status === "active"
+    ).length;
+    const totalSpent = campaigns.reduce(
+      (sum, c) => sum + (c.totalBudget - c.remainingBudget),
+      0
+    );
+    const totalViews = campaigns.reduce(
+      (sum, c) => sum + (c.totalViews || 0),
+      0
+    );
+    const totalSubmissions = campaigns.reduce(
+      (sum, c) => sum + (c.totalSubmissions || 0),
+      0
+    );
 
     return {
       totalCampaigns,

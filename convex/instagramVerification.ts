@@ -51,8 +51,8 @@ async function checkBioWithPublicAPI(
     }
 
     return {
-      found: response.data.biography.includes(verificationCode),
-      bio: response.data.biography,
+      found: response.data.data.biography.includes(verificationCode),
+      bio: response.data.data.biography,
     };
   } catch (error) {
     return {

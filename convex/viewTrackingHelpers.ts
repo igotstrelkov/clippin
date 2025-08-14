@@ -58,7 +58,10 @@ async function processEarningsUpdate(
   };
 
   // Mark campaign as completed if budget is exhausted or too low for meaningful earnings
-  if (campaign.status === "active" && shouldCompleteCampaign(newRemainingBudget, campaign.cpmRate)) {
+  if (
+    campaign.status === "active" &&
+    shouldCompleteCampaign(newRemainingBudget, campaign.cpmRate)
+  ) {
     campaignUpdates.status = "completed";
   }
 
@@ -79,12 +82,24 @@ async function processEarningsUpdate(
   return { submissionUpdates, campaignUpdates };
 }
 
+export const rejectSubmission = internalMutation({
+  args: {
+    submissionId: v.id("submissions"),
+    rejectionReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.submissionId, {
+      status: "rejected",
+      rejectionReason: args.rejectionReason,
+    });
+  },
+});
+
 export const updateSubmissionViews = internalMutation({
   args: {
     submissionId: v.id("submissions"),
     viewCount: v.number(),
     previousViews: v.number(),
-    source: v.string(),
     updateLastApiCall: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -143,20 +158,21 @@ export const updateSubmissionViews = internalMutation({
       submissionId: args.submissionId,
       viewCount: args.viewCount,
       timestamp: now,
-      source: args.source,
     });
 
     // Add to view history for smart monitoring (async to avoid blocking)
-    ctx.runMutation(internal.smartMonitoring.addViewHistoryPoint, {
-      submissionId: args.submissionId,
-      viewCount: args.viewCount,
-      timestamp: now,
-    }).catch((error) => {
-      logger.error("Failed to update view history for smart monitoring", {
+    ctx
+      .runMutation(internal.smartMonitoring.addViewHistoryPoint, {
         submissionId: args.submissionId,
-        error: error instanceof Error ? error : new Error(String(error)),
+        viewCount: args.viewCount,
+        timestamp: now,
+      })
+      .catch((error) => {
+        logger.error("Failed to update view history for smart monitoring", {
+          submissionId: args.submissionId,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
       });
-    });
 
     // Handle threshold crossing for pending submissions
     if (

@@ -73,11 +73,13 @@ const applicationTables = {
   submissions: defineTable({
     campaignId: v.id("campaigns"),
     creatorId: v.id("users"),
-    tiktokUrl: v.string(),
+    contentUrl: v.string(),
+    platform: v.union(v.literal("tiktok"), v.literal("instagram")),
     status: v.union(
       v.literal("pending"),
       v.literal("approved"),
-      v.literal("rejected")
+      v.literal("rejected"),
+      v.literal("verifying_owner")
     ),
     viewCount: v.optional(v.number()),
     lastViewUpdate: v.optional(v.number()),
@@ -151,12 +153,10 @@ const applicationTables = {
     submissionId: v.id("submissions"),
     viewCount: v.number(),
     timestamp: v.number(),
-    source: v.string(), // "tiktok_api", "manual_refresh", "system"
     metadata: v.optional(v.object({})), // Additional tracking data
   })
     .index("by_submission_id", ["submissionId"])
-    .index("by_timestamp", ["timestamp"])
-    .index("by_source", ["source"]),
+    .index("by_timestamp", ["timestamp"]),
 };
 
 export default defineSchema({

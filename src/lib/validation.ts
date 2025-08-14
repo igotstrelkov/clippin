@@ -24,15 +24,18 @@ export interface ValidationResult {
 /**
  * Validate TikTok URL format and extract video ID
  */
-export function validateTikTokUrl(url: string): ValidationResult & { videoId?: string } {
+export function validateContentUrl(
+  url: string
+): ValidationResult & { videoId?: string } {
   if (!url.trim()) {
-    return { isValid: false, error: "TikTok URL is required" };
+    return { isValid: false, error: "Content URL is required" };
   }
 
   if (!VALIDATION_PATTERNS.TIKTOK_URL.test(url)) {
-    return { 
-      isValid: false, 
-      error: "Please enter a valid TikTok URL (e.g., https://tiktok.com/@user/video/123)" 
+    return {
+      isValid: false,
+      error:
+        "Please enter a valid TikTok URL (e.g., https://tiktok.com/@user/video/123)",
     };
   }
 
@@ -41,9 +44,9 @@ export function validateTikTokUrl(url: string): ValidationResult & { videoId?: s
   const videoId = videoIdMatch?.[1];
 
   if (!videoId) {
-    return { 
-      isValid: false, 
-      error: "Could not find video ID in the TikTok URL" 
+    return {
+      isValid: false,
+      error: "Could not find video ID in the TikTok URL",
     };
   }
 
@@ -59,9 +62,9 @@ export function validateYouTubeUrl(url: string): ValidationResult {
   }
 
   if (!VALIDATION_PATTERNS.YOUTUBE_URL.test(url)) {
-    return { 
-      isValid: false, 
-      error: "Please enter a valid YouTube URL" 
+    return {
+      isValid: false,
+      error: "Please enter a valid YouTube URL",
     };
   }
 
@@ -77,16 +80,16 @@ export function validateBudget(budget: number): ValidationResult {
   }
 
   if (budget < VALIDATION_LIMITS.BUDGET.min) {
-    return { 
-      isValid: false, 
-      error: `Minimum budget is $${VALIDATION_LIMITS.BUDGET.min}` 
+    return {
+      isValid: false,
+      error: `Minimum budget is $${VALIDATION_LIMITS.BUDGET.min}`,
     };
   }
 
   if (budget > VALIDATION_LIMITS.BUDGET.max) {
-    return { 
-      isValid: false, 
-      error: `Maximum budget is $${VALIDATION_LIMITS.BUDGET.max.toLocaleString()}` 
+    return {
+      isValid: false,
+      error: `Maximum budget is $${VALIDATION_LIMITS.BUDGET.max.toLocaleString()}`,
     };
   }
 
@@ -102,16 +105,16 @@ export function validateCPM(cpm: number): ValidationResult {
   }
 
   if (cpm < VALIDATION_LIMITS.CPM.min) {
-    return { 
-      isValid: false, 
-      error: `Minimum CPM is $${VALIDATION_LIMITS.CPM.min}` 
+    return {
+      isValid: false,
+      error: `Minimum CPM is $${VALIDATION_LIMITS.CPM.min}`,
     };
   }
 
   if (cpm > VALIDATION_LIMITS.CPM.max) {
-    return { 
-      isValid: false, 
-      error: `Maximum CPM is $${VALIDATION_LIMITS.CPM.max}` 
+    return {
+      isValid: false,
+      error: `Maximum CPM is $${VALIDATION_LIMITS.CPM.max}`,
     };
   }
 
@@ -122,27 +125,27 @@ export function validateCPM(cpm: number): ValidationResult {
  * Validate text input with length constraints
  */
 export function validateTextInput(
-  value: string, 
-  fieldName: string, 
+  value: string,
+  fieldName: string,
   limits: { min: number; max: number }
 ): ValidationResult {
   const trimmed = value.trim();
-  
+
   if (!trimmed) {
     return { isValid: false, error: `${fieldName} is required` };
   }
 
   if (trimmed.length < limits.min) {
-    return { 
-      isValid: false, 
-      error: `${fieldName} must be at least ${limits.min} characters long` 
+    return {
+      isValid: false,
+      error: `${fieldName} must be at least ${limits.min} characters long`,
     };
   }
 
   if (trimmed.length > limits.max) {
-    return { 
-      isValid: false, 
-      error: `${fieldName} must be less than ${limits.max} characters long` 
+    return {
+      isValid: false,
+      error: `${fieldName} must be less than ${limits.max} characters long`,
     };
   }
 
@@ -158,19 +161,19 @@ export function validateTikTokUsername(username: string): ValidationResult {
   }
 
   // Remove @ if present
-  const cleanUsername = username.replace(/^@/, '');
+  const cleanUsername = username.replace(/^@/, "");
 
   if (!VALIDATION_PATTERNS.USERNAME.test(cleanUsername)) {
-    return { 
-      isValid: false, 
-      error: "Username can only contain letters, numbers, and underscores" 
+    return {
+      isValid: false,
+      error: "Username can only contain letters, numbers, and underscores",
     };
   }
 
   if (cleanUsername.length < 1 || cleanUsername.length > 30) {
-    return { 
-      isValid: false, 
-      error: "Username must be 1-30 characters long" 
+    return {
+      isValid: false,
+      error: "Username must be 1-30 characters long",
     };
   }
 

@@ -90,7 +90,7 @@ export const getSubmissionsDueForUpdate = internalQuery({
   returns: v.array(
     v.object({
       _id: v.id("submissions"),
-      tiktokUrl: v.string(),
+      contentUrl: v.string(),
       viewCount: v.optional(v.number()),
       lastViewUpdate: v.optional(v.number()),
       monitoringTier: v.optional(v.string()),
@@ -308,13 +308,11 @@ export const updateTierSubmissions = internalAction({
     for (const submission of submissions) {
       try {
         // Get fresh view count from TikTok API (rate-limited)
-        const result = await ctx.runAction(
-          internal.viewTracking.getInitialViewCount,
-          {
-            tiktokUrl: submission.tiktokUrl,
-            submissionId: submission._id,
-          }
-        );
+        const result = await ctx.runAction(internal.viewTracking.getViewCount, {
+          contentUrl: submission.contentUrl,
+          submissionId: submission._id,
+          platform: submission.platform,
+        });
 
         // Add to view history for growth rate calculation
         await ctx.runMutation(internal.smartMonitoring.addViewHistoryPoint, {

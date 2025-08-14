@@ -6,12 +6,17 @@
 import { Doc, Id } from "../_generated/dataModel";
 import { calculateEarnings } from "./earnings";
 
-export type SubmissionStatus = "pending" | "approved" | "rejected";
+export type SubmissionStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "verifying_owner";
 
 export interface SubmissionCreationArgs {
   campaignId: Id<"campaigns">;
   creatorId: Id<"users">;
-  tiktokUrl: string;
+  contentUrl: string;
+  platform: "tiktok" | "instagram";
 }
 
 export interface SubmissionUpdateArgs {
@@ -35,7 +40,7 @@ export interface PermissionResult {
 /**
  * Validate TikTok URL format
  */
-export function isValidTikTokUrl(url: string): boolean {
+export function isValidContentUrl(url: string): boolean {
   const tiktokPatterns = [
     /^https?:\/\/(www\.)?tiktok\.com\/@[\w.-]+\/video\/\d+/,
     /^https?:\/\/vm\.tiktok\.com\/[\w]+/,
@@ -88,27 +93,29 @@ export function validateCreatorEligibility(
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
 /**
  * Validate submission data
  */
-export function validateSubmissionData(args: SubmissionCreationArgs): ValidationResult {
+export function validateSubmissionData(
+  args: SubmissionCreationArgs
+): ValidationResult {
   const errors: string[] = [];
 
   // Validate TikTok URL
-  const trimmedUrl = args.tiktokUrl.trim();
+  const trimmedUrl = args.contentUrl.trim();
   if (!trimmedUrl) {
     errors.push("TikTok URL is required");
-  } else if (!isValidTikTokUrl(trimmedUrl)) {
+  } else if (!isValidContentUrl(trimmedUrl)) {
     errors.push("Please provide a valid TikTok URL");
   }
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -116,13 +123,13 @@ export function validateSubmissionData(args: SubmissionCreationArgs): Validation
  * Check if URL was already submitted (business rule)
  */
 export function checkUrlDuplication(
-  tiktokUrl: string,
+  contentUrl: string,
   existingSubmission: Doc<"submissions"> | null
 ): ValidationResult {
   if (existingSubmission) {
     return {
       isValid: false,
-      errors: ["This TikTok video has already been submitted to a campaign"]
+      errors: ["This TikTok video has already been submitted to a campaign"],
     };
   }
 
@@ -140,14 +147,15 @@ export function validateStatusTransition(
     pending: ["approved", "rejected"], // Pending can be approved or rejected
     approved: [], // Approved is final (could add "revoked" in future)
     rejected: [], // Rejected is final (could add "reconsidered" in future)
+    verifying_owner: [], // Verifying owner can be approved or rejected after verification
   };
 
   const allowedTransitions = validTransitions[fromStatus];
-  
+
   if (!allowedTransitions.includes(toStatus)) {
     return {
       isValid: false,
-      error: `Invalid status transition from ${fromStatus} to ${toStatus}`
+      error: `Invalid status transition from ${fromStatus} to ${toStatus}`,
     };
   }
 
@@ -165,14 +173,14 @@ export function canUpdateSubmissionStatus(
   if (campaign.brandId !== userId) {
     return {
       hasPermission: false,
-      reason: "Only the campaign owner can update submission status"
+      reason: "Only the campaign owner can update submission status",
     };
   }
 
   if (submission.status !== "pending") {
     return {
       hasPermission: false,
-      reason: `Cannot update submission with status: ${submission.status}`
+      reason: `Cannot update submission with status: ${submission.status}`,
     };
   }
 
@@ -186,11 +194,10 @@ export function isSubmissionEligibleForAutoApproval(
   submission: Doc<"submissions">,
   hoursThreshold: number = 48
 ): boolean {
-  const thresholdTime = Date.now() - (hoursThreshold * 60 * 60 * 1000);
-  
+  const thresholdTime = Date.now() - hoursThreshold * 60 * 60 * 1000;
+
   return (
-    submission.status === "pending" &&
-    submission.submittedAt < thresholdTime
+    submission.status === "pending" && submission.submittedAt < thresholdTime
   );
 }
 
@@ -232,12 +239,13 @@ export function prepareSubmissionCreation(
   return {
     campaignId: args.campaignId,
     creatorId: args.creatorId,
-    tiktokUrl: args.tiktokUrl.trim(),
-    status: "pending",
+    contentUrl: args.contentUrl.trim(),
+    status: "verifying_owner",
     viewCount: initialViewCount,
     initialViewCount: initialViewCount,
     submittedAt: Date.now(),
     viewTrackingEnabled: true,
+    platform: args.platform,
     lastApiCall: 0, // Initialize rate limiting
   };
 }
@@ -253,7 +261,7 @@ export function prepareSubmissionUpdate(
 
   if (args.status !== undefined) {
     updates.status = args.status;
-    
+
     if (args.status === "approved") {
       updates.approvedAt = Date.now();
     }
@@ -296,9 +304,7 @@ export function shouldMarkThresholdMet(
 /**
  * Calculate stats for a collection of submissions
  */
-export function calculateSubmissionStats(
-  submissions: Doc<"submissions">[]
-): {
+export function calculateSubmissionStats(submissions: Doc<"submissions">[]): {
   totalSubmissions: number;
   approvedSubmissions: number;
   rejectedSubmissions: number;
@@ -308,14 +314,27 @@ export function calculateSubmissionStats(
   avgViewsPerSubmission: number;
 } {
   const totalSubmissions = submissions.length;
-  const approvedSubmissions = submissions.filter(s => s.status === "approved").length;
-  const rejectedSubmissions = submissions.filter(s => s.status === "rejected").length;
-  const pendingSubmissions = submissions.filter(s => s.status === "pending").length;
-  
-  const totalViews = submissions.reduce((sum, s) => sum + (s.viewCount || 0), 0);
-  const totalEarnings = submissions.reduce((sum, s) => sum + (s.earnings || 0), 0);
-  
-  const avgViewsPerSubmission = totalSubmissions > 0 ? totalViews / totalSubmissions : 0;
+  const approvedSubmissions = submissions.filter(
+    (s) => s.status === "approved"
+  ).length;
+  const rejectedSubmissions = submissions.filter(
+    (s) => s.status === "rejected"
+  ).length;
+  const pendingSubmissions = submissions.filter(
+    (s) => s.status === "pending"
+  ).length;
+
+  const totalViews = submissions.reduce(
+    (sum, s) => sum + (s.viewCount || 0),
+    0
+  );
+  const totalEarnings = submissions.reduce(
+    (sum, s) => sum + (s.earnings || 0),
+    0
+  );
+
+  const avgViewsPerSubmission =
+    totalSubmissions > 0 ? totalViews / totalSubmissions : 0;
 
   return {
     totalSubmissions,
@@ -333,9 +352,9 @@ export function calculateSubmissionStats(
  */
 export function groupSubmissionsByStatus(submissions: Doc<"submissions">[]) {
   return {
-    pending: submissions.filter(s => s.status === "pending"),
-    approved: submissions.filter(s => s.status === "approved"),
-    rejected: submissions.filter(s => s.status === "rejected"),
+    pending: submissions.filter((s) => s.status === "pending"),
+    approved: submissions.filter((s) => s.status === "approved"),
+    rejected: submissions.filter((s) => s.status === "rejected"),
   };
 }
 
@@ -346,7 +365,7 @@ export function findExpiredPendingSubmissions(
   submissions: Doc<"submissions">[],
   hoursThreshold: number = 48
 ): Doc<"submissions">[] {
-  return submissions.filter(submission => 
+  return submissions.filter((submission) =>
     isSubmissionEligibleForAutoApproval(submission, hoursThreshold)
   );
 }
@@ -366,9 +385,9 @@ export function validateApprovalRequirements(
   // }
 
   // Future: Could add other approval criteria
-  
+
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }

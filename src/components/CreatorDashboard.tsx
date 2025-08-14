@@ -236,10 +236,6 @@ export function CreatorDashboard() {
                     </Alert>
                   )}
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                  {/* <ViewTracker
-                    submissionId={expandedSubmission._id}
-                    showRefreshButton
-                  /> */}
                   <ViewChart submissionId={expandedSubmission._id} />
                 </div>
               </div>

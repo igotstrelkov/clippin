@@ -1,4 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
+import axios from "axios";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import {
@@ -327,7 +328,10 @@ export const verifyTikTokBio = mutation({
 
 // Verification if post username matches the verified username
 export const verifyPost = internalQuery({
-  args: { postUrl: v.string() },
+  args: {
+    contentUrl: v.string(),
+    platform: v.union(v.literal("tiktok"), v.literal("instagram")),
+  },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
@@ -342,31 +346,66 @@ export const verifyPost = internalQuery({
       throw new Error("Profile not found");
     }
 
-    if (!profile.tiktokUsername || !profile.tiktokVerified) {
-      throw new Error(
-        "No verified tiktok username found. Please verify your tiktok username first."
-      );
-    }
-
-    // Validate the post URL format
-    const tiktokUrlPattern =
-      /^https:\/\/(www\.)?tiktok\.com\/@([^/]+)\/video\/(\d+)/;
-
-    const urlMatch = args.postUrl.match(tiktokUrlPattern);
-
-    if (!urlMatch) {
-      return false;
-    }
-
     let isVerified = false;
 
-    // URL extraction as final fallback
-    const usernameFromUrl = urlMatch[2]; // Extract from URL pattern match
-    if (usernameFromUrl) {
-      isVerified =
-        usernameFromUrl.toLowerCase() === profile.tiktokUsername.toLowerCase();
-    }
+    if (args.platform === "tiktok") {
+      if (!profile.tiktokUsername || !profile.tiktokVerified) {
+        throw new Error(
+          "No verified tiktok username found. Please verify your tiktok username first."
+        );
+      }
 
+      // Validate the post URL format
+      const contentUrlPattern =
+        /^https:\/\/(www\.)?tiktok\.com\/@([^/]+)\/video\/(\d+)/;
+
+      const urlMatch = args.contentUrl.match(contentUrlPattern);
+
+      if (!urlMatch) {
+        return false;
+      }
+
+      // URL extraction as final fallback
+      const usernameFromUrl = urlMatch[2]; // Extract from URL pattern match
+      if (usernameFromUrl) {
+        isVerified =
+          usernameFromUrl.toLowerCase() ===
+          profile.tiktokUsername.toLowerCase();
+      }
+    } else if (args.platform === "instagram") {
+      if (!profile.instagramUsername || !profile.instagramVerified) {
+        throw new Error(
+          "No verified instagram username found. Please verify your instagram username first."
+        );
+      }
+
+      const options = {
+        method: "GET",
+        url: "https://instagram-looter2.p.rapidapi.com/post",
+        params: {
+          url: args.contentUrl,
+        },
+        headers: {
+          "x-rapidapi-key":
+            "3d3fb29ba1msh62edf7989245d00p196f93jsn4348bff721d5",
+          "x-rapidapi-host": "instagram-looter2.p.rapidapi.com",
+        },
+      };
+
+      try {
+        const response = await axios.request(options);
+        console.log(response.data);
+        if (!response.data.status) {
+          return false;
+        }
+        isVerified =
+          response.data.data.owner.username.toLowerCase() ===
+          profile.instagramUsername.toLowerCase();
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    }
     return isVerified;
   },
 });

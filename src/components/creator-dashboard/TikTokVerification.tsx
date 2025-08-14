@@ -47,6 +47,7 @@ function TikTokVerification() {
     if (profile?.verificationError) {
       toast.error(profile.verificationError);
     }
+    setIsLoading(false);
   }, [profile?.verificationError]);
 
   if (step === "success" && profile?.tiktokVerified) {
@@ -109,16 +110,14 @@ function TikTokVerification() {
   const handleVerifyBio = async () => {
     setIsLoading(true);
     try {
-      const result = await verifyBio({
+      await verifyBio({
         tiktokUsername: profile?.tiktokUsername || tiktokUsername.trim(),
       });
-      toast.success(result.message);
+      //toast.success(result.message);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Verification failed."
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
