@@ -22,7 +22,6 @@ import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { PayoutHistory } from "./creator-dashboard/PayoutHistory";
 import { PayoutRequestModal } from "./creator-dashboard/PayoutRequestModal";
-import TikTokVerification from "./creator-dashboard/TikTokVerification";
 import ViewAccountsModal from "./creator-dashboard/ViewAccountsModal";
 import { CreatorStats } from "./DashboardStats";
 import { SubmissionCard } from "./SubmissionCard";
@@ -32,7 +31,6 @@ import { ViewChart } from "./ViewChart";
 
 export function CreatorDashboard() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
-  const [showTikTokModal, setShowTikTokModal] = useState(false);
   const [showViewAccountsModal, setShowViewAccountsModal] = useState(false);
   const [expandedSubmission, setExpandedSubmission] =
     useState<UISubmission | null>(null);
@@ -61,28 +59,34 @@ export function CreatorDashboard() {
     );
   }
 
+  const totalVerified = [
+    profile?.tiktokVerified,
+    profile?.instagramVerified,
+  ].filter(Boolean).length;
+  const hasAnyVerification = totalVerified > 0;
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Creator Dashboard</h1>
         <Button onClick={() => setShowViewAccountsModal(true)}>
-          Verified Accounts
+          My Accounts
         </Button>
       </div>
-      {!profile?.tiktokVerified && (
+      {!hasAnyVerification && (
         <Alert variant="destructive">
           <div className="flex justify-between items-center">
             <div>
-              <AlertTitle>TikTok account not verified</AlertTitle>
+              <AlertTitle>No verified accounts</AlertTitle>
 
               <AlertDescription>
-                Please verify your TikTok account to start connecting with
+                Please verify at least one account to start connecting with
                 brands.
               </AlertDescription>
             </div>
             <Button
               variant="destructive"
-              onClick={() => setShowTikTokModal(true)}
+              onClick={() => setShowViewAccountsModal(true)}
             >
               Verify
             </Button>
@@ -241,18 +245,6 @@ export function CreatorDashboard() {
               </div>
             </>
           )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showTikTokModal} onOpenChange={setShowTikTokModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Verify TikTok Account</DialogTitle>
-            <DialogDescription>
-              Verify your TikTok account to connect with brands.
-            </DialogDescription>
-          </DialogHeader>
-          <TikTokVerification />
         </DialogContent>
       </Dialog>
 

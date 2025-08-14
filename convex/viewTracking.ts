@@ -408,7 +408,7 @@ function createViewTracker(
   }
 }
 
-// Get initial view count for a new submission
+// Get view count for a new submission
 export const getViewCount = internalAction({
   args: {
     contentUrl: v.string(),
@@ -425,12 +425,18 @@ export const getViewCount = internalAction({
 
       // If submissionId provided, update the submission
       if (args.submissionId && isOwner) {
+        // Get current view count to use as previousViews
+        const submission = await ctx.runQuery(internal.submissions.getSubmissionById, {
+          submissionId: args.submissionId,
+        });
+        const previousViews = submission?.viewCount || 0;
+        
         await ctx.runMutation(
           internal.viewTrackingHelpers.updateSubmissionViews,
           {
             submissionId: args.submissionId,
             viewCount: views,
-            previousViews: 0, // Initial fetch always has 0 previous views
+            previousViews,
           }
         );
       } else {

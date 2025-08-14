@@ -2,7 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import {
   canUpdateSubmissionStatus,
   checkUrlDuplication,
@@ -512,5 +512,13 @@ export const autoApproveExpiredSubmissions = internalMutation({
       processed: expiredSubmissions.length,
       approved: approvedCount,
     };
+  },
+});
+
+// Internal query to get a submission by ID
+export const getSubmissionById = internalQuery({
+  args: { submissionId: v.id("submissions") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.submissionId);
   },
 });
