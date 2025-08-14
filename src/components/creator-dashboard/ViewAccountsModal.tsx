@@ -424,7 +424,7 @@ export default function ViewAccountsModal({
             <div>
               <DialogTitle>My Accounts</DialogTitle>
               <DialogDescription>
-                Manage social media accounts
+                Manage my social media accounts
               </DialogDescription>
             </div>
           </div>

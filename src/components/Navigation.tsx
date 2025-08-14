@@ -18,7 +18,7 @@ import { SignOutButton } from "./auth/SignOutButton";
 import { ThemeToggle } from "./ThemeToggle";
 
 // Logo component with responsive sizing and theme awareness
-function Logo({ className = "" }: { className?: string }) {
+export function Logo({ className = "" }: { className?: string }) {
   const { resolvedTheme } = useTheme();
   const [logoSrc, setLogoSrc] = useState("/logo-white.png");
 
