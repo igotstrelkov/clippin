@@ -334,11 +334,6 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
     return this;
   }
 
-  withLastApiCall(timestamp: number): SubmissionBuilder {
-    this.data.lastApiCall = timestamp;
-    return this;
-  }
-
   withMonitoringTier(
     tier: "hot" | "warm" | "cold" | "archived"
   ): SubmissionBuilder {
@@ -422,7 +417,6 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
       initialViewCount: this.data.initialViewCount || this.data.viewCount || 0,
       submittedAt: this.data.submittedAt || Date.now(),
       viewTrackingEnabled: this.data.viewTrackingEnabled ?? true,
-      lastApiCall: this.data.lastApiCall || 0,
       ...this.data,
     };
   }

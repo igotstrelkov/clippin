@@ -23,7 +23,7 @@ interface ViewChartProps {
 }
 
 export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
-  const viewHistory = useQuery(api.viewTrackingHelpers.getViewHistoryForUser, {
+  const viewHistory = useQuery(api.viewTrackingHelpers.getViewHistory, {
     submissionId,
     limit: 48, // Last 48 data points
   });
@@ -50,7 +50,6 @@ export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
       minute: "numeric",
     }),
     viewCount: item.viewCount,
-    source: item.source,
   }));
 
   const chartConfig = {
@@ -89,12 +88,9 @@ export function ViewChart({ submissionId, height = 250 }: ViewChartProps) {
                 content={
                   <ChartTooltipContent
                     labelFormatter={(label) => `On ${label}`}
-                    formatter={(value, name, props) => (
+                    formatter={(value) => (
                       <div>
                         <div>{`${(value as number).toLocaleString()} views`}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Source: {props.payload.source.replace("_", " ")}
-                        </div>
                       </div>
                     )}
                   />

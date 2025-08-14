@@ -434,20 +434,22 @@ export const getViewCount = internalAction({
         );
         const previousViews = submission?.viewCount || 0;
 
+        // Update campaign and profile stats after successful verification FIRST
+        // This changes status from "verifying_owner" to "pending"
+        await ctx.runMutation(
+          internal.submissions.updateStatsAfterVerification,
+          {
+            submissionId: args.submissionId,
+          }
+        );
+
+        // Then update views (now submission is in "pending" status)
         await ctx.runMutation(
           internal.viewTrackingHelpers.updateSubmissionViews,
           {
             submissionId: args.submissionId,
             viewCount: views,
             previousViews,
-          }
-        );
-
-        // Update campaign and profile stats after successful verification
-        await ctx.runMutation(
-          internal.submissions.updateStatsAfterVerification,
-          {
-            submissionId: args.submissionId,
           }
         );
       } else {
@@ -457,7 +459,7 @@ export const getViewCount = internalAction({
         });
       }
 
-      return { viewCount: views };
+      return { viewCount: isOwner ? views : 0 };
     } catch (error) {
       logger.warn(`Failed to get initial view count for ${args.platform}`, {
         submissionId: args.submissionId,
@@ -469,94 +471,65 @@ export const getViewCount = internalAction({
   },
 });
 
-// SECURE: Manual refresh with proper validation and rate limiting
-// export const refreshSubmissionViews = action({
-//   args: { submissionId: v.id("submissions") },
-//   handler: async (
-//     ctx,
-//     args
-//   ): Promise<{ viewCount: number; previousViews: number }> => {
-//     const userId = await getAuthUserId(ctx);
-//     if (!userId) {
-//       throw new Error("Authentication required");
-//     }
-
-//     // Check if user can refresh views (includes access validation and rate limiting)
-//     const canRefresh = await ctx.runQuery(
-//       internal.viewTrackingHelpers.canRefreshViews,
-//       {
-//         submissionId: args.submissionId,
-//         userId,
-//       }
-//     );
-
-//     if (!canRefresh) {
-//       throw new Error(
-//         "Cannot refresh views at this time. Please wait 5 minutes between refreshes."
-//       );
-//     }
-
-//     // Get submission data
-//     const submission = await ctx.runQuery(
-//       internal.viewTrackingHelpers.getSubmissionWithAuth,
-//       {
-//         submissionId: args.submissionId,
-//         userId,
-//       }
-//     );
-
-//     if (!submission) {
-//       throw new Error("Submission not found or unauthorized");
-//     }
-
-//     const tracker = createViewTracker(submission.platform);
-//     const { views, ownerUsername } = await tracker.getVideoData(
-//       submission.contentUrl,
-//       ctx
-//     );
-
-//     // Atomically update views and the rate-limiting timestamp
-//     await ctx.runMutation(internal.viewTrackingHelpers.updateSubmissionViews, {
-//       submissionId: args.submissionId,
-//       viewCount: views,
-//       previousViews: submission.viewCount || 0, // Pass the old view count
-//       source: "manual_refresh",
-//       updateLastApiCall: true, // Also update the rate-limiting timestamp
-//       ownerUsername,
-//     });
-
-//     return {
-//       viewCount: views,
-//       previousViews: submission.viewCount || 0,
-//     };
-//   },
-// });
-
 // Cleanup old view tracking records (keep last 30 days)
 export const cleanupOldRecords = internalAction({
   args: {},
   handler: async (ctx) => {
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const BATCH_SIZE = 100; // Process in batches to avoid timeouts
+    let totalDeleted = 0;
+    let hasMore = true;
 
-    const oldRecords = await ctx.runQuery(
-      internal.viewTrackingHelpers.getOldViewRecords,
-      {
-        beforeTimestamp: thirtyDaysAgo,
+    logger.info("Starting view tracking cleanup", {
+      beforeTimestamp: thirtyDaysAgo,
+    });
+
+    while (hasMore) {
+      try {
+        // Get a batch of old records
+        const oldRecords = await ctx.runQuery(
+          internal.viewTrackingHelpers.getOldViewRecordsBatch,
+          {
+            beforeTimestamp: thirtyDaysAgo,
+            limit: BATCH_SIZE,
+          }
+        );
+
+        if (oldRecords.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        // Delete batch using a single mutation
+        const deletedCount = await ctx.runMutation(
+          internal.viewTrackingHelpers.deleteViewRecordsBatch,
+          {
+            recordIds: oldRecords.map((r) => r._id),
+          }
+        );
+
+        totalDeleted += deletedCount;
+
+        logger.info(
+          `Deleted batch of ${deletedCount} view records (batch size: ${oldRecords.length})`
+        );
+
+        // If we got fewer records than batch size, we're done
+        if (oldRecords.length < BATCH_SIZE) {
+          hasMore = false;
+        }
+      } catch (error) {
+        logger.error("Error during view tracking cleanup batch", {
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+        // Continue with next batch instead of failing completely
       }
-    );
-
-    let deletedCount = 0;
-    for (const record of oldRecords) {
-      await ctx.runMutation(internal.viewTrackingHelpers.deleteViewRecord, {
-        recordId: record._id,
-      });
-      deletedCount++;
     }
 
     logger.info("View tracking cleanup completed", {
-      deletedCount,
       beforeTimestamp: thirtyDaysAgo,
     });
-    return { deletedCount };
+
+    return { deletedCount: totalDeleted };
   },
 });

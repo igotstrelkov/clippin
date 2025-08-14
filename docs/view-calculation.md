@@ -8,19 +8,20 @@ The Clippin platform uses a sophisticated view tracking system to monitor TikTok
 
 ### Core Components
 
-| Component | Purpose | Technology |
-|-----------|---------|------------|
-| **TikTok API Integration** | Fetch real-time view counts | RapidAPI TikTok Scraper |
-| **Rate Limiter** | Prevent API quota exhaustion | 120 requests/minute limit |
-| **Smart Monitoring** | Tier-based update frequency | Hot/Warm/Cold/Archived tiers |
-| **Earnings Calculator** | Convert views to creator payments | CPM-based formula |
-| **Audit Trail** | Track all view changes | Complete transaction history |
+| Component                  | Purpose                           | Technology                   |
+| -------------------------- | --------------------------------- | ---------------------------- |
+| **TikTok API Integration** | Fetch real-time view counts       | RapidAPI TikTok Scraper      |
+| **Rate Limiter**           | Prevent API quota exhaustion      | 120 requests/minute limit    |
+| **Smart Monitoring**       | Tier-based update frequency       | Hot/Warm/Cold/Archived tiers |
+| **Earnings Calculator**    | Convert views to creator payments | CPM-based formula            |
+| **Audit Trail**            | Track all view changes            | Complete transaction history |
 
 ## View Fetching Process
 
 ### TikTok API Integration
 
 **API Service**: RapidAPI TikTok Scraper v7
+
 - **Endpoint**: `https://tiktok-scraper7.p.rapidapi.com/`
 - **Rate Limit**: 120 requests/minute (2 requests/second)
 - **Response Data**: Complete video metadata including `play_count`
@@ -31,7 +32,7 @@ The Clippin platform uses a sophisticated view tracking system to monitor TikTok
   data: {
     play_count: number,      // Current view count
     digg_count: number,      // Likes
-    comment_count: number,   // Comments  
+    comment_count: number,   // Comments
     share_count: number,     // Shares
     author: {
       unique_id: string,     // TikTok username
@@ -45,6 +46,7 @@ The Clippin platform uses a sophisticated view tracking system to monitor TikTok
 ### URL Pattern Support
 
 **Supported TikTok URL Formats**:
+
 - `https://www.tiktok.com/@username/video/1234567890`
 - `https://tiktok.com/@username/video/1234567890`
 - `https://vm.tiktok.com/shortcode`
@@ -53,6 +55,7 @@ The Clippin platform uses a sophisticated view tracking system to monitor TikTok
 ### Error Handling & Resilience
 
 **Automatic Recovery**:
+
 ```typescript
 // Rate limit handling
 if (response.status === 429) {
@@ -60,7 +63,7 @@ if (response.status === 429) {
   return retry();    // Single retry attempt
 }
 
-// Network error fallback  
+// Network error fallback
 catch (error) {
   logger.error("API call failed", { error });
   return 0; // Graceful degradation
@@ -72,29 +75,33 @@ catch (error) {
 ### Dual-Layer Rate Limiting
 
 **API Provider Limits (RapidAPI)**:
+
 - 120 requests/minute (2 requests/second)
 - Automatic retry on 429 status
 - 60-second cooldown on rate limit hit
 
 **Internal Rate Limiter**:
+
 ```typescript
 RATE_LIMIT = {
   MAX_REQUESTS_PER_MINUTE: 120,
   MAX_REQUESTS_PER_SECOND: 2,
-  WINDOW_SIZE_MS: 60000,    // 1 minute sliding window
-  BURST_WINDOW_MS: 1000     // 1 second burst protection
-}
+  WINDOW_SIZE_MS: 60000, // 1 minute sliding window
+  BURST_WINDOW_MS: 1000, // 1 second burst protection
+};
 ```
 
 ### Request Queue Management
 
 **Smart Queuing Logic**:
+
 - Sliding window algorithm for precise rate limiting
 - Burst protection prevents API overload
 - Wait time calculation for optimal scheduling
 - Request prioritization by monitoring tier
 
 **Queue Monitoring**:
+
 ```typescript
 // Real-time rate limit status
 {
@@ -111,17 +118,18 @@ RATE_LIMIT = {
 ### CPM-Based Formula
 
 **Earnings Calculation**:
+
 ```typescript
 function calculateEarnings(viewCount, cpmRate, maxPayout) {
   // Convert CPM from cents to dollars
   const cpmInDollars = cpmRate / 100;
-  
+
   // Calculate earnings: (views / 1000) * CPM
   const earningsInDollars = (viewCount / 1000) * cpmInDollars;
-  
+
   // Convert back to cents for database storage
   const earningsInCents = Math.round(earningsInDollars * 100);
-  
+
   // Apply maximum payout limit if set
   return maxPayout ? Math.min(earningsInCents, maxPayout) : earningsInCents;
 }
@@ -130,6 +138,7 @@ function calculateEarnings(viewCount, cpmRate, maxPayout) {
 ### Example Calculation
 
 **Scenario**: 50,000 views at €0.05 CPM with €200 max payout
+
 ```
 CPM Rate: 5 cents (stored as 5)
 View Count: 50,000
@@ -145,6 +154,7 @@ Calculation:
 ### Budget Impact Calculation
 
 **Campaign Budget Updates**:
+
 ```typescript
 // When views increase, earnings increase, budget decreases
 const earningsDelta = newEarnings - currentEarnings;
@@ -165,7 +175,6 @@ viewTracking: {
   submissionId: Id<"submissions">,  // Links to submission
   viewCount: number,                // View count at this timestamp
   timestamp: number,                // When the data was recorded
-  source: string,                   // "tiktok_api" | "manual_refresh" | "initial_fetch"
   metadata?: object                 // Additional tracking data
 }
 ```
@@ -180,8 +189,7 @@ submissions: {
   initialViewCount?: number,        // Views when first submitted
   thresholdMetAt?: number,          // When 1K views reached
   earnings?: number,                // Total earnings in cents
-  paidOutAmount?: number,           // Amount already paid out
-  lastApiCall?: number,             // Rate limiting timestamp
+  paidOutAmount?: number,           // Amount already paid out           // Rate limiting timestamp
   viewHistory?: Array<{             // Smart monitoring history
     timestamp: number,
     viewCount: number
@@ -205,6 +213,7 @@ campaigns: {
 ### 1. Automatic Monitoring (Smart Tiers)
 
 **Tier-Based Frequencies**:
+
 - **HOT**: Every 15 minutes (rapid growth videos)
 - **WARM**: Every 1 hour (moderate growth)
 - **COLD**: Every 6 hours (slow growth)
@@ -213,6 +222,7 @@ campaigns: {
 ### 2. Manual Refresh
 
 **User-Initiated Updates**:
+
 ```typescript
 // Security & Rate Limiting
 - Authentication required
@@ -224,6 +234,7 @@ campaigns: {
 ### 3. Initial Submission Fetch
 
 **New Submission Process**:
+
 1. Submission created with `viewCount: 0`
 2. Background job scheduled immediately
 3. Initial view count fetched from TikTok API
@@ -234,31 +245,33 @@ campaigns: {
 ### Atomic Database Updates
 
 **Transaction-Safe Operations**:
+
 ```typescript
 await Promise.all([
   // Update submission data
   db.patch(submissionId, {
     viewCount: newViews,
     earnings: newEarnings,
-    lastViewUpdate: now
+    lastViewUpdate: now,
   }),
-  
-  // Update campaign data  
+
+  // Update campaign data
   db.patch(campaignId, {
     totalViews: campaign.totalViews + viewDelta,
-    remainingBudget: newBudget
+    remainingBudget: newBudget,
   }),
-  
+
   // Update creator profile
   db.patch(profileId, {
-    totalEarnings: profile.totalEarnings + earningsDelta
-  })
+    totalEarnings: profile.totalEarnings + earningsDelta,
+  }),
 ]);
 ```
 
 ### View History Integration
 
 **Smart Monitoring Data**:
+
 - Async addition to `viewHistory` array
 - 7-day rolling window (max 168 data points)
 - Used for growth rate calculation
@@ -269,6 +282,7 @@ await Promise.all([
 ### 1,000 View Milestone
 
 **Automatic Threshold Detection**:
+
 ```typescript
 // Trigger when crossing 1K views
 if (previousViews < 1000 && newViewCount >= 1000) {
@@ -280,6 +294,7 @@ if (previousViews < 1000 && newViewCount >= 1000) {
 ```
 
 **Threshold Benefits**:
+
 - Improved discoverability in campaign marketplace
 - Eligibility for premium campaign features
 - Enhanced creator profile metrics
@@ -290,6 +305,7 @@ if (previousViews < 1000 && newViewCount >= 1000) {
 ### Authentication Requirements
 
 **All View Operations Require**:
+
 - Valid user authentication
 - Role-based access control
 - Submission ownership verification
@@ -297,15 +313,16 @@ if (previousViews < 1000 && newViewCount >= 1000) {
 
 ### Access Control Matrix
 
-| User Type | Own Submissions | Others' Submissions | Campaign Submissions |
-|-----------|----------------|-------------------|-------------------|
-| **Creator** | Full Access | No Access | No Access |
-| **Brand** | No Access | No Access | Full Access (own campaigns) |
-| **Admin** | Full Access | Full Access | Full Access |
+| User Type   | Own Submissions | Others' Submissions | Campaign Submissions        |
+| ----------- | --------------- | ------------------- | --------------------------- |
+| **Creator** | Full Access     | No Access           | No Access                   |
+| **Brand**   | No Access       | No Access           | Full Access (own campaigns) |
+| **Admin**   | Full Access     | Full Access         | Full Access                 |
 
 ### Rate Limiting Protection
 
 **Anti-Abuse Measures**:
+
 - 5-minute cooldown on manual refreshes
 - API quota monitoring and alerts
 - Suspicious activity detection
@@ -316,6 +333,7 @@ if (previousViews < 1000 && newViewCount >= 1000) {
 ### API Failure Recovery
 
 **Graceful Degradation Strategy**:
+
 ```typescript
 try {
   viewCount = await tiktokAPI.getViews(url);
@@ -335,6 +353,7 @@ try {
 ### Data Consistency
 
 **Consistency Guarantees**:
+
 - Atomic multi-table updates
 - Transaction rollback on partial failures
 - Audit trail preservation
@@ -343,6 +362,7 @@ try {
 ### Monitoring & Alerts
 
 **System Health Monitoring**:
+
 - API success/failure rates
 - Rate limit utilization
 - View update frequency
@@ -353,6 +373,7 @@ try {
 ### Caching Strategy
 
 **View Count Caching**:
+
 - No caching (real-time data priority)
 - Rate limiting provides natural throttling
 - Smart monitoring reduces unnecessary API calls
@@ -361,6 +382,7 @@ try {
 ### Database Optimization
 
 **Query Optimization**:
+
 - Indexed queries by submission ID and timestamp
 - Efficient view history retrieval
 - Optimized campaign aggregation queries
@@ -369,6 +391,7 @@ try {
 ### API Efficiency
 
 **Request Optimization**:
+
 - Single API call per view update
 - Batch processing not implemented (real-time priority)
 - Smart tier monitoring reduces overall API usage
@@ -379,6 +402,7 @@ try {
 ### Daily Operations
 
 **Routine Monitoring**:
+
 1. Check API quota usage and success rates
 2. Verify earnings calculations are accurate
 3. Monitor view update frequencies by tier
@@ -387,18 +411,21 @@ try {
 ### Troubleshooting Common Issues
 
 **View Count Not Updating**:
+
 1. Check submission's monitoring tier and last update
 2. Verify TikTok URL is valid and accessible
 3. Check rate limiter status and API quota
 4. Review error logs for API failures
 
 **Earnings Discrepancy**:
+
 1. Verify CPM rate and max payout settings
 2. Check view count history for accuracy
 3. Validate earnings calculation formula
 4. Review campaign budget and remaining balance
 
 **API Rate Limiting**:
+
 1. Monitor current queue size and utilization
 2. Check for unusual traffic patterns
 3. Verify rate limiter configuration
@@ -409,18 +436,20 @@ try {
 ### Planned Improvements
 
 **Enhanced Accuracy**:
-- Multiple API source integration for redundancy
+
 - View count validation and anomaly detection
 - Historical trend analysis for fraud detection
 - Real-time view velocity monitoring
 
 **Performance Scaling**:
+
 - Redis-based rate limiter for multi-instance deployments
 - Batch API processing for efficiency gains
 - Predictive caching based on view patterns
 - Horizontal scaling support for high volume
 
 **Advanced Features**:
+
 - View count forecasting and projections
 - Geographic view breakdown integration
 - Engagement metrics beyond view counts
@@ -428,4 +457,4 @@ try {
 
 ---
 
-*This view calculation system provides accurate, real-time tracking of TikTok video performance with robust error handling, comprehensive audit trails, and automatic earnings calculation, forming the foundation of Clippin's performance-based creator compensation model.*
+_This view calculation system provides accurate, real-time tracking of TikTok video performance with robust error handling, comprehensive audit trails, and automatic earnings calculation, forming the foundation of Clippin's performance-based creator compensation model._

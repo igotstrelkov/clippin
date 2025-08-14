@@ -78,7 +78,6 @@ function createMockSubmission(
     initialViewCount: 100,
     submittedAt: Date.now(),
     viewTrackingEnabled: true,
-    lastApiCall: 0,
     platform: "tiktok",
     ...overrides,
   };
@@ -497,7 +496,6 @@ describe("SubmissionService", () => {
       expect(result.initialViewCount).toBe(500);
       expect(result.submittedAt).toBeDefined();
       expect(result.viewTrackingEnabled).toBe(true);
-      expect(result.lastApiCall).toBe(0);
     });
 
     test("uses default initial view count", () => {

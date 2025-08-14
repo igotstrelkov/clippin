@@ -2,15 +2,13 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import {
-  validateCampaignCreation,
-  validateCampaignUpdate,
-  canDeleteCampaign,
   calculateCampaignStats,
+  canDeleteCampaign,
+  groupCampaignsByStatus,
   prepareCampaignCreation,
   prepareCampaignUpdate,
-  groupCampaignsByStatus,
-  type CampaignCreationArgs,
-  type CampaignUpdateArgs,
+  validateCampaignCreation,
+  validateCampaignUpdate,
 } from "./lib/campaignService";
 
 // Create a draft campaign (before payment)
@@ -218,7 +216,10 @@ export const deleteCampaign = mutation({
       .collect();
 
     // Validate deletion using service layer
-    const deletionValidation = canDeleteCampaign(campaign, submissions.length > 0);
+    const deletionValidation = canDeleteCampaign(
+      campaign,
+      submissions.length > 0
+    );
     if (!deletionValidation.canDelete) {
       return { success: false, message: deletionValidation.reason };
     }

@@ -150,7 +150,6 @@ describe("Test Data Factory", () => {
       expect(submission.viewCount).toBe(0);
       expect(submission.initialViewCount).toBe(0);
       expect(submission.viewTrackingEnabled).toBe(true);
-      expect(submission.lastApiCall).toBe(0);
     });
 
     test("creates approved submission", () => {

@@ -87,7 +87,6 @@ export const updateSubmissionViews = internalMutation({
     submissionId: v.id("submissions"),
     viewCount: v.number(),
     previousViews: v.number(),
-    updateLastApiCall: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Fetch required entities
@@ -108,10 +107,6 @@ export const updateSubmissionViews = internalMutation({
       viewCount: args.viewCount,
       lastViewUpdate: now,
     };
-
-    if (args.updateLastApiCall) {
-      submissionUpdates.lastApiCall = now;
-    }
 
     // Prepare campaign updates
     const viewDelta = args.viewCount - args.previousViews;
@@ -174,16 +169,6 @@ export const updateSubmissionViews = internalMutation({
   },
 });
 
-// Update last API call timestamp for rate limiting
-export const updateLastApiCall = internalMutation({
-  args: { submissionId: v.id("submissions") },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.submissionId, {
-      lastApiCall: Date.now(),
-    });
-  },
-});
-
 // Mark submission as having reached 1K view threshold
 export const markThresholdMet = internalMutation({
   args: { submissionId: v.id("submissions") },
@@ -233,124 +218,47 @@ export const validateSubmissionAccess = internalQuery({
   },
 });
 
-// SECURE: Get submission with proper authorization check
-export const getSubmissionWithAuth = internalQuery({
+// Get old view records in batches for cleanup
+export const getOldViewRecordsBatch = internalQuery({
   args: {
-    submissionId: v.id("submissions"),
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const submission = await ctx.db.get(args.submissionId);
-    if (!submission) return null;
-
-    // Check if user is the creator of the submission
-    if (submission.creatorId === args.userId) {
-      return submission;
-    }
-
-    // Check if user is the brand owner of the campaign
-    const campaign = await ctx.db.get(submission.campaignId);
-    if (campaign && campaign.brandId === args.userId) {
-      return submission;
-    }
-
-    return null;
-  },
-});
-
-// Get view history for a submission (internal)
-export const getViewHistory = internalQuery({
-  args: {
-    submissionId: v.id("submissions"),
+    beforeTimestamp: v.number(),
     limit: v.number(),
   },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("viewTracking")
-      .withIndex("by_submission_id", (q) =>
-        q.eq("submissionId", args.submissionId)
-      )
-      .order("desc")
+      .withIndex("by_timestamp", (q) => q.lt("timestamp", args.beforeTimestamp))
       .take(args.limit);
   },
 });
 
-// Get old view records for cleanup
-export const getOldViewRecords = internalQuery({
-  args: { beforeTimestamp: v.number() },
+// Delete multiple view tracking records in a single operation
+export const deleteViewRecordsBatch = internalMutation({
+  args: { recordIds: v.array(v.id("viewTracking")) },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("viewTracking")
-      .withIndex("by_timestamp", (q) => q.lt("timestamp", args.beforeTimestamp))
-      .collect();
-  },
-});
+    let deletedCount = 0;
 
-// Delete a view tracking record
-export const deleteViewRecord = internalMutation({
-  args: { recordId: v.id("viewTracking") },
-  handler: async (ctx, args) => {
-    await ctx.db.delete(args.recordId);
-  },
-});
-
-// SECURE: Get submission stats with proper validation
-export const getSubmissionStats = query({
-  args: { submissionId: v.id("submissions") },
-  handler: async (
-    ctx,
-    args
-  ): Promise<{
-    submission: Doc<"submissions">;
-    campaign: Doc<"campaigns"> | null;
-    recentHistory: Doc<"viewTracking">[];
-    hasReachedThreshold: boolean;
-  } | null> => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Authentication required");
-    }
-
-    // Validate access to this submission
-    const hasAccess: boolean = await ctx.runQuery(
-      internal.viewTrackingHelpers.validateSubmissionAccess,
-      {
-        submissionId: args.submissionId,
-        userId,
-      }
+    // Delete records in parallel for better performance
+    await Promise.all(
+      args.recordIds.map(async (recordId) => {
+        try {
+          await ctx.db.delete(recordId);
+          deletedCount++;
+        } catch (error) {
+          // Log individual failures but don't stop the batch
+          logger.warn("Failed to delete view record", {
+            error: error instanceof Error ? error : new Error(String(error)),
+          });
+        }
+      })
     );
 
-    if (!hasAccess) {
-      throw new Error("Unauthorized access to submission data");
-    }
-
-    const submission = await ctx.db.get(args.submissionId);
-    if (!submission) {
-      throw new Error("Submission not found");
-    }
-
-    // Get recent view history (last 7 days)
-    const recentHistory: Doc<"viewTracking">[] = await ctx.runQuery(
-      internal.viewTrackingHelpers.getViewHistory,
-      {
-        submissionId: args.submissionId,
-        limit: 168, // 7 days * 24 hours
-      }
-    );
-
-    const campaign = await ctx.db.get(submission.campaignId);
-
-    return {
-      submission,
-      campaign,
-      recentHistory,
-      hasReachedThreshold: (submission.viewCount || 0) >= 1000,
-    };
+    return deletedCount;
   },
 });
 
 // SECURE: Get view history with proper validation
-export const getViewHistoryForUser = query({
+export const getViewHistory = query({
   args: {
     submissionId: v.id("submissions"),
     limit: v.optional(v.number()),
@@ -374,43 +282,14 @@ export const getViewHistoryForUser = query({
       throw new Error("Unauthorized access to submission data");
     }
 
-    const result: Doc<"viewTracking">[] = await ctx.runQuery(
-      internal.viewTrackingHelpers.getViewHistory,
-      {
-        submissionId: args.submissionId,
-        limit: args.limit || 24,
-      }
-    );
+    const result: Doc<"viewTracking">[] = await ctx.db
+      .query("viewTracking")
+      .withIndex("by_submission_id", (q) =>
+        q.eq("submissionId", args.submissionId)
+      )
+      .order("desc")
+      .take(args.limit || 24);
 
     return result;
-  },
-});
-
-// SECURE: Rate-limited view refresh
-export const canRefreshViews = internalQuery({
-  args: {
-    submissionId: v.id("submissions"),
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const submission = await ctx.db.get(args.submissionId);
-    if (!submission) return false;
-
-    // Check access
-    const hasAccess: boolean = await ctx.runQuery(
-      internal.viewTrackingHelpers.validateSubmissionAccess,
-      {
-        submissionId: args.submissionId,
-        userId: args.userId,
-      }
-    );
-
-    if (!hasAccess) return false;
-
-    // Rate limiting: Allow refresh every 5 minutes
-    const lastRefresh = submission.lastApiCall || 0;
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-
-    return lastRefresh < fiveMinutesAgo;
   },
 });

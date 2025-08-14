@@ -185,7 +185,6 @@ The app uses Convex's real-time subscriptions extensively - changes to campaigns
 ### Important Implementation Notes
 
 - **Database Indexes**: Schema includes comprehensive indexes for performance - always query using indexed fields
-- **Rate Limiting**: TikTok API calls are rate-limited and tracked via `lastApiCall` timestamps
 - **File Storage**: Uses Convex file storage for user uploads (company logos, assets)
 - **Scheduled Jobs**: Cron jobs handle automated view tracking updates and payout processing
 - **Real-time Subscriptions**: Extensive use of Convex real-time updates for live data synchronization

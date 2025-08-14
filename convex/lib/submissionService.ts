@@ -246,7 +246,6 @@ export function prepareSubmissionCreation(
     submittedAt: Date.now(),
     viewTrackingEnabled: true,
     platform: args.platform,
-    lastApiCall: 0, // Initialize rate limiting
   };
 }
 

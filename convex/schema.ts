@@ -92,7 +92,6 @@ const applicationTables = {
     rejectionReason: v.optional(v.string()),
     // View tracking flags
     viewTrackingEnabled: v.optional(v.boolean()),
-    lastApiCall: v.optional(v.number()), // Rate limiting
     // Smart monitoring tier system
     monitoringTier: v.optional(
       v.union(
