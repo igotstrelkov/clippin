@@ -2,7 +2,12 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import {
   canUpdateSubmissionStatus,
   checkUrlDuplication,
@@ -101,26 +106,15 @@ export const submitToCampaign = mutation({
     // Create submission
     const submissionId = await ctx.db.insert("submissions", submissionData);
 
-    // Schedule initial view count fetch
+    // Schedule initial view count fetch and ownership verification
     await ctx.scheduler.runAfter(0, internal.viewTracking.getViewCount, {
       contentUrl: args.contentUrl.trim(),
       submissionId,
       platform: args.platform,
     });
 
-    // Update campaign stats - campaign is guaranteed to exist due to validation
-    if (campaign) {
-      await ctx.db.patch(args.campaignId, {
-        totalSubmissions: (campaign.totalSubmissions || 0) + 1,
-      });
-    }
-
-    // Update creator's total submissions count - profile is guaranteed to exist due to validation
-    if (profile) {
-      await ctx.db.patch(profile._id, {
-        totalSubmissions: (profile.totalSubmissions || 0) + 1,
-      });
-    }
+    // Note: Campaign and profile stats will be updated after successful ownership verification
+    // in the getViewCount action when isOwner === true
 
     // Send notification to brand (schedule as action)
     try {
@@ -512,6 +506,54 @@ export const autoApproveExpiredSubmissions = internalMutation({
       processed: expiredSubmissions.length,
       approved: approvedCount,
     };
+  },
+});
+
+// Internal mutation to update stats after successful ownership verification
+export const updateStatsAfterVerification = internalMutation({
+  args: { submissionId: v.id("submissions") },
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) return;
+
+    // Get campaign and profile
+    const campaign = await ctx.db.get(submission.campaignId);
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
+      .unique();
+
+    // Update campaign stats
+    if (campaign) {
+      await ctx.db.patch(submission.campaignId, {
+        totalSubmissions: (campaign.totalSubmissions || 0) + 1,
+      });
+    }
+
+    // Update creator's total submissions count
+    if (profile) {
+      await ctx.db.patch(profile._id, {
+        totalSubmissions: (profile.totalSubmissions || 0) + 1,
+      });
+    }
+
+    // Update submission status to pending after successful verification
+    await ctx.db.patch(args.submissionId, {
+      status: "pending" as const,
+    });
+  },
+});
+
+export const rejectSubmission = internalMutation({
+  args: {
+    submissionId: v.id("submissions"),
+    rejectionReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.submissionId, {
+      status: "rejected",
+      rejectionReason: args.rejectionReason,
+    });
   },
 });
 

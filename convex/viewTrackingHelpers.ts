@@ -82,19 +82,6 @@ async function processEarningsUpdate(
   return { submissionUpdates, campaignUpdates };
 }
 
-export const rejectSubmission = internalMutation({
-  args: {
-    submissionId: v.id("submissions"),
-    rejectionReason: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.submissionId, {
-      status: "rejected",
-      rejectionReason: args.rejectionReason,
-    });
-  },
-});
-
 export const updateSubmissionViews = internalMutation({
   args: {
     submissionId: v.id("submissions"),

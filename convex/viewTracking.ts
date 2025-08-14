@@ -426,11 +426,14 @@ export const getViewCount = internalAction({
       // If submissionId provided, update the submission
       if (args.submissionId && isOwner) {
         // Get current view count to use as previousViews
-        const submission = await ctx.runQuery(internal.submissions.getSubmissionById, {
-          submissionId: args.submissionId,
-        });
+        const submission = await ctx.runQuery(
+          internal.submissions.getSubmissionById,
+          {
+            submissionId: args.submissionId,
+          }
+        );
         const previousViews = submission?.viewCount || 0;
-        
+
         await ctx.runMutation(
           internal.viewTrackingHelpers.updateSubmissionViews,
           {
@@ -439,8 +442,16 @@ export const getViewCount = internalAction({
             previousViews,
           }
         );
+
+        // Update campaign and profile stats after successful verification
+        await ctx.runMutation(
+          internal.submissions.updateStatsAfterVerification,
+          {
+            submissionId: args.submissionId,
+          }
+        );
       } else {
-        await ctx.runMutation(internal.viewTrackingHelpers.rejectSubmission, {
+        await ctx.runMutation(internal.submissions.rejectSubmission, {
           submissionId: args.submissionId,
           rejectionReason: "Not the owner of the account",
         });
