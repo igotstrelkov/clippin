@@ -186,7 +186,7 @@ submissions: {
   // ... existing fields
   viewCount: number,                // Current view count
   lastViewUpdate: number,           // Last time views were updated
-  initialViewCount?: number,        // Views when first submitted        // When 1K views reached
+submitted        // When 1K views reached
   earnings?: number,                // Total earnings in cents
   paidOutAmount?: number,           // Amount already paid out           // Rate limiting timestamp
   viewHistory?: Array<{             // Smart monitoring history

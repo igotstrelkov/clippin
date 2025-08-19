@@ -25,7 +25,7 @@ export const checkInstagramBioForCode = internalAction({
   },
 });
 
-// Verification using TikTok public profile data
+// Verification using Instagram public profile data
 async function checkBioWithPublicAPI(
   username: string,
   verificationCode: string
@@ -51,13 +51,13 @@ async function checkBioWithPublicAPI(
     }
 
     return {
-      found: response.data.data.biography.includes(verificationCode),
-      bio: response.data.data.biography,
+      found: response.data.biography.includes(verificationCode),
+      bio: response.data.biography,
     };
   } catch (error) {
     return {
       found: false,
-      error: `Unable to verify TikTok profile: ${error instanceof Error ? error.message : "Unknown error"}. Please ensure your profile is public and the username is correct.`,
+      error: `Unable to verify Instagram profile: ${error instanceof Error ? error.message : "Unknown error"}. Please ensure your profile is public and the username is correct.`,
     };
   }
 }

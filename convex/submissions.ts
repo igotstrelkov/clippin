@@ -46,7 +46,7 @@ export const submitToCampaign = mutation({
     const campaign = await ctx.db.get(args.campaignId);
 
     // Validate creator eligibility using service layer
-    const { isValid, errors } = validateEligibility(profile);
+    const { isValid, errors } = validateEligibility(profile, args.platform);
     if (!isValid) {
       return {
         success: false,
@@ -109,11 +109,8 @@ export const submitToCampaign = mutation({
     }
 
     // Prepare submission data using service layer
-    const initialViews = 0;
-    const submissionData = prepareSubmissionCreation(
-      submissionArgs,
-      initialViews
-    );
+
+    const submissionData = prepareSubmissionCreation(submissionArgs);
 
     // Create submission
     const submissionId = await ctx.db.insert("submissions", submissionData);
@@ -161,7 +158,7 @@ export const submitToCampaign = mutation({
 
     return {
       success: true,
-      message: "Submission successful! Awaiting brand approval.",
+      message: "Submitted successfully! Pending approval",
     };
   },
 });

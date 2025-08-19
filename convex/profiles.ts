@@ -394,7 +394,7 @@ export const verifyPost = internalQuery({
 
       try {
         const response = await axios.request(options);
-        console.log(response.data);
+
         if (!response.data.status) {
           return false;
         }

@@ -148,8 +148,6 @@ describe("Test Data Factory", () => {
       );
       expect(submission.status).toBe("pending");
       expect(submission.viewCount).toBe(0);
-      expect(submission.initialViewCount).toBe(0);
-      expect(submission.viewTrackingEnabled).toBe(true);
     });
 
     test("creates approved submission", () => {

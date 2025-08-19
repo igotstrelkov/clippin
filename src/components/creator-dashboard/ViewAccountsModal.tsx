@@ -383,7 +383,7 @@ export default function ViewAccountsModal({
               <div>
                 <DialogTitle>{platformName} Verification</DialogTitle>
                 <DialogDescription>
-                  Verify your {platformName} account to submit to campaigns
+                  Verify your {platformName} account to connect with brands
                 </DialogDescription>
               </div>
             </div>
@@ -422,7 +422,7 @@ export default function ViewAccountsModal({
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div>
-              <DialogTitle>My Accounts</DialogTitle>
+              <DialogTitle>Social Accounts</DialogTitle>
               <DialogDescription>
                 Manage my social media accounts
               </DialogDescription>
@@ -464,7 +464,7 @@ export default function ViewAccountsModal({
             >
               {hasAnyVerification
                 ? "Great! You can now submit to campaigns."
-                : "Verify at least one account to start submitting to campaigns."}
+                : "Verify at least one social account to start submitting to campaigns."}
             </AlertDescription>
           </Alert>
 

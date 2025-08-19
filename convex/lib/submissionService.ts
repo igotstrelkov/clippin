@@ -61,7 +61,8 @@ export function isValidContentUrl(url: string): boolean {
  * Validate if creator can submit to campaign
  */
 export function validateEligibility(
-  profile: Doc<"profiles"> | null
+  profile: Doc<"profiles"> | null,
+  platform: "tiktok" | "instagram"
 ): ValidationResult {
   const errors: string[] = [];
 
@@ -74,8 +75,12 @@ export function validateEligibility(
     errors.push("Only creators can submit to campaigns");
   }
 
-  if (!profile.tiktokVerified || !profile.instagramVerified) {
-    errors.push("Please verify your TikTok or Instagram account first");
+  if (platform === "tiktok" && !profile.tiktokVerified) {
+    errors.push("Please verify your TikTok account first");
+  }
+
+  if (platform === "instagram" && !profile.instagramVerified) {
+    errors.push("Please verify your Instagram account first");
   }
 
   return {
@@ -210,18 +215,15 @@ export function calculateSubmissionEarnings(
  * Prepare submission data for creation
  */
 export function prepareSubmissionCreation(
-  args: SubmissionCreationArgs,
-  initialViewCount: number = 0
+  args: SubmissionCreationArgs
 ): Omit<Doc<"submissions">, "_id" | "_creationTime"> {
   return {
     campaignId: args.campaignId,
     creatorId: args.creatorId,
     contentUrl: args.contentUrl.trim(),
     status: "verifying_owner",
-    viewCount: initialViewCount,
-    initialViewCount: initialViewCount,
+    viewCount: 0,
     submittedAt: Date.now(),
-    viewTrackingEnabled: true,
     platform: args.platform,
   };
 }

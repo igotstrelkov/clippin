@@ -112,7 +112,9 @@ export function CampaignDetails() {
       100
     : 0;
 
-  const canSubmit = profile?.userType === "creator" && profile?.tiktokVerified;
+  const canSubmit =
+    profile?.userType === "creator" &&
+    (profile?.tiktokVerified || profile?.instagramVerified);
 
   if (!campaignId) {
     void navigate("/marketplace");
@@ -311,7 +313,7 @@ export function CampaignDetails() {
                   <AlertDescription>
                     {profile.userType !== "creator"
                       ? "Only creators can submit to campaigns."
-                      : "Please verify your TikTok account in your profile to submit."}
+                      : "Please verify at least one social account to start submitting to campaigns."}
                   </AlertDescription>
                 </Alert>
               )

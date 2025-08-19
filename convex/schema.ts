@@ -83,14 +83,11 @@ const applicationTables = {
     ),
     viewCount: v.optional(v.number()),
     lastViewUpdate: v.optional(v.number()),
-    initialViewCount: v.optional(v.number()), // Views at submission time
     earnings: v.optional(v.number()),
     paidOutAmount: v.optional(v.number()), // Total amount paid out for this submission
     submittedAt: v.number(),
     approvedAt: v.optional(v.number()),
     rejectionReason: v.optional(v.string()),
-    // View tracking flags
-    viewTrackingEnabled: v.optional(v.boolean()),
     // Smart monitoring tier system
     monitoringTier: v.optional(
       v.union(

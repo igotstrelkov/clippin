@@ -67,21 +67,15 @@ export function CreatorDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Creator Dashboard</h1>
-        <Button onClick={() => setShowViewAccountsModal(true)}>
-          My Accounts
-        </Button>
-      </div>
       {!hasAnyVerification && (
         <Alert variant="destructive">
           <div className="flex justify-between items-center">
             <div>
-              <AlertTitle>No verified accounts</AlertTitle>
+              <AlertTitle>No verified social accounts</AlertTitle>
 
               <AlertDescription>
-                Please verify at least one account to start connecting with
-                brands.
+                Please verify at least one social account to start connecting
+                with brands.
               </AlertDescription>
             </div>
             <Button
@@ -110,6 +104,12 @@ export function CreatorDashboard() {
             </div>
           </Alert>
         )}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Creator Dashboard</h1>
+        <Button onClick={() => setShowViewAccountsModal(true)}>
+          Social Accounts
+        </Button>
+      </div>
 
       <CreatorStats stats={creatorStats} />
 
@@ -223,8 +223,7 @@ export function CreatorDashboard() {
                 <DialogDescription>
                   Submitted on{" "}
                   {new Date(
-                    expandedSubmission.submittedAt ??
-                      expandedSubmission._creationTime
+                    expandedSubmission.submittedAt
                   ).toLocaleDateString()}
                 </DialogDescription>
               </DialogHeader>
@@ -279,7 +278,7 @@ function SubmissionsSection({
             // On creator dashboard, surface brand name prominently
             creatorName: s.brandName || "Brand",
             campaignTitle: s.campaignTitle || "Campaign",
-            submittedAt: s.submittedAt ?? s._creationTime,
+            submittedAt: s.submittedAt,
           };
 
           return (

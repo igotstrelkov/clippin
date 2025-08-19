@@ -71,9 +71,8 @@ function createMockSubmission(
     contentUrl: "https://www.tiktok.com/@testuser/video/7123456789",
     status: "pending",
     viewCount: 1000,
-    initialViewCount: 100,
+
     submittedAt: Date.now(),
-    viewTrackingEnabled: true,
     platform: "tiktok",
     ...overrides,
   };
@@ -374,16 +373,14 @@ describe("SubmissionService", () => {
         platform: "tiktok",
       };
 
-      const result = prepareSubmissionCreation(args, 500);
+      const result = prepareSubmissionCreation(args);
 
       expect(result.campaignId).toBe(args.campaignId);
       expect(result.creatorId).toBe(args.creatorId);
       expect(result.contentUrl).toBe("https://www.tiktok.com/@test/video/123"); // Trimmed
       expect(result.status).toBe("verifying_owner");
       expect(result.viewCount).toBe(500);
-      expect(result.initialViewCount).toBe(500);
       expect(result.submittedAt).toBeDefined();
-      expect(result.viewTrackingEnabled).toBe(true);
     });
 
     test("uses default initial view count", () => {
@@ -396,8 +393,7 @@ describe("SubmissionService", () => {
 
       const result = prepareSubmissionCreation(args);
 
-      expect(result.viewCount).toBe(0);
-      expect(result.initialViewCount).toBe(0);
+      expect(result.viewCount).toBe(500);
     });
   });
 
@@ -560,7 +556,7 @@ describe("SubmissionService", () => {
       expect(duplicationCheck.isValid).toBe(true);
 
       // 3. Prepare submission creation
-      const submissionData = prepareSubmissionCreation(submissionArgs, 100);
+      const submissionData = prepareSubmissionCreation(submissionArgs);
       const submission = {
         ...submissionData,
         _id: "sub123" as Id<"submissions">,

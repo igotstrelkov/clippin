@@ -1,7 +1,7 @@
 "use node";
 import axios from "axios";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { internalAction } from "./_generated/server";
 import { logger } from "./logger";
@@ -212,17 +212,17 @@ class TikTokViewTracker extends ViewTracker {
         submissionId: videoId,
       });
 
-      const submission = await ctx.db.get(this.submissionId);
+      const submission = await ctx.runQuery(
+        internal.submissions.getSubmissionById,
+        { submissionId: this.submissionId }
+      );
       if (!submission) {
         return { views: 0, isOwner: false };
       }
 
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_user_id", (q: any) =>
-          q.eq("userId", submission.creatorId)
-        )
-        .unique();
+      const profile = await ctx.runQuery(api.profiles.getProfileByUserId, {
+        userId: submission.creatorId,
+      });
 
       // Check if the profile's TikTok username matches the video author
       const isOwner =
@@ -317,25 +317,27 @@ class InstagramViewTracker extends ViewTracker {
         .then((res) => res.data);
 
       // Record the API request for rate limiting
-      if (!response.status) {
+      if (response.status == false) {
         return { views: 0, isOwner: false };
       }
 
       await ctx.runMutation(internal.rateLimiter.recordRequest, {
         submissionId: videoId,
       });
+      console.log("submissionId", this.submissionId);
+      const submission = await ctx.runQuery(
+        internal.submissions.getSubmissionById,
+        { submissionId: this.submissionId }
+      );
+      console.log("submission", submission);
 
-      const submission = await ctx.db.get(this.submissionId);
       if (!submission) {
         return { views: 0, isOwner: false };
       }
 
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_user_id", (q: any) =>
-          q.eq("userId", submission.creatorId)
-        )
-        .unique();
+      const profile = await ctx.runQuery(api.profiles.getProfileByUserId, {
+        userId: submission.creatorId,
+      });
 
       // For Instagram, video_view_count might not exist for non-video posts
       // Use video_play_count as fallback, or edge_media_preview_like count for images
@@ -351,6 +353,7 @@ class InstagramViewTracker extends ViewTracker {
         isOwner,
       };
     } catch (error) {
+      console.log(error);
       // Check if it's a rate limit error
       if (axios.isAxiosError(error) && error.response?.status === 429) {
         logger.warn("RapidAPI rate limit exceeded", {

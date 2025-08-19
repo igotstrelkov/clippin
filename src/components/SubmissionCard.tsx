@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { formatCurrency, getRelativeTime } from "@/lib/utils";
 import type { UISubmission } from "@/types/ui";
 import {
@@ -23,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
+import { Badge } from "./ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +50,7 @@ export const SubmissionCard = memo(
     onExpand?: (submission: UISubmission) => void;
     userType?: "brand" | "creator";
   }) => {
+    const isMobile = useIsMobile();
     const [expandedSubmission, setExpandedSubmission] =
       useState<UISubmission | null>(null);
     const [showRejectionDialog, setShowRejectionDialog] = useState(false);
@@ -84,13 +87,26 @@ export const SubmissionCard = memo(
     const getBorderColorClass = () => {
       switch (submission.status) {
         case "pending":
-          return "border-l-4 border-l-orange-500";
+          return "border-l-4 border-l-yellow-500";
         case "approved":
           return "border-l-4 border-l-green-500";
         case "rejected":
           return "border-l-4 border-l-red-500";
         default:
           return "border-l-4 border-l-gray-500";
+      }
+    };
+
+    const getVariant = () => {
+      switch (submission.status) {
+        case "pending":
+          return "warning";
+        case "approved":
+          return "success";
+        case "rejected":
+          return "destructive";
+        default:
+          return "default";
       }
     };
 
@@ -103,9 +119,14 @@ export const SubmissionCard = memo(
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 {/* {getStatusIcon()} */}
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold truncate">
-                    {submission.creatorName}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold truncate">
+                      {submission.creatorName}
+                    </h3>
+                    {!isMobile && (
+                      <Badge variant={getVariant()}>{submission.status}</Badge>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground truncate">
                     {submission.campaignTitle}
                   </p>
@@ -152,9 +173,7 @@ export const SubmissionCard = memo(
               <div>
                 <p className="text-xs text-muted-foreground">Submitted</p>
                 <p className="font-semibold">
-                  {getRelativeTime(
-                    submission.submittedAt ?? submission._creationTime
-                  )}
+                  {getRelativeTime(submission.submittedAt)}
                 </p>
               </div>
               <div className="flex flex-col gap-1">

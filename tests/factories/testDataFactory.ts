@@ -293,12 +293,8 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
     return this;
   }
 
-  withViewCount(
-    viewCount: number,
-    initialViewCount?: number
-  ): SubmissionBuilder {
+  withViewCount(viewCount: number): SubmissionBuilder {
     this.data.viewCount = viewCount;
-    this.data.initialViewCount = initialViewCount ?? viewCount;
     return this;
   }
 
@@ -407,9 +403,7 @@ export class SubmissionBuilder implements Builder<Doc<"submissions">> {
         `https://www.tiktok.com/@testuser/video/${Date.now()}`,
       status: this.data.status || "pending",
       viewCount: this.data.viewCount || 0,
-      initialViewCount: this.data.initialViewCount || this.data.viewCount || 0,
       submittedAt: this.data.submittedAt || Date.now(),
-      viewTrackingEnabled: this.data.viewTrackingEnabled ?? true,
       ...this.data,
     };
   }
@@ -635,7 +629,7 @@ export class ScenarioBuilder {
       creatorEmail: "creator2@test.com",
       tiktokUsername: "@creator2",
       submissionStatus: "pending",
-      viewCount: 500,
+      viewCount: 0,
     });
 
     const creator3Scenario = this.createCreatorWithSubmission(campaign._id, {
