@@ -10,6 +10,10 @@ import {
 } from "./_generated/server";
 import { validateCampaignAcceptance } from "./lib/campaignService";
 import {
+  scheduleBrandSubmissionNotification,
+  sendCreatorEmail,
+} from "./lib/emailNotifications";
+import {
   calculateSubmissionStats,
   canUpdateSubmissionStatus,
   checkUrlDuplication,
@@ -24,10 +28,6 @@ import {
   type SubmissionUpdateArgs,
 } from "./lib/submissionService";
 import { logger } from "./logger";
-import {
-  scheduleBrandSubmissionNotification,
-  sendCreatorEmail,
-} from "./lib/emailNotifications";
 
 // Submit to campaign
 export const submitToCampaign = mutation({
@@ -48,6 +48,13 @@ export const submitToCampaign = mutation({
 
     // Get campaign
     const campaign = await ctx.db.get(args.campaignId);
+
+    if (!campaign) {
+      return {
+        success: false,
+        message: "Campaign not found",
+      };
+    }
 
     // Validate creator eligibility using service layer
     const { isValid, errors } = validateProfileEligibility(
@@ -85,19 +92,6 @@ export const submitToCampaign = mutation({
       };
     }
 
-    // Verify post ownership
-    // const isPostVerified = await ctx.runQuery(internal.profiles.verifyPost, {
-    //   contentUrl: args.contentUrl,
-    //   platform: args.platform,
-    // });
-
-    // if (!isPostVerified) {
-    //   return {
-    //     success: false,
-    //     message: "Post does not belong to your verified TikTok account",
-    //   };
-    // }
-
     // Check if this exact URL was already submitted to any campaign
     const existingUrlSubmission = await ctx.db
       .query("submissions")
@@ -123,7 +117,7 @@ export const submitToCampaign = mutation({
     const submissionId = await ctx.db.insert("submissions", submissionData);
 
     // Schedule initial view count fetch and ownership verification
-    await ctx.scheduler.runAfter(0, internal.viewTracking.getViewCount, {
+    await ctx.scheduler.runAfter(0, internal.viewTracking.verifyContentOwner, {
       contentUrl: args.contentUrl.trim(),
       submissionId,
       platform: args.platform,
@@ -133,13 +127,12 @@ export const submitToCampaign = mutation({
     // in the getViewCount action when isOwner === true
 
     // Send notification to brand (schedule as action)
-    if (campaign) {
-      await scheduleBrandSubmissionNotification(ctx, {
-        campaign,
-        contentUrl: args.contentUrl,
-        creatorName: profile?.creatorName || "Unknown Creator",
-      });
-    }
+
+    await scheduleBrandSubmissionNotification(ctx, {
+      campaign,
+      contentUrl: args.contentUrl,
+      creatorName: profile?.creatorName || "Unknown Creator",
+    });
 
     return {
       success: true,

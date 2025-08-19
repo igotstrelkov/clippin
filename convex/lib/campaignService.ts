@@ -200,11 +200,11 @@ export function validateStatusTransition(
 /**
  * Check if campaign can accept new submissions
  */
-export function validateCampaignAcceptance(campaign: Doc<"campaigns"> | null): {
+export function validateCampaignAcceptance(campaign: Doc<"campaigns">): {
   canAccept: boolean;
   reason?: string;
 } {
-  if (campaign?.status !== "active") {
+  if (campaign.status !== "active") {
     return {
       canAccept: false,
       reason: `Campaign is ${campaign?.status}`,

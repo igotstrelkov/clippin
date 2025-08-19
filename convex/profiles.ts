@@ -1,11 +1,9 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import axios from "axios";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import {
   internalAction,
   internalMutation,
-  internalQuery,
   mutation,
   query,
 } from "./_generated/server";
@@ -248,26 +246,19 @@ export const verifyInstagramBio = mutation({
       };
     }
 
-    try {
-      // Schedule the verification action
-      await ctx.scheduler.runAfter(
-        0,
-        internal.profiles.completeInstagramVerification,
-        {
-          userId,
-          username: args.instagramUsername,
-          verificationCode: profile.verificationCode,
-          profileId: profile._id,
-        }
-      );
+    // Schedule the verification action
+    await ctx.scheduler.runAfter(
+      0,
+      internal.profiles.completeInstagramVerification,
+      {
+        userId,
+        username: args.instagramUsername,
+        verificationCode: profile.verificationCode,
+        profileId: profile._id,
+      }
+    );
 
-      return { success: true, message: "Verification started..." };
-    } catch {
-      return {
-        success: false,
-        message: "Failed to start verification process",
-      };
-    }
+    return { success: true, message: "Verification started..." };
   },
 });
 
@@ -303,110 +294,19 @@ export const verifyTikTokBio = mutation({
       };
     }
 
-    try {
-      // Schedule the verification action
-      await ctx.scheduler.runAfter(
-        0,
-        internal.profiles.completeTikTokVerification,
-        {
-          userId,
-          username: args.tiktokUsername,
-          verificationCode: profile.verificationCode,
-          profileId: profile._id,
-        }
-      );
-
-      return { success: true, message: "Verification started..." };
-    } catch {
-      return {
-        success: false,
-        message: "Failed to start verification process",
-      };
-    }
-  },
-});
-
-// Verification if post username matches the verified username
-export const verifyPost = internalQuery({
-  args: {
-    contentUrl: v.string(),
-    platform: v.union(v.literal("tiktok"), v.literal("instagram")),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    // Get the user's profile
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile) {
-      throw new Error("Profile not found");
-    }
-
-    let isVerified = false;
-
-    if (args.platform === "tiktok") {
-      if (!profile.tiktokUsername || !profile.tiktokVerified) {
-        throw new Error(
-          "No verified tiktok username found. Please verify your tiktok username first."
-        );
+    // Schedule the verification action
+    await ctx.scheduler.runAfter(
+      0,
+      internal.profiles.completeTikTokVerification,
+      {
+        userId,
+        username: args.tiktokUsername,
+        verificationCode: profile.verificationCode,
+        profileId: profile._id,
       }
+    );
 
-      // Validate the post URL format
-      const contentUrlPattern =
-        /^https:\/\/(www\.)?tiktok\.com\/@([^/]+)\/video\/(\d+)/;
-
-      const urlMatch = args.contentUrl.match(contentUrlPattern);
-
-      if (!urlMatch) {
-        return false;
-      }
-
-      // URL extraction as final fallback
-      const usernameFromUrl = urlMatch[2]; // Extract from URL pattern match
-      if (usernameFromUrl) {
-        isVerified =
-          usernameFromUrl.toLowerCase() ===
-          profile.tiktokUsername.toLowerCase();
-      }
-    } else if (args.platform === "instagram") {
-      if (!profile.instagramUsername || !profile.instagramVerified) {
-        throw new Error(
-          "No verified instagram username found. Please verify your instagram username first."
-        );
-      }
-
-      const options = {
-        method: "GET",
-        url: "https://instagram-looter2.p.rapidapi.com/post",
-        params: {
-          url: args.contentUrl,
-        },
-        headers: {
-          "x-rapidapi-key":
-            "3d3fb29ba1msh62edf7989245d00p196f93jsn4348bff721d5",
-          "x-rapidapi-host": "instagram-looter2.p.rapidapi.com",
-        },
-      };
-
-      try {
-        const response = await axios.request(options);
-
-        if (!response.data.status) {
-          return false;
-        }
-        isVerified =
-          response.data.data.owner.username.toLowerCase() ===
-          profile.instagramUsername.toLowerCase();
-      } catch (error) {
-        console.error(error);
-        return false;
-      }
-    }
-    return isVerified;
+    return { success: true, message: "Verification started..." };
   },
 });
 

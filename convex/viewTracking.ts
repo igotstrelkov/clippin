@@ -426,33 +426,63 @@ export const getViewCount = internalAction({
         ctx
       );
 
-      // If submissionId provided, update the submission
-      if (args.submissionId && isOwner) {
-        // Get current view count to use as previousViews
-        const submission = await ctx.runQuery(
-          internal.submissions.getSubmissionById,
-          {
-            submissionId: args.submissionId,
-          }
-        );
-        const previousViews = submission?.viewCount || 0;
+      if (!isOwner) {
+        return { viewCount: 0 };
+      }
 
-        // Update campaign and profile stats after successful verification FIRST
-        // This changes status from "verifying_owner" to "pending"
+      // Get current view count to use as previousViews
+      const submission = await ctx.runQuery(
+        internal.submissions.getSubmissionById,
+        {
+          submissionId: args.submissionId,
+        }
+      );
+
+      if (!submission) {
+        return { viewCount: 0 };
+      }
+
+      const previousViews = submission?.viewCount || 0;
+
+      // Then update views (now submission is in "pending" status)
+      await ctx.runMutation(
+        internal.viewTrackingHelpers.updateSubmissionViewsAndEarnings,
+        {
+          submissionId: args.submissionId,
+          viewCount: views,
+          previousViews,
+        }
+      );
+
+      return { viewCount: views };
+    } catch (error) {
+      logger.warn(`Failed to get view count for ${args.platform}`, {
+        submissionId: args.submissionId,
+        contentUrl: args.contentUrl,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      return { viewCount: 0 };
+    }
+  },
+});
+
+// Get initial view count for a new submission
+export const verifyContentOwner = internalAction({
+  args: {
+    contentUrl: v.string(),
+    submissionId: v.id("submissions"),
+    platform: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const tracker = createViewTracker(args.platform, args.submissionId);
+      const { isOwner } = await tracker.getVideoData(args.contentUrl, ctx);
+
+      if (args.submissionId && isOwner) {
         await ctx.runMutation(
           internal.submissions.updateStatsAfterVerification,
           {
             submissionId: args.submissionId,
-          }
-        );
-
-        // Then update views (now submission is in "pending" status)
-        await ctx.runMutation(
-          internal.viewTrackingHelpers.updateSubmissionViews,
-          {
-            submissionId: args.submissionId,
-            viewCount: views,
-            previousViews,
           }
         );
       } else {
@@ -461,10 +491,8 @@ export const getViewCount = internalAction({
           rejectionReason: "Not the owner of the account",
         });
       }
-
-      return { viewCount: isOwner ? views : 0 };
     } catch (error) {
-      logger.warn(`Failed to get initial view count for ${args.platform}`, {
+      logger.warn(`Failed to verify content owner for ${args.platform}`, {
         submissionId: args.submissionId,
         contentUrl: args.contentUrl,
         error: error instanceof Error ? error : new Error(String(error)),

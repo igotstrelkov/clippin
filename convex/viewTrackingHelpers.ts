@@ -91,7 +91,7 @@ async function processEarningsUpdate(
   };
 }
 
-export const updateSubmissionViews = internalMutation({
+export const updateSubmissionViewsAndEarnings = internalMutation({
   args: {
     submissionId: v.id("submissions"),
     viewCount: v.number(),

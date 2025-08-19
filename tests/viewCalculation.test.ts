@@ -196,11 +196,14 @@ describe("View Calculation and Earnings", () => {
       );
 
       // Update view count to 10,000 views
-      await t.mutation(internal.viewTrackingHelpers.updateSubmissionViews, {
-        submissionId,
-        viewCount: 10000,
-        previousViews: 0,
-      });
+      await t.mutation(
+        internal.viewTrackingHelpers.updateSubmissionViewsAndEarnings,
+        {
+          submissionId,
+          viewCount: 10000,
+          previousViews: 0,
+        }
+      );
 
       // Check updated earnings
       const submission = await t.run(async (ctx) => {
@@ -278,11 +281,14 @@ describe("View Calculation and Earnings", () => {
       });
 
       // Update to 100K views (would normally earn €10.00, but max is €5.00)
-      await t.mutation(internal.viewTrackingHelpers.updateSubmissionViews, {
-        submissionId,
-        viewCount: 100000,
-        previousViews: 0,
-      });
+      await t.mutation(
+        internal.viewTrackingHelpers.updateSubmissionViewsAndEarnings,
+        {
+          submissionId,
+          viewCount: 100000,
+          previousViews: 0,
+        }
+      );
 
       const submission = await t.run(async (ctx) => {
         return await ctx.db.get(submissionId);
@@ -350,11 +356,14 @@ describe("View Calculation and Earnings", () => {
       });
 
       // Update to 10K views (would earn €1.00, exactly the budget)
-      await t.mutation(internal.viewTrackingHelpers.updateSubmissionViews, {
-        submissionId,
-        viewCount: 10000,
-        previousViews: 0,
-      });
+      await t.mutation(
+        internal.viewTrackingHelpers.updateSubmissionViewsAndEarnings,
+        {
+          submissionId,
+          viewCount: 10000,
+          previousViews: 0,
+        }
+      );
 
       const campaign = await t.run(async (ctx) => {
         return await ctx.db.get(campaignId);
