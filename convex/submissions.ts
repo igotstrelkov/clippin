@@ -8,7 +8,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { validateCampaignAcceptance } from "./lib/campaignService";
+import { validateCampaignAcceptance } from "./lib/campaigns";
 import {
   scheduleBrandSubmissionNotification,
   sendCreatorEmail,
@@ -26,7 +26,7 @@ import {
   validateSubmissionData,
   type SubmissionCreationArgs,
   type SubmissionUpdateArgs,
-} from "./lib/submissionService";
+} from "./lib/submissions";
 import { logger } from "./logger";
 
 // Submit to campaign

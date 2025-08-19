@@ -10,7 +10,7 @@ import {
   prepareCampaignUpdate,
   validateCampaignCreation,
   validateCampaignUpdate,
-} from "./lib/campaignService";
+} from "./lib/campaigns";
 
 // Create a draft campaign (before payment)
 export const createDraftCampaign = mutation({

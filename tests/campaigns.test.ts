@@ -14,7 +14,7 @@ import {
   validateStatusTransition,
   type CampaignCreationArgs,
   type CampaignUpdateArgs,
-} from "../convex/lib/campaignService";
+} from "../convex/lib/campaigns";
 
 // Helper to create mock campaign
 function createMockCampaign(

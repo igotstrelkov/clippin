@@ -15,7 +15,7 @@ import {
   validateSubmissionData,
   type SubmissionCreationArgs,
   type SubmissionUpdateArgs,
-} from "../convex/lib/submissionService";
+} from "../convex/lib/submissions";
 
 // Helper functions to create mock data
 function createMockProfile(
