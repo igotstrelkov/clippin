@@ -6,6 +6,7 @@ import Stripe from "stripe";
 import { internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
 import { logger } from "./logger";
+import { schedulePayoutConfirmationEmail } from "./lib/emailNotifications";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -314,22 +315,15 @@ export const sendPayoutNotification = internalAction({
       }
     }
 
-    // Send payout confirmation email
-    try {
-      await ctx.runAction(internal.emails.sendPayoutConfirmation, {
-        creatorEmail: creator.email,
-        creatorName: creator.name,
-        amount: args.amount,
-        transferAmount: args.transferAmount,
-        campaignTitles,
-        totalSubmissions: args.submissionIds.length,
-      });
-    } catch (error) {
-      logger.error("Failed to send payout confirmation email", {
-        creatorId: args.creatorId,
-        error: error instanceof Error ? error : new Error(String(error)),
-      });
-    }
+    // Send payout confirmation email (centralized helper)
+    await schedulePayoutConfirmationEmail(ctx, {
+      creatorEmail: creator.email,
+      creatorName: creator.name,
+      amount: args.amount,
+      transferAmount: args.transferAmount,
+      campaignTitles,
+      totalSubmissions: args.submissionIds.length,
+    });
   },
 });
 

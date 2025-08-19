@@ -8,7 +8,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { canAcceptSubmissions } from "./lib/campaignService";
+import { validateCampaignAcceptance } from "./lib/campaignService";
 import {
   calculateSubmissionStats,
   canUpdateSubmissionStatus,
@@ -17,13 +17,17 @@ import {
   groupSubmissionsByStatus,
   prepareSubmissionCreation,
   prepareSubmissionUpdate,
-  validateEligibility,
+  validateProfileEligibility,
   validateStatusTransition,
   validateSubmissionData,
   type SubmissionCreationArgs,
   type SubmissionUpdateArgs,
 } from "./lib/submissionService";
 import { logger } from "./logger";
+import {
+  scheduleBrandSubmissionNotification,
+  sendCreatorEmail,
+} from "./lib/emailNotifications";
 
 // Submit to campaign
 export const submitToCampaign = mutation({
@@ -46,7 +50,10 @@ export const submitToCampaign = mutation({
     const campaign = await ctx.db.get(args.campaignId);
 
     // Validate creator eligibility using service layer
-    const { isValid, errors } = validateEligibility(profile, args.platform);
+    const { isValid, errors } = validateProfileEligibility(
+      profile,
+      args.platform
+    );
     if (!isValid) {
       return {
         success: false,
@@ -54,7 +61,7 @@ export const submitToCampaign = mutation({
       };
     }
 
-    const { canAccept, reason } = canAcceptSubmissions(campaign);
+    const { canAccept, reason } = validateCampaignAcceptance(campaign);
     if (!canAccept) {
       return {
         success: false,
@@ -126,33 +133,11 @@ export const submitToCampaign = mutation({
     // in the getViewCount action when isOwner === true
 
     // Send notification to brand (schedule as action)
-    try {
-      if (campaign) {
-        const brandUser = await ctx.db.get(campaign.brandId);
-        const brandProfile = await ctx.db
-          .query("profiles")
-          .withIndex("by_user_id", (q) => q.eq("userId", campaign.brandId))
-          .unique();
-
-        if (brandUser?.email && brandProfile?.companyName && profile) {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.emails.sendSubmissionNotification,
-            {
-              brandEmail: brandUser.email,
-              brandName: brandProfile.companyName,
-              campaignTitle: campaign.title,
-              creatorName: profile.creatorName || "Unknown Creator",
-              contentUrl: args.contentUrl,
-            }
-          );
-        }
-      }
-    } catch (error) {
-      logger.error("Failed to schedule submission notification", {
-        submissionId,
-        campaignId: campaign?._id,
-        error: error instanceof Error ? error : new Error(String(error)),
+    if (campaign) {
+      await scheduleBrandSubmissionNotification(ctx, {
+        campaign,
+        contentUrl: args.contentUrl,
+        creatorName: profile?.creatorName || "Unknown Creator",
       });
     }
 
@@ -301,51 +286,19 @@ export const updateSubmissionStatus = mutation({
     await ctx.db.patch(args.submissionId, updates);
 
     // Send notification email to creator
-    try {
-      const creator = await ctx.db.get(submission.creatorId);
-      const creatorProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", submission.creatorId))
-        .unique();
-
-      const brandProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", campaign.brandId))
-        .unique();
-
-      if (creator?.email && creatorProfile && brandProfile) {
-        if (args.status === "approved") {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.emails.sendApprovalNotification,
-            {
-              creatorEmail: creator.email,
-              creatorName: creatorProfile.creatorName || "Creator",
-              campaignTitle: campaign.title,
-              brandName: brandProfile.companyName || "Brand",
-              earnings: (updates.earnings || 0) / 100,
-              viewCount: submission.viewCount || 0,
-            }
-          );
-        } else if (args.status === "rejected" && args.rejectionReason) {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.emails.sendRejectionNotification,
-            {
-              creatorEmail: creator.email,
-              creatorName: creatorProfile.creatorName || "Creator",
-              campaignTitle: campaign.title,
-              brandName: brandProfile.companyName || "Brand",
-              rejectionReason: args.rejectionReason,
-              contentUrl: submission.contentUrl,
-            }
-          );
-        }
-      }
-    } catch (error) {
-      logger.error("Failed to send notification email", {
-        submissionId: args.submissionId,
-        error: error instanceof Error ? error : new Error(String(error)),
+    if (args.status === "approved") {
+      await sendCreatorEmail(ctx, {
+        type: "approved",
+        submission,
+        campaign,
+        earningsCents: updates.earnings || 0,
+      });
+    } else if (args.status === "rejected" && args.rejectionReason) {
+      await sendCreatorEmail(ctx, {
+        type: "rejected",
+        submission,
+        campaign,
+        rejectionReason: args.rejectionReason,
       });
     }
 
@@ -465,43 +418,12 @@ export const autoApproveExpiredSubmissions = internalMutation({
         approvedCount++;
 
         // Send notification email to creator about auto-approval
-        try {
-          const creator = await ctx.db.get(submission.creatorId);
-          const creatorProfile = await ctx.db
-            .query("profiles")
-            .withIndex("by_user_id", (q) =>
-              q.eq("userId", submission.creatorId)
-            )
-            .unique();
-
-          const brandProfile = await ctx.db
-            .query("profiles")
-            .withIndex("by_user_id", (q) => q.eq("userId", campaign.brandId))
-            .unique();
-
-          if (creator?.email && creatorProfile && brandProfile) {
-            await ctx.scheduler.runAfter(
-              0,
-              internal.emails.sendApprovalNotification,
-              {
-                creatorEmail: creator.email,
-                creatorName: creatorProfile.creatorName || "Creator",
-                campaignTitle: campaign.title,
-                brandName: brandProfile.companyName || "Brand",
-                earnings: 0, // Auto-approved submissions start with 0 earnings
-                viewCount: submission.viewCount || 0,
-              }
-            );
-          }
-        } catch (emailError) {
-          logger.error("Failed to send auto-approval notification email", {
-            submissionId: submission._id,
-            error:
-              emailError instanceof Error
-                ? emailError
-                : new Error(String(emailError)),
-          });
-        }
+        await sendCreatorEmail(ctx, {
+          type: "approved",
+          submission,
+          campaign,
+          earningsCents: 0,
+        });
       } catch (error) {
         logger.error("Failed to auto-approve submission", {
           submissionId: submission._id,

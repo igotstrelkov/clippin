@@ -60,7 +60,7 @@ export function isValidContentUrl(url: string): boolean {
 /**
  * Validate if creator can submit to campaign
  */
-export function validateEligibility(
+export function validateProfileEligibility(
   profile: Doc<"profiles"> | null,
   platform: "tiktok" | "instagram"
 ): ValidationResult {
@@ -139,7 +139,7 @@ export function validateStatusTransition(
     pending: ["approved", "rejected"], // Pending can be approved or rejected
     approved: [], // Approved is final (could add "revoked" in future)
     rejected: [], // Rejected is final (could add "reconsidered" in future)
-    verifying_owner: [], // Verifying owner can be approved or rejected after verification
+    verifying_owner: ["pending"], // Verifying owner can be approved or rejected after verification
   };
 
   const allowedTransitions = validTransitions[fromStatus];
