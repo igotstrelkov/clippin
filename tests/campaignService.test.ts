@@ -2,13 +2,13 @@ import { describe, expect, test } from "vitest";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import {
   calculateCampaignStats,
-  canAcceptSubmissions,
   canDeleteCampaign,
   findExpiredActiveCampaigns,
   groupCampaignsByStatus,
   isCampaignExpired,
   prepareCampaignCreation,
   prepareCampaignUpdate,
+  validateCampaignAcceptance,
   validateCampaignCreation,
   validateCampaignUpdate,
   validateStatusTransition,
@@ -236,26 +236,26 @@ describe("CampaignService", () => {
     });
   });
 
-  describe("canAcceptSubmissions", () => {
+  describe("validateCampaignAcceptance", () => {
     test("allows submissions for active campaign with budget", () => {
       const campaign = createMockCampaign({
         status: "active",
         remainingBudget: 5000,
       });
-      const result = canAcceptSubmissions(campaign);
+      const result = validateCampaignAcceptance(campaign);
       expect(result.canAccept).toBe(true);
     });
 
     test("rejects submissions for paused campaign", () => {
       const campaign = createMockCampaign({ status: "paused" });
-      const result = canAcceptSubmissions(campaign);
+      const result = validateCampaignAcceptance(campaign);
       expect(result.canAccept).toBe(false);
       expect(result.reason).toBe("Campaign is paused");
     });
 
     test("rejects submissions for completed campaign", () => {
       const campaign = createMockCampaign({ status: "completed" });
-      const result = canAcceptSubmissions(campaign);
+      const result = validateCampaignAcceptance(campaign);
       expect(result.canAccept).toBe(false);
       expect(result.reason).toBe("Campaign is completed");
     });
@@ -265,7 +265,7 @@ describe("CampaignService", () => {
         status: "active",
         remainingBudget: 0,
       });
-      const result = canAcceptSubmissions(campaign);
+      const result = validateCampaignAcceptance(campaign);
       expect(result.canAccept).toBe(false);
       expect(result.reason).toBe("Campaign budget exhausted");
     });
@@ -276,7 +276,7 @@ describe("CampaignService", () => {
         remainingBudget: 5000,
         endDate: Date.now() - 1000, // Past date
       });
-      const result = canAcceptSubmissions(campaign);
+      const result = validateCampaignAcceptance(campaign);
       expect(result.canAccept).toBe(false);
       expect(result.reason).toBe("Campaign has ended");
     });
@@ -521,14 +521,14 @@ describe("CampaignService", () => {
       );
       campaign.status = "active";
 
-      expect(canAcceptSubmissions(campaign).canAccept).toBe(true);
+      expect(validateCampaignAcceptance(campaign).canAccept).toBe(true);
 
       expect(validateStatusTransition(campaign.status, "paused").isValid).toBe(
         true
       );
       campaign.status = "paused";
 
-      expect(canAcceptSubmissions(campaign).canAccept).toBe(false);
+      expect(validateCampaignAcceptance(campaign).canAccept).toBe(false);
 
       expect(validateStatusTransition(campaign.status, "active").isValid).toBe(
         true
@@ -540,7 +540,7 @@ describe("CampaignService", () => {
       ).toBe(true);
       campaign.status = "completed";
 
-      expect(canAcceptSubmissions(campaign).canAccept).toBe(false);
+      expect(validateCampaignAcceptance(campaign).canAccept).toBe(false);
       expect(canDeleteCampaign(campaign, false).canDelete).toBe(false);
     });
 
@@ -553,12 +553,12 @@ describe("CampaignService", () => {
       });
 
       // Should still accept submissions with some budget
-      expect(canAcceptSubmissions(campaign).canAccept).toBe(true);
+      expect(validateCampaignAcceptance(campaign).canAccept).toBe(true);
 
       // Exhaust budget
       campaign.remainingBudget = 0;
-      expect(canAcceptSubmissions(campaign).canAccept).toBe(false);
-      expect(canAcceptSubmissions(campaign).reason).toBe(
+      expect(validateCampaignAcceptance(campaign).canAccept).toBe(false);
+      expect(validateCampaignAcceptance(campaign).reason).toBe(
         "Campaign budget exhausted"
       );
     });

@@ -21,6 +21,7 @@ import type * as http from "../http.js";
 import type * as instagramVerification from "../instagramVerification.js";
 import type * as lib_campaignService from "../lib/campaignService.js";
 import type * as lib_earnings from "../lib/earnings.js";
+import type * as lib_emailNotifications from "../lib/emailNotifications.js";
 import type * as lib_submissionService from "../lib/submissionService.js";
 import type * as logger from "../logger.js";
 import type * as optimizedQueries from "../optimizedQueries.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   instagramVerification: typeof instagramVerification;
   "lib/campaignService": typeof lib_campaignService;
   "lib/earnings": typeof lib_earnings;
+  "lib/emailNotifications": typeof lib_emailNotifications;
   "lib/submissionService": typeof lib_submissionService;
   logger: typeof logger;
   optimizedQueries: typeof optimizedQueries;

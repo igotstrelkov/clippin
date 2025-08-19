@@ -200,7 +200,7 @@ export function validateStatusTransition(
 /**
  * Check if campaign can accept new submissions
  */
-export function canAcceptSubmissions(campaign: Doc<"campaigns"> | null): {
+export function validateCampaignAcceptance(campaign: Doc<"campaigns"> | null): {
   canAccept: boolean;
   reason?: string;
 } {

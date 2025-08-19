@@ -379,7 +379,7 @@ describe("SubmissionService", () => {
       expect(result.creatorId).toBe(args.creatorId);
       expect(result.contentUrl).toBe("https://www.tiktok.com/@test/video/123"); // Trimmed
       expect(result.status).toBe("verifying_owner");
-      expect(result.viewCount).toBe(500);
+      expect(result.viewCount).toBe(0);
       expect(result.submittedAt).toBeDefined();
     });
 
@@ -393,7 +393,7 @@ describe("SubmissionService", () => {
 
       const result = prepareSubmissionCreation(args);
 
-      expect(result.viewCount).toBe(500);
+      expect(result.viewCount).toBe(0);
     });
   });
 
