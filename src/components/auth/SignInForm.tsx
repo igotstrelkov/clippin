@@ -79,7 +79,7 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
                 id="password"
                 type="password"
                 name="password"
-                placeholder="********"
+                placeholder="*******************"
                 required
               />
             </div>

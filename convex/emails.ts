@@ -18,8 +18,8 @@ export const sendApprovalNotification = internalAction({
   handler: async (ctx, args) => {
     try {
       const { data, error } = await resend.emails.send({
-        from: "Clippin Notifications <notifications@clippin.app>",
-        to: args.creatorEmail,
+        from: "onboarding@resend.dev",
+        to: "igorsrelkov95@gmail.com", // args.creatorEmail
         subject: `🎉 Your submission has been approved!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1a1a1a; color: #ffffff;">
@@ -98,8 +98,8 @@ export const sendRejectionNotification = internalAction({
   handler: async (ctx, args) => {
     try {
       const { data, error } = await resend.emails.send({
-        from: "Clippin Notifications <notifications@clippin.app>",
-        to: args.creatorEmail,
+        from: "onboarding@resend.dev",
+        to: "igorsrelkov95@gmail.com", // args.creatorEmail
         subject: `📝 Update on your submission to "${args.campaignTitle}"`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1a1a1a; color: #ffffff;">
@@ -179,8 +179,8 @@ export const sendPayoutConfirmation = internalAction({
   handler: async (ctx, args) => {
     try {
       const { data, error } = await resend.emails.send({
-        from: "Clippin Notifications <notifications@clippin.app>",
-        to: args.creatorEmail,
+        from: "onboarding@resend.dev",
+        to: "igorsrelkov95@gmail.com", // args.creatorEmail
         subject: `💰 Payout Confirmed - ${(args.transferAmount / 100).toFixed(2)}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1a1a1a; color: #ffffff;">
@@ -283,8 +283,8 @@ export const sendSubmissionNotification = internalAction({
   handler: async (ctx, args) => {
     try {
       const { data, error } = await resend.emails.send({
-        from: "Clippin Notifications <notifications@clippin.app>",
-        to: args.brandEmail,
+        from: "onboarding@resend.dev",
+        to: "igorsrelkov95@gmail.com", // args.brandEmail,
         subject: `📝 New submission for "${args.campaignTitle}"`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1a1a1a; color: #ffffff;">
@@ -360,8 +360,8 @@ export const sendCampaignCompletionNotification = internalAction({
   handler: async (ctx, args) => {
     try {
       const { data, error } = await resend.emails.send({
-        from: "Clippin Notifications <notifications@clippin.app>",
-        to: args.brandEmail,
+        from: "onboarding@resend.dev",
+        to: "igorsrelkov95@gmail.com", // args.brandEmail,
         subject: `🎯 Campaign "${args.campaignTitle}" completed!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1a1a1a; color: #ffffff;">
