@@ -13,6 +13,9 @@ const applicationTables = {
     ),
     // Creator fields
     creatorName: v.optional(v.string()),
+    // YouTube fields
+    youtubeUsername: v.optional(v.string()),
+    youtubeVerified: v.optional(v.boolean()),
     // Instagram fields
     instagramUsername: v.optional(v.string()),
     instagramVerified: v.optional(v.boolean()),
@@ -74,7 +77,11 @@ const applicationTables = {
     campaignId: v.id("campaigns"),
     creatorId: v.id("users"),
     contentUrl: v.string(),
-    platform: v.union(v.literal("tiktok"), v.literal("instagram")),
+    platform: v.union(
+      v.literal("tiktok"),
+      v.literal("instagram"),
+      v.literal("youtube")
+    ),
     status: v.union(
       v.literal("pending"),
       v.literal("approved"),

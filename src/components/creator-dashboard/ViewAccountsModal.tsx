@@ -37,25 +37,13 @@ import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import { LoadingSpinner } from "../ui/loading-spinner";
 
-// Custom Instagram Icon component
-// const InstagramIcon = ({ className }: { className?: string }) => (
-//   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-//     <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-//   </svg>
-// );
-
-// const TikTokIcon = ({ className }: { className?: string }) => (
-//   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-//     <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-//   </svg>
-// );
-
 interface ViewAccountsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type VerificationView = "overview" | "tiktok" | "instagram";
+type Platform = "tiktok" | "instagram" | "youtube";
+type VerificationView = "overview" | Platform;
 type VerificationStep = "username" | "generate" | "bio" | "success";
 
 export default function ViewAccountsModal({
@@ -68,15 +56,8 @@ export default function ViewAccountsModal({
 
   const profile = useQuery(api.profiles.getCurrentProfile);
 
-  // TikTok mutations
-  const generateTikTokCode = useMutation(api.profiles.generateverificationCode);
-  const verifyTikTokBio = useMutation(api.profiles.verifyTikTokBio);
-
-  // Instagram mutations
-  const generateInstagramCode = useMutation(
-    api.profiles.generateInstagramVerificationCode
-  );
-  const verifyInstagramBio = useMutation(api.profiles.verifyInstagramBio);
+  const generateCode = useMutation(api.profiles.generateCode);
+  const verifyBio = useMutation(api.profiles.verifyBio);
 
   // Reset state when switching views
   useEffect(() => {
@@ -94,17 +75,19 @@ export default function ViewAccountsModal({
     setIsLoading(false);
   }, [profile?.verificationError]);
 
-  const getVerificationStep = (
-    platform: "tiktok" | "instagram"
-  ): VerificationStep => {
+  const getVerificationStep = (platform: Platform): VerificationStep => {
     const verified =
       platform === "tiktok"
         ? profile?.tiktokVerified
-        : profile?.instagramVerified;
+        : platform === "instagram"
+          ? profile?.instagramVerified
+          : profile?.youtubeVerified;
     const platformUsername =
       platform === "tiktok"
         ? profile?.tiktokUsername
-        : profile?.instagramUsername;
+        : platform === "instagram"
+          ? profile?.instagramUsername
+          : profile?.youtubeUsername;
 
     if (verified) return "success";
     if (profile?.verificationCode) return "bio";
@@ -132,7 +115,7 @@ export default function ViewAccountsModal({
 
   const handleUsernameSubmit = async (
     e: React.FormEvent,
-    platform: "tiktok" | "instagram"
+    platform: Platform
   ) => {
     e.preventDefault();
     setIsLoading(true);
@@ -141,14 +124,12 @@ export default function ViewAccountsModal({
       const currentUsername =
         platform === "tiktok"
           ? profile?.tiktokUsername
-          : profile?.instagramUsername;
+          : platform === "instagram"
+            ? profile?.instagramUsername
+            : profile?.youtubeUsername;
       const usernameValue = currentUsername || username.trim();
 
-      if (platform === "tiktok") {
-        await generateTikTokCode({ tiktokUsername: usernameValue });
-      } else {
-        await generateInstagramCode({ instagramUsername: usernameValue });
-      }
+      await generateCode({ platform, username: usernameValue });
 
       toast.success("Verification code generated");
     } catch (error) {
@@ -160,21 +141,19 @@ export default function ViewAccountsModal({
     }
   };
 
-  const handleGenerateCode = async (platform: "tiktok" | "instagram") => {
+  const handleGenerateCode = async (platform: Platform) => {
     setIsLoading(true);
 
     try {
       const currentUsername =
         platform === "tiktok"
           ? profile?.tiktokUsername
-          : profile?.instagramUsername;
+          : platform === "instagram"
+            ? profile?.instagramUsername
+            : profile?.youtubeUsername;
       const usernameValue = currentUsername || username.trim();
 
-      if (platform === "tiktok") {
-        await generateTikTokCode({ tiktokUsername: usernameValue });
-      } else {
-        await generateInstagramCode({ instagramUsername: usernameValue });
-      }
+      await generateCode({ platform, username: usernameValue });
 
       toast.success("Verification code generated");
     } catch (error) {
@@ -186,21 +165,20 @@ export default function ViewAccountsModal({
     }
   };
 
-  const handleVerifyBio = async (platform: "tiktok" | "instagram") => {
+  const handleVerifyBio = async (platform: Platform) => {
     setIsLoading(true);
 
     try {
       const currentUsername =
         platform === "tiktok"
           ? profile?.tiktokUsername
-          : profile?.instagramUsername;
+          : platform === "instagram"
+            ? profile?.instagramUsername
+            : profile?.youtubeUsername;
+
       const usernameValue = currentUsername || username.trim();
 
-      if (platform === "tiktok") {
-        await verifyTikTokBio({ tiktokUsername: usernameValue });
-      } else {
-        await verifyInstagramBio({ instagramUsername: usernameValue });
-      }
+      await verifyBio({ platform, username: usernameValue });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Verification failed."
@@ -208,21 +186,31 @@ export default function ViewAccountsModal({
     }
   };
 
-  const renderVerificationContent = (platform: "tiktok" | "instagram") => {
+  const renderVerificationContent = (platform: Platform) => {
     const step = getVerificationStep(platform);
-    const platformName = platform === "tiktok" ? "TikTok" : "Instagram";
+    const platformName = {
+      tiktok: "TikTok",
+      instagram: "Instagram",
+      youtube: "YouTube",
+    }[platform];
     const platformUsername =
       platform === "tiktok"
         ? profile?.tiktokUsername
-        : profile?.instagramUsername;
+        : platform === "instagram"
+          ? profile?.instagramUsername
+          : profile?.youtubeUsername;
     const platformVerified =
       platform === "tiktok"
         ? profile?.tiktokVerified
-        : profile?.instagramVerified;
+        : platform === "instagram"
+          ? profile?.instagramVerified
+          : profile?.youtubeVerified;
     const urlPrefix =
       platform === "tiktok"
         ? "https://www.tiktok.com/@"
-        : "https://www.instagram.com/";
+        : platform === "instagram"
+          ? "https://www.instagram.com/"
+          : "https://www.youtube.com/@";
 
     if (step === "success" && platformVerified) {
       return (
@@ -326,7 +314,7 @@ export default function ViewAccountsModal({
                         }
                       }}
                     >
-                      <Copy className="h-4 w-4" />
+                      <Copy className="h-4 w-4 text-black" />
                     </Button>
                   </div>
                 </div>
@@ -366,20 +354,23 @@ export default function ViewAccountsModal({
   };
 
   // Platform-specific view
-  if (activeView === "tiktok" || activeView === "instagram") {
+  if (
+    activeView === "tiktok" ||
+    activeView === "instagram" ||
+    activeView === "youtube"
+  ) {
     const platform = activeView;
-    const platformName = platform === "tiktok" ? "TikTok" : "Instagram";
+    const platformName = {
+      tiktok: "TikTok",
+      instagram: "Instagram",
+      youtube: "YouTube",
+    }[platform];
 
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              {/* {platform === "tiktok" ? (
-                <SocialIcon url="https://tiktok.com" />
-              ) : (
-                <SocialIcon url="https://instagram.com" />
-              )} */}
               <div>
                 <DialogTitle>{platformName} Verification</DialogTitle>
                 <DialogDescription>
@@ -413,6 +404,7 @@ export default function ViewAccountsModal({
   const totalVerified = [
     profile?.tiktokVerified,
     profile?.instagramVerified,
+    profile?.youtubeVerified,
   ].filter(Boolean).length;
   const hasAnyVerification = totalVerified > 0;
 
@@ -536,21 +528,42 @@ export default function ViewAccountsModal({
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Youtube Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <SocialIcon url="https://youtube.com" />
+
+                    <div>
+                      <CardTitle className="text-base">YouTube</CardTitle>
+                      <CardDescription className="text-xs">
+                        {profile?.youtubeUsername
+                          ? `@${profile.youtubeUsername}`
+                          : "Not connected"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  {getVerificationBadge(profile?.youtubeVerified)}
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Button
+                  variant={profile?.youtubeVerified ? "outline" : "default"}
+                  size="sm"
+                  className="w-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveView("youtube");
+                  }}
+                >
+                  {profile?.youtubeVerified ? "Manage" : "Verify Account"}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-
-          {/* <Separator />
-
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={onClose} size="sm">
-              Close
-            </Button>
-          </div> */}
         </div>
-        {/* <DialogFooter className="flex flex-col gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-        </DialogFooter> */}
       </DialogContent>
     </Dialog>
   );

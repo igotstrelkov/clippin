@@ -52,7 +52,9 @@ export function CampaignDetails() {
   const profile = useQuery(api.profiles.getCurrentProfile);
   const submitToCampaign = useMutation(api.submissions.submitToCampaign);
 
-  const detectPlatform = (url: string): "tiktok" | "instagram" | null => {
+  const detectPlatform = (
+    url: string
+  ): "tiktok" | "instagram" | "youtube" | null => {
     const tiktokPatterns = [
       /^https?:\/\/(www\.)?tiktok\.com\/@[-.\w]+\/video\/\d+/,
       /^https?:\/\/vm\.tiktok\.com\/[\w]+/,
@@ -65,11 +67,19 @@ export function CampaignDetails() {
       /^https?:\/\/(www\.)?instagram\.com\/tv\/[\w-]+/,
     ];
 
+    const youtubePatterns = [
+      /^https?:\/\/(www\.)?youtube\.com\/watch\?v=[\w-]+/,
+      /^https?:\/\/(www\.)?youtube\.com\/shorts\/[\w-]+/,
+    ];
+
     if (tiktokPatterns.some((p) => p.test(url))) {
       return "tiktok";
     }
     if (instagramPatterns.some((p) => p.test(url))) {
       return "instagram";
+    }
+    if (youtubePatterns.some((p) => p.test(url))) {
+      return "youtube";
     }
     return null;
   };
@@ -112,9 +122,14 @@ export function CampaignDetails() {
       100
     : 0;
 
-  const canSubmit =
-    profile?.userType === "creator" &&
-    (profile?.tiktokVerified || profile?.instagramVerified);
+  const totalVerified = [
+    profile?.tiktokVerified,
+    profile?.instagramVerified,
+    profile?.youtubeVerified,
+  ].filter(Boolean).length;
+  const hasAnyVerification = totalVerified > 0;
+
+  const canSubmit = profile?.userType === "creator" && hasAnyVerification;
 
   if (!campaignId) {
     void navigate("/marketplace");

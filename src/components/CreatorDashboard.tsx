@@ -62,6 +62,7 @@ export function CreatorDashboard() {
   const totalVerified = [
     profile?.tiktokVerified,
     profile?.instagramVerified,
+    profile?.youtubeVerified,
   ].filter(Boolean).length;
   const hasAnyVerification = totalVerified > 0;
 

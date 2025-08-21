@@ -6,6 +6,7 @@ import {
   internalMutation,
   mutation,
   query,
+  type MutationCtx,
 } from "./_generated/server";
 
 // Get current user's profile
@@ -101,212 +102,33 @@ export const updateProfile = mutation({
   },
 });
 
-// Generate verification code for TikTok bio verification
-export const generateverificationCode = mutation({
-  args: { tiktokUsername: v.string() },
+// Generic platform-agnostic generation
+export const generateCode = mutation({
+  args: {
+    platform: v.union(
+      v.literal("tiktok"),
+      v.literal("instagram"),
+      v.literal("youtube")
+    ),
+    username: v.string(),
+  },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    // Validate username format
-    if (!isValidTikTokUsername(args.tiktokUsername)) {
-      throw new Error(
-        "Invalid TikTok username format. Username should only contain letters, numbers, underscores, and periods."
-      );
-    }
-
-    // Check if user already has a verified TikTok account
-    const existingProfile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (existingProfile?.tiktokVerified) {
-      throw new Error("TikTok account already verified");
-    }
-
-    // Check if this TikTok username is already verified by another user
-    const existingTikTokProfile = await ctx.db
-      .query("profiles")
-      .filter((q) => q.eq(q.field("tiktokUsername"), args.tiktokUsername))
-      .filter((q) => q.eq(q.field("tiktokVerified"), true))
-      .unique();
-
-    if (existingTikTokProfile && existingTikTokProfile.userId !== userId) {
-      throw new Error(
-        "This TikTok username is already verified by another user"
-      );
-    }
-
-    // Generate a unique verification code
-    const verificationCode = `CLIPPIN${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const now = Date.now();
-
-    // Create or update profile with verification code
-    if (existingProfile) {
-      await ctx.db.patch(existingProfile._id, {
-        tiktokUsername: args.tiktokUsername,
-        verificationCode: verificationCode,
-        verificationError: undefined, // Clear any previous errors
-      });
-    } else {
-      await ctx.db.insert("profiles", {
-        userId,
-        userType: "creator", // Default to creator for TikTok verification
-        tiktokUsername: args.tiktokUsername,
-        verificationCode: verificationCode,
-      });
-    }
-
-    return { verificationCode };
+    return generateCodeForPlatform(ctx, args.platform, args.username);
   },
 });
 
-// Generate Instagram verification code
-export const generateInstagramVerificationCode = mutation({
-  args: { instagramUsername: v.string() },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    // Get existing profile
-    const existingProfile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .unique();
-
-    // Check if Instagram username is already verified by another user
-    const existingInstagramProfile = await ctx.db
-      .query("profiles")
-      .filter((q) => q.eq(q.field("instagramUsername"), args.instagramUsername))
-      .filter((q) => q.eq(q.field("instagramVerified"), true))
-      .unique();
-
-    if (
-      existingInstagramProfile &&
-      existingInstagramProfile.userId !== userId
-    ) {
-      throw new Error(
-        "This Instagram username is already verified by another user"
-      );
-    }
-
-    // Generate a unique verification code
-    const verificationCode = `CLIPPIN${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    // Create or update profile with verification code
-    if (existingProfile) {
-      await ctx.db.patch(existingProfile._id, {
-        instagramUsername: args.instagramUsername,
-        verificationCode: verificationCode,
-        verificationError: undefined, // Clear any previous errors
-      });
-    } else {
-      await ctx.db.insert("profiles", {
-        userId,
-        userType: "creator", // Default to creator for Instagram verification
-        instagramUsername: args.instagramUsername,
-        verificationCode: verificationCode,
-      });
-    }
-
-    return { verificationCode };
+// Generic bio verification mutation
+export const verifyBio = mutation({
+  args: {
+    platform: v.union(
+      v.literal("tiktok"),
+      v.literal("instagram"),
+      v.literal("youtube")
+    ),
+    username: v.string(),
   },
-});
-
-// Verify Instagram account by checking bio - triggers the verification process
-export const verifyInstagramBio = mutation({
-  args: { instagramUsername: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    // Get the user's profile
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile) {
-      throw new Error("Profile not found");
-    }
-
-    if (!profile.verificationCode) {
-      return {
-        success: false,
-        message: "No verification code found. Please generate a code first.",
-      };
-    }
-
-    if (profile.instagramUsername !== args.instagramUsername) {
-      return {
-        success: false,
-        message:
-          "Instagram username doesn't match the one used to generate the code",
-      };
-    }
-
-    // Schedule the verification action
-    await ctx.scheduler.runAfter(
-      0,
-      internal.profiles.completeInstagramVerification,
-      {
-        userId,
-        username: args.instagramUsername,
-        verificationCode: profile.verificationCode,
-        profileId: profile._id,
-      }
-    );
-
-    return { success: true, message: "Verification started..." };
-  },
-});
-
-// Verify TikTok account by checking bio - triggers the verification process
-export const verifyTikTokBio = mutation({
-  args: { tiktokUsername: v.string() },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    // Get the user's profile
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile) {
-      throw new Error("Profile not found");
-    }
-
-    if (!profile.verificationCode) {
-      return {
-        success: false,
-        message: "No verification code found. Please generate a code first.",
-      };
-    }
-
-    if (profile.tiktokUsername !== args.tiktokUsername) {
-      return {
-        success: false,
-        message:
-          "TikTok username doesn't match the one used to generate the code",
-      };
-    }
-
-    // Schedule the verification action
-    await ctx.scheduler.runAfter(
-      0,
-      internal.profiles.completeTikTokVerification,
-      {
-        userId,
-        username: args.tiktokUsername,
-        verificationCode: profile.verificationCode,
-        profileId: profile._id,
-      }
-    );
-
-    return { success: true, message: "Verification started..." };
+    return verifyBioForPlatform(ctx, args.platform, args.username);
   },
 });
 
@@ -376,6 +198,46 @@ export const completeInstagramVerification = internalAction({
         error: verificationResult.error,
 
         field: "instagramVerified",
+      });
+    } catch {
+      // Update profile with error
+      await ctx.runMutation(internal.profiles.updateVerificationResult, {
+        profileId: args.profileId,
+        verified: false,
+        error:
+          "Verification failed due to an unexpected error. Please try again.",
+        field: "instagramVerified",
+      });
+    }
+  },
+});
+
+// Internal action to perform the actual YouTube verification
+export const completeYoutubeVerification = internalAction({
+  args: {
+    userId: v.id("users"),
+    username: v.string(),
+    verificationCode: v.string(),
+    profileId: v.id("profiles"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Call the YouTube verification API
+      const verificationResult = await ctx.runAction(
+        internal.youtubeVerification.checkYoutubeBioForCode,
+        {
+          username: args.username,
+          verificationCode: args.verificationCode,
+        }
+      );
+
+      // Update the profile with the verification result
+      await ctx.runMutation(internal.profiles.updateVerificationResult, {
+        profileId: args.profileId,
+        verified: verificationResult.found,
+        error: verificationResult.error,
+
+        field: "youtubeVerified",
       });
     } catch {
       // Update profile with error
@@ -589,29 +451,161 @@ export const updateStripeCustomerId = internalMutation({
   },
 });
 
-// Helper function to validate TikTok username format
-function isValidTikTokUsername(username: string): boolean {
-  // Remove @ if present
-  const cleanUsername = username.replace(/^@/, "");
+// Centralized platform meta
+type PlatformMeta = {
+  usernameField: "tiktokUsername" | "instagramUsername" | "youtubeUsername";
+  verifiedField: "tiktokVerified" | "instagramVerified" | "youtubeVerified";
+  validate?: (u: string) => boolean;
+  validationMessage?: string;
+};
 
-  // Check length (2-24 characters)
-  if (cleanUsername.length < 2 || cleanUsername.length > 24) {
-    return false;
+const PLATFORM_FIELDS: Record<
+  "tiktok" | "instagram" | "youtube",
+  PlatformMeta
+> = {
+  tiktok: {
+    usernameField: "tiktokUsername",
+    verifiedField: "tiktokVerified",
+  },
+  instagram: {
+    usernameField: "instagramUsername",
+    verifiedField: "instagramVerified",
+  },
+  youtube: {
+    usernameField: "youtubeUsername",
+    verifiedField: "youtubeVerified",
+  },
+} as const;
+
+type Platform = keyof typeof PLATFORM_FIELDS;
+
+// Shared implementation used by all mutations above
+async function generateCodeForPlatform(
+  ctx: MutationCtx,
+  platform: Platform,
+  username: string
+) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not authenticated");
+
+  const meta = PLATFORM_FIELDS[platform];
+
+  const existingProfile = await ctx.db
+    .query("profiles")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .unique();
+
+  // If user already verified on this platform, prevent regeneration
+  if (existingProfile?.[meta.verifiedField] === true) {
+    const pretty = platform.charAt(0).toUpperCase() + platform.slice(1);
+    throw new Error(`${pretty} account already verified`);
   }
 
-  // Check for valid characters (letters, numbers, periods, underscores)
-  // TikTok usernames can contain letters, numbers, periods, and underscores
-  // They cannot start or end with a period
-  // They cannot have consecutive periods
-  const validPattern = /^[a-zA-Z0-9][a-zA-Z0-9._]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
-  if (!validPattern.test(cleanUsername)) {
-    return false;
+  // Ensure no other verified profile owns this username
+  const existingVerified = await ctx.db
+    .query("profiles")
+    .filter((q) => q.eq(q.field(meta.usernameField), username))
+    .filter((q) => q.eq(q.field(meta.verifiedField), true))
+    .unique();
+
+  if (existingVerified && existingVerified.userId !== userId) {
+    throw new Error(
+      `This ${platform} username is already verified by another user`
+    );
   }
 
-  // Check for consecutive periods
-  if (cleanUsername.includes("..")) {
-    return false;
+  const verificationCode = `CLIPPIN${Math.random()
+    .toString(36)
+    .substring(2, 8)
+    .toUpperCase()}`;
+
+  if (existingProfile) {
+    await ctx.db.patch(existingProfile._id, {
+      [meta.usernameField]: username,
+      verificationCode,
+      verificationError: undefined,
+    });
+  } else {
+    await ctx.db.insert("profiles", {
+      userId,
+      userType: "creator",
+      [meta.usernameField]: username,
+      verificationCode,
+    } as any);
   }
 
-  return true;
+  return { verificationCode };
+}
+
+// Shared bio verification flow used by platform-specific and generic mutations
+async function verifyBioForPlatform(
+  ctx: MutationCtx,
+  platform: Platform,
+  username: string
+) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not authenticated");
+
+  // Get the user's profile
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .unique();
+
+  if (!profile) {
+    throw new Error("Profile not found");
+  }
+
+  if (!profile.verificationCode) {
+    return {
+      success: false,
+      message: "No verification code found. Please generate a code first.",
+    };
+  }
+
+  const usernameField = PLATFORM_FIELDS[platform].usernameField;
+  if ((profile as any)[usernameField] !== username) {
+    return {
+      success: false,
+      message: `${platform.charAt(0).toUpperCase() + platform.slice(1)} username doesn't match the one used to generate the code`,
+    };
+  }
+
+  // Schedule platform-specific verification action
+  if (platform === "tiktok") {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.profiles.completeTikTokVerification,
+      {
+        userId,
+        username,
+        verificationCode: profile.verificationCode,
+        profileId: profile._id,
+      }
+    );
+  } else if (platform === "instagram") {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.profiles.completeInstagramVerification,
+      {
+        userId,
+        username,
+        verificationCode: profile.verificationCode,
+        profileId: profile._id,
+      }
+    );
+  } else if (platform === "youtube") {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.profiles.completeYoutubeVerification,
+      {
+        userId,
+        username,
+        verificationCode: profile.verificationCode,
+        profileId: profile._id,
+      }
+    );
+  }
+
+  return { success: true, message: "Verification started..." };
 }

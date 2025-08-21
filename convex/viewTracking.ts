@@ -97,6 +97,32 @@ type InstagramOwner = {
   };
 };
 
+type YoutubeApiResponse = {
+  errorId: string;
+  type: string;
+  id: string;
+  title: string;
+  description?: string;
+  channel: {
+    type: string;
+    id: string;
+    name: string;
+    handle?: string; // e.g., "@WorldFareFiles"
+    isVerified?: boolean;
+    isVerifiedArtist?: boolean;
+    subscriberCountText?: string;
+  };
+  lengthSeconds?: number;
+  viewCount: number;
+  publishedTime?: string;
+  publishedTimeText?: string;
+  isLiveStream?: boolean;
+  isLiveNow?: boolean;
+  isRegionRestricted?: boolean;
+  isUnlisted?: boolean;
+  isCommentDisabled?: boolean;
+};
+
 type InstagramApiResponse = {
   status: boolean;
   __typename: string;
@@ -264,8 +290,122 @@ class TikTokViewTracker extends ViewTracker {
       /\/v\/(\d+)/,
       /tiktok\.com\/.*\/video\/(\d+)/,
       /vm\.tiktok\.com\/(\w+)/,
-      /tiktok\.com\/t\/(\w+)/, // Add support for /t/ URLs
+      /tiktok\.com\/t\/(\w+)/,
     ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+
+    return null;
+  }
+}
+
+class YoutubeViewTracker extends ViewTracker {
+  private submissionId: Id<"submissions">;
+
+  constructor(submissionId: Id<"submissions">) {
+    super();
+    this.submissionId = submissionId;
+  }
+
+  async getVideoData(
+    contentUrl: string,
+    ctx?: any
+  ): Promise<{ views: number; isOwner: boolean }> {
+    // Extract post ID from URL for validation
+    const videoId = this.extractVideoId(contentUrl);
+
+    if (!videoId) {
+      throw new Error("Invalid YouTube URL");
+    }
+
+    // Check rate limits if context provided
+    if (ctx) {
+      await this.waitForRateLimit(ctx);
+    }
+
+    const options = {
+      method: "GET",
+      url: "https://youtube-media-downloader.p.rapidapi.com/v2/video/details",
+      params: {
+        videoId: videoId,
+        urlAccess: "normal",
+        videos: "auto",
+        audios: "auto",
+      },
+      headers: {
+        "x-rapidapi-key": process.env.RAPID_API_KEY!,
+        "x-rapidapi-host": "youtube-media-downloader.p.rapidapi.com",
+      },
+    };
+
+    try {
+      const response: YoutubeApiResponse = await axios
+        .request(options)
+        .then((res) => res.data);
+
+      // Record the API request for rate limiting
+      if (response.errorId != "Success") {
+        return { views: 0, isOwner: false };
+      }
+
+      await ctx.runMutation(internal.rateLimiter.recordRequest, {
+        submissionId: videoId,
+      });
+
+      const submission = await ctx.runQuery(
+        internal.submissions.getSubmissionById,
+        { submissionId: this.submissionId }
+      );
+
+      if (!submission) {
+        return { views: 0, isOwner: false };
+      }
+
+      const profile = await ctx.runQuery(api.profiles.getProfileByUserId, {
+        userId: submission.creatorId,
+      });
+
+      const views = response.viewCount || 0;
+
+      // Check if the profile's YouTube username matches the post owner
+      const isOwner =
+        profile?.youtubeUsername?.toLowerCase() ===
+        response.channel.handle?.replace(/@/g, "").toLowerCase();
+
+      return {
+        views,
+        isOwner,
+      };
+    } catch (error) {
+      // Check if it's a rate limit error
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        logger.warn("RapidAPI rate limit exceeded", {
+          error: error instanceof Error ? error : new Error(String(error)),
+          retryAfter: error.response?.headers["retry-after"],
+        });
+
+        // Wait according to retry-after header or default to 1 minute
+        const retryAfter = parseInt(
+          error.response?.headers["retry-after"] || "60"
+        );
+        const waitTime = retryAfter * 1000; // Convert to milliseconds
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        return this.getVideoData(contentUrl, ctx);
+      }
+
+      logger.error("Failed to get YouTube post data", {
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      return { views: 0, isOwner: false };
+    }
+  }
+
+  extractVideoId(url: string): string | null {
+    // Extract post ID from various Instagram URL formats
+    const patterns = [/\/shorts\/([A-Za-z0-9_-]+)/];
 
     for (const pattern of patterns) {
       const match = url.match(pattern);
@@ -324,12 +464,11 @@ class InstagramViewTracker extends ViewTracker {
       await ctx.runMutation(internal.rateLimiter.recordRequest, {
         submissionId: videoId,
       });
-      console.log("submissionId", this.submissionId);
+
       const submission = await ctx.runQuery(
         internal.submissions.getSubmissionById,
         { submissionId: this.submissionId }
       );
-      console.log("submission", submission);
 
       if (!submission) {
         return { views: 0, isOwner: false };
@@ -353,7 +492,6 @@ class InstagramViewTracker extends ViewTracker {
         isOwner,
       };
     } catch (error) {
-      console.log(error);
       // Check if it's a rate limit error
       if (axios.isAxiosError(error) && error.response?.status === 429) {
         logger.warn("RapidAPI rate limit exceeded", {
@@ -379,13 +517,7 @@ class InstagramViewTracker extends ViewTracker {
 
   extractVideoId(url: string): string | null {
     // Extract post ID from various Instagram URL formats
-    const patterns = [
-      /\/p\/([A-Za-z0-9_-]+)/, // /p/POST_ID
-      /\/reel\/([A-Za-z0-9_-]+)/, // /reel/POST_ID
-      /\/tv\/([A-Za-z0-9_-]+)/, // /tv/POST_ID (IGTV)
-      /instagram\.com\/.*\/p\/([A-Za-z0-9_-]+)/,
-      /instagram\.com\/.*\/reel\/([A-Za-z0-9_-]+)/,
-    ];
+    const patterns = [/\/p\/([A-Za-z0-9_-]+)/, /\/reel\/([A-Za-z0-9_-]+)/];
 
     for (const pattern of patterns) {
       const match = url.match(pattern);
@@ -398,7 +530,7 @@ class InstagramViewTracker extends ViewTracker {
 
 // Factory function to create appropriate tracker based on platform
 function createViewTracker(
-  platform: string,
+  platform: "tiktok" | "instagram" | "youtube",
   submissionId: Id<"submissions">
 ): ViewTracker {
   switch (platform.toLowerCase()) {
@@ -406,6 +538,8 @@ function createViewTracker(
       return new TikTokViewTracker(submissionId);
     case "instagram":
       return new InstagramViewTracker(submissionId);
+    case "youtube":
+      return new YoutubeViewTracker(submissionId);
     default:
       throw new Error(`Unsupported platform: ${platform}`);
   }
@@ -416,7 +550,11 @@ export const getViewCount = internalAction({
   args: {
     contentUrl: v.string(),
     submissionId: v.id("submissions"),
-    platform: v.string(),
+    platform: v.union(
+      v.literal("tiktok"),
+      v.literal("instagram"),
+      v.literal("youtube")
+    ),
   },
   handler: async (ctx, args): Promise<{ viewCount: number }> => {
     try {
@@ -471,7 +609,11 @@ export const verifyContentOwner = internalAction({
   args: {
     contentUrl: v.string(),
     submissionId: v.id("submissions"),
-    platform: v.string(),
+    platform: v.union(
+      v.literal("tiktok"),
+      v.literal("instagram"),
+      v.literal("youtube")
+    ),
   },
   handler: async (ctx, args) => {
     try {

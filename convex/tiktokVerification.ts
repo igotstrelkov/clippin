@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 
-// TikTok Business API integration for bio verification
+// TikTok API integration for bio verification
 export const checkTikTokBioForCode = internalAction({
   args: {
     username: v.string(),
@@ -17,7 +17,8 @@ export const checkTikTokBioForCode = internalAction({
     } catch {
       return {
         found: false,
-        error: "Unable to verify TikTok profile. Please ensure your username is correct and your profile is public.",
+        error:
+          "Unable to verify TikTok profile. Please ensure your username is correct and your profile is public.",
       };
     }
   },
@@ -151,49 +152,3 @@ async function checkBioWithPublicAPI(
     };
   }
 }
-
-// Helper function to validate TikTok username format
-export const validateTikTokUsername = internalAction({
-  args: {
-    username: v.string(),
-  },
-  handler: async (_ctx, args): Promise<{ valid: boolean; error?: string }> => {
-    const username = args.username.trim();
-
-    // Basic validation rules for TikTok usernames
-    if (username.length < 2) {
-      return {
-        valid: false,
-        error: "Username must be at least 2 characters long",
-      };
-    }
-
-    if (username.length > 24) {
-      return { valid: false, error: "Username must be 24 characters or less" };
-    }
-
-    if (!/^[a-zA-Z0-9._]+$/.test(username)) {
-      return {
-        valid: false,
-        error:
-          "Username can only contain letters, numbers, periods, and underscores",
-      };
-    }
-
-    if (username.startsWith(".") || username.endsWith(".")) {
-      return {
-        valid: false,
-        error: "Username cannot start or end with a period",
-      };
-    }
-
-    if (username.includes("..")) {
-      return {
-        valid: false,
-        error: "Username cannot contain consecutive periods",
-      };
-    }
-
-    return { valid: true };
-  },
-});

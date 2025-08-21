@@ -34,6 +34,7 @@ import type * as submissions from "../submissions.js";
 import type * as tiktokVerification from "../tiktokVerification.js";
 import type * as viewTracking from "../viewTracking.js";
 import type * as viewTrackingHelpers from "../viewTrackingHelpers.js";
+import type * as youtubeVerification from "../youtubeVerification.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   tiktokVerification: typeof tiktokVerification;
   viewTracking: typeof viewTracking;
   viewTrackingHelpers: typeof viewTrackingHelpers;
+  youtubeVerification: typeof youtubeVerification;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

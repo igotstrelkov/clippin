@@ -16,7 +16,7 @@ export interface SubmissionCreationArgs {
   campaignId: Id<"campaigns">;
   creatorId: Id<"users">;
   contentUrl: string;
-  platform: "tiktok" | "instagram";
+  platform: "tiktok" | "instagram" | "youtube";
 }
 
 export interface SubmissionUpdateArgs {
@@ -53,7 +53,15 @@ export function isValidContentUrl(url: string): boolean {
     /^https?:\/\/(www\.)?instagram\.com\/tv\/[A-Za-z0-9_-]+/,
   ];
 
-  const allPatterns = [...tiktokPatterns, ...instagramPatterns];
+  const youtubePatterns = [
+    /^https?:\/\/(www\.)?youtube\.com\/shorts\/[A-Za-z0-9_-]+/,
+  ];
+
+  const allPatterns = [
+    ...tiktokPatterns,
+    ...instagramPatterns,
+    ...youtubePatterns,
+  ];
   return allPatterns.some((pattern) => pattern.test(url));
 }
 
@@ -62,7 +70,7 @@ export function isValidContentUrl(url: string): boolean {
  */
 export function validateProfileEligibility(
   profile: Doc<"profiles"> | null,
-  platform: "tiktok" | "instagram"
+  platform: "tiktok" | "instagram" | "youtube"
 ): ValidationResult {
   const errors: string[] = [];
 
@@ -81,6 +89,10 @@ export function validateProfileEligibility(
 
   if (platform === "instagram" && !profile.instagramVerified) {
     errors.push("Please verify your Instagram account first");
+  }
+
+  if (platform === "youtube" && !profile.youtubeVerified) {
+    errors.push("Please verify your YouTube account first");
   }
 
   return {
@@ -102,7 +114,7 @@ export function validateSubmissionData(
   if (!trimmedUrl) {
     errors.push("Content URL is required");
   } else if (!isValidContentUrl(trimmedUrl)) {
-    errors.push("Please provide a valid TikTok or Instagram URL");
+    errors.push("Please provide a valid URL");
   }
 
   return {
@@ -121,7 +133,7 @@ export function checkUrlDuplication(
   if (existingSubmission) {
     return {
       isValid: false,
-      errors: ["This TikTok video has already been submitted to a campaign"],
+      errors: ["This video has already been submitted to a campaign"],
     };
   }
 

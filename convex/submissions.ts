@@ -34,7 +34,11 @@ export const submitToCampaign = mutation({
   args: {
     campaignId: v.id("campaigns"),
     contentUrl: v.string(),
-    platform: v.union(v.literal("tiktok"), v.literal("instagram")),
+    platform: v.union(
+      v.literal("tiktok"),
+      v.literal("instagram"),
+      v.literal("youtube")
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
