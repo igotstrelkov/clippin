@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { formatCurrency } from "@/lib/utils";
 import type { UICampaign } from "@/types/ui";
 import { useMutation } from "convex/react";
 import {
@@ -125,19 +126,18 @@ export function EditCampaignModal({
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Budget:</span>
-                      <span>${(campaign.totalBudget / 100).toFixed(2)}</span>
+                      <span>{formatCurrency(campaign.totalBudget / 100)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">CPM Rate:</span>
-                      <span>${((campaign.cpmRate ?? 0) / 100).toFixed(2)}</span>
+                      <span>
+                        {formatCurrency((campaign.cpmRate ?? 0) / 100)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Max Payout:</span>
                       <span>
-                        $
-                        {((campaign.maxPayoutPerSubmission ?? 0) / 100).toFixed(
-                          2
-                        )}
+                        {formatCurrency(campaign.maxPayoutPerSubmission / 100)}
                       </span>
                     </div>
                     <div className="flex justify-between">
