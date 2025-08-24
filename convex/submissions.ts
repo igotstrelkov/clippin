@@ -273,30 +273,60 @@ export const updateSubmissionStatus = mutation({
 
     const updates = prepareSubmissionUpdate(updateArgs, submission.status);
 
-    // Update campaign's approved submission count if approving
+    // Handle budget operations for approval/rejection
     if (args.status === "approved") {
+      // Reserve budget for this submission
+      const budgetResult = await ctx.runMutation(
+        internal.budgetOperations.reserveBudgetForSubmission,
+        {
+          campaignId: submission.campaignId,
+          submissionId: args.submissionId,
+          viewCount: submission.viewCount || 0,
+        }
+      );
+
+      if (!budgetResult.success) {
+        throw new Error(`Budget reservation failed: ${budgetResult.error}`);
+      }
+
+      // Update campaign's approved submission count
       await ctx.db.patch(submission.campaignId, {
         approvedSubmissions: (campaign.approvedSubmissions || 0) + 1,
       });
-    }
 
-    await ctx.db.patch(args.submissionId, updates);
+      await ctx.db.patch(args.submissionId, updates);
 
-    // Send notification email to creator
-    if (args.status === "approved") {
+      // Send notification email to creator
       await sendCreatorEmail(ctx, {
         type: "approved",
         submission,
         campaign,
-        earningsCents: updates.earnings || 0,
+        earningsCents: budgetResult.reservedAmount || 0,
       });
-    } else if (args.status === "rejected" && args.rejectionReason) {
-      await sendCreatorEmail(ctx, {
-        type: "rejected",
-        submission,
-        campaign,
-        rejectionReason: args.rejectionReason,
-      });
+    } else if (args.status === "rejected") {
+      // If previously approved, release reserved budget
+      if (submission.status === "approved" && submission.earnings) {
+        await ctx.runMutation(
+          internal.budgetOperations.releaseBudgetForSubmission,
+          {
+            campaignId: submission.campaignId,
+            submissionId: args.submissionId,
+            amount: submission.earnings,
+          }
+        );
+      }
+
+      await ctx.db.patch(args.submissionId, updates);
+
+      // Send rejection notification email
+      if (args.rejectionReason) {
+        await sendCreatorEmail(ctx, {
+          type: "rejected",
+          submission,
+          campaign,
+          rejectionReason: args.rejectionReason,
+        });
+      }
     }
 
     return submission;
@@ -390,6 +420,25 @@ export const autoApproveExpiredSubmissions = internalMutation({
           logger.error("Campaign not found for auto-approval", {
             submissionId: submission._id,
             campaignId: submission.campaignId,
+          });
+          continue;
+        }
+
+        // Reserve budget for auto-approved submission
+        const budgetResult = await ctx.runMutation(
+          internal.budgetOperations.reserveBudgetForSubmission,
+          {
+            campaignId: submission.campaignId,
+            submissionId: submission._id,
+            viewCount: submission.viewCount || 0,
+          }
+        );
+
+        if (!budgetResult.success) {
+          logger.warn("Budget reservation failed for auto-approval", {
+            submissionId: submission._id,
+            campaignId: submission.campaignId,
+            error: budgetResult.error ? new Error(budgetResult.error) : new Error("Unknown budget error"),
           });
           continue;
         }

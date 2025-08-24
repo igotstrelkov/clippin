@@ -27,7 +27,7 @@ const MONITORING_INTERVALS = {
 export type MonitoringTier = "hot" | "warm" | "cold" | "archived";
 
 // Calculate growth rate from view history (views per hour over last 24h)
-function calculateGrowthRate(
+export function calculateGrowthRate(
   viewHistory: Array<{ timestamp: number; viewCount: number }>
 ): number {
   if (viewHistory.length < 2) return 0;
@@ -52,13 +52,10 @@ function calculateGrowthRate(
     }
   }
 
-  const viewsDelta = Math.max(0, currentViews - pastViews);
-  const hoursElapsed = Math.min(
-    24,
-    (now - twentyFourHoursAgo) / (60 * 60 * 1000)
-  );
+  const viewDiff = Math.max(0, currentViews - pastViews);
+  const timeDiff = Math.min(24, (now - twentyFourHoursAgo) / (60 * 60 * 1000));
 
-  return hoursElapsed > 0 ? viewsDelta / hoursElapsed : 0;
+  return timeDiff > 0 ? viewDiff / timeDiff : 0;
 }
 
 // Classify submission into monitoring tier based on growth rate

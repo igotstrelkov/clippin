@@ -677,7 +677,7 @@ export const cleanupOldRecords = internalAction({
         const deletedCount = await ctx.runMutation(
           internal.viewTrackingHelpers.deleteViewRecordsBatch,
           {
-            recordIds: oldRecords.map((r) => r._id),
+            recordIds: oldRecords.map((r: any) => r._id),
           }
         );
 

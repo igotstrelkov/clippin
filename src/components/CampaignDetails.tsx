@@ -36,6 +36,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { SignInForm } from "./auth/SignInForm";
 import { LoadingSpinner } from "./ui/loading-spinner";
+import { BudgetBreakdown } from "./budget/BudgetBreakdown";
 
 export function CampaignDetails() {
   const isMobile = useIsMobile();
@@ -116,12 +117,6 @@ export function CampaignDetails() {
     }
   };
 
-  const budgetUsedPercentage = campaign
-    ? ((campaign.totalBudget - campaign.remainingBudget) /
-        campaign.totalBudget) *
-      100
-    : 0;
-
   const totalVerified = [
     profile?.tiktokVerified,
     profile?.instagramVerified,
@@ -185,7 +180,7 @@ export function CampaignDetails() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           icon={DollarSign}
           title="CPM Rate"
@@ -198,11 +193,10 @@ export function CampaignDetails() {
           value={`${formatCurrency(campaign.maxPayoutPerSubmission / 100)}`}
           description="per submission"
         />
-        <StatCard
-          icon={Percent}
-          title="Budget Used"
-          value={`${budgetUsedPercentage.toFixed(1)}%`}
-          progress={budgetUsedPercentage}
+        {/* Budget Breakdown Component */}
+        <BudgetBreakdown 
+          campaignId={campaign._id}
+          className="md:col-span-2 lg:col-span-1"
         />
       </div>
 

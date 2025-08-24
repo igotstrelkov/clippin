@@ -44,8 +44,10 @@ const applicationTables = {
     title: v.string(),
     description: v.string(),
     category: v.string(),
-    totalBudget: v.number(),
-    remainingBudget: v.number(),
+    totalBudget: v.number(), // Total amount paid by brand
+    spentBudget: v.optional(v.number()), // Amount paid to creators (optional for existing data)
+    reservedBudget: v.optional(v.number()), // Amount held for approved submissions (optional for existing data)
+    remainingBudget: v.number(), // Available for new submissions (totalBudget - spentBudget - reservedBudget)
     cpmRate: v.number(), // Cost per 1000 views
     maxPayoutPerSubmission: v.number(),
     endDate: v.optional(v.number()),
@@ -155,7 +157,7 @@ const applicationTables = {
     submissionId: v.id("submissions"),
     viewCount: v.number(),
     timestamp: v.number(),
-    metadata: v.optional(v.object({})), // Additional tracking data
+    growthRate: v.optional(v.number()), // Make optional for backward compatibility
   })
     .index("by_submission_id", ["submissionId"])
     .index("by_timestamp", ["timestamp"]),

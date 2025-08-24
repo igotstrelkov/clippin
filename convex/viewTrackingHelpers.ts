@@ -3,16 +3,18 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { internalMutation, internalQuery, query } from "./_generated/server";
-import { calculateEarnings, shouldCompleteCampaign } from "./lib/earnings";
+import { calculateEarnings } from "./lib/earnings";
 import { logger } from "./logger";
+import { calculateGrowthRate } from "./smartMonitoring";
 
 // Update submission view count and log tracking entry
 
-// Helper function to process earnings updates and related database changes
+// Helper function to process earnings updates using new budget system
 async function processEarningsUpdate(
-  ctx: { db: { query: any; patch: any } },
+  ctx: { runMutation: any },
   submission: Doc<"submissions">,
   campaign: Doc<"campaigns">,
+  oldViewCount: number,
   newViewCount: number
 ) {
   // Only process earnings for approved submissions
@@ -20,11 +22,12 @@ async function processEarningsUpdate(
     return null;
   }
 
-  // Validate campaign is still active and has budget
-  if (campaign.status !== "active" || campaign.remainingBudget <= 0) {
+  // Validate campaign is still active or paused (paused campaigns still track earnings)
+  if (!["active", "paused"].includes(campaign.status)) {
     return null;
   }
 
+  // Calculate new earnings
   const newEarnings = calculateEarnings(
     newViewCount,
     campaign.cpmRate,
@@ -39,55 +42,30 @@ async function processEarningsUpdate(
     return null;
   }
 
-  // Validate campaign has sufficient budget for the earnings increase
-  if (earningsDelta > campaign.remainingBudget) {
-    logger.warn(
-      "Earnings delta exceeds remaining budget, capping to available budget",
-      {
-        submissionId: submission._id,
-        campaignId: campaign._id,
-        amount: earningsDelta,
-        metadata: {
-          remainingBudget: campaign.remainingBudget,
-        },
-      }
-    );
+  // Use atomic budget operation to update reserved budget
+  const budgetResult = await ctx.runMutation(
+    internal.budgetOperations.updateBudgetForViewIncrease,
+    {
+      campaignId: campaign._id,
+      submissionId: submission._id,
+      oldViewCount,
+      newViewCount,
+    }
+  );
 
-    // Cap earnings to available budget
-    const cappedEarningsDelta = campaign.remainingBudget;
-    const cappedNewEarnings = currentEarnings + cappedEarningsDelta;
-
-    return {
-      submissionUpdates: { earnings: cappedNewEarnings },
-      campaignUpdates: {
-        remainingBudget: 0,
-        status: "completed" as const,
-      },
-      earningsDelta: cappedEarningsDelta,
-    };
-  }
-
-  // Calculate new campaign budget
-  const newRemainingBudget = campaign.remainingBudget - earningsDelta;
-
-  // Prepare updates
-  const submissionUpdates = { earnings: newEarnings };
-  const campaignUpdates: Partial<Doc<"campaigns">> = {
-    remainingBudget: newRemainingBudget,
-  };
-
-  // Mark campaign as completed if budget is exhausted or too low for meaningful earnings
-  if (
-    campaign.status === "active" &&
-    shouldCompleteCampaign(newRemainingBudget, campaign.cpmRate)
-  ) {
-    campaignUpdates.status = "completed";
+  if (!budgetResult.success) {
+    logger.warn("Failed to update budget for view increase", {
+      submissionId: submission._id,
+      campaignId: campaign._id,
+      error: budgetResult.error,
+    });
+    return null;
   }
 
   return {
-    submissionUpdates,
-    campaignUpdates,
+    submissionUpdates: { earnings: newEarnings },
     earningsDelta,
+    budgetUpdated: true,
   };
 }
 
@@ -141,17 +119,16 @@ export const updateSubmissionViewsAndEarnings = internalMutation({
     };
 
     // Handle earnings and budget updates for approved submissions
-    // Use consistent previousViews parameter instead of database state
     const earningsUpdate = await processEarningsUpdate(
       ctx,
       submission,
       campaign,
+      args.previousViews,
       args.viewCount
     );
 
     if (earningsUpdate) {
       Object.assign(submissionUpdates, earningsUpdate.submissionUpdates);
-      Object.assign(campaignUpdates, earningsUpdate.campaignUpdates);
 
       // Update creator's total earnings in their profile
       if (earningsUpdate.earningsDelta > 0) {
@@ -181,11 +158,14 @@ export const updateSubmissionViewsAndEarnings = internalMutation({
       ctx.db.patch(args.submissionId, submissionUpdates),
     ]);
 
+    const growthRate = calculateGrowthRate(submission.viewHistory || []);
+
     // Log view tracking entry
     await ctx.db.insert("viewTracking", {
       submissionId: args.submissionId,
       viewCount: args.viewCount,
       timestamp: now,
+      growthRate: growthRate,
     });
 
     // Add to view history for smart monitoring (async to avoid blocking)
