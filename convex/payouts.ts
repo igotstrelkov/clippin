@@ -157,6 +157,18 @@ export const processPayout = action({
     ctx,
     args
   ): Promise<{ success: boolean; message: string }> => {
+    // Import minimum threshold from earnings service
+    const { validatePayoutEligibility } = await import("./lib/earnings");
+    
+    // Validate minimum payout threshold
+    const eligibility = validatePayoutEligibility(args.amount);
+    if (!eligibility.isEligible) {
+      return {
+        success: false,
+        message: eligibility.reason || "Payout amount below minimum threshold",
+      };
+    }
+
     // Get creator profile with Stripe Connect account
     const creatorProfile = await ctx.runQuery(
       internal.payoutHelpers.getCreatorStripeAccount,

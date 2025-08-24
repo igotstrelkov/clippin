@@ -3,6 +3,36 @@
  * 
  * These functions handle all budget state changes with atomic operations
  * ensuring consistency across the simplified budget architecture.
+ * 
+ * RACE CONDITION PREVENTION:
+ * Convex provides built-in ACID transactions that automatically prevent race conditions:
+ * 
+ * 1. ATOMICITY: Each mutation runs as a single atomic transaction
+ *    - All reads and writes within a mutation are isolated
+ *    - Either all changes commit or none do
+ * 
+ * 2. CONSISTENCY: Budget invariants are always maintained
+ *    - totalBudget = spentBudget + reservedBudget + remainingBudget
+ *    - No negative values allowed
+ *    - Validation checks prevent invalid states
+ * 
+ * 3. ISOLATION: Concurrent mutations are serialized
+ *    - If two users approve submissions simultaneously, Convex serializes the operations
+ *    - Each mutation sees a consistent snapshot of the database
+ *    - No dirty reads, phantom reads, or lost updates
+ * 
+ * 4. DURABILITY: All committed changes are persistent
+ *    - Once a mutation completes, the changes are durable
+ *    - No risk of lost budget updates
+ * 
+ * EXAMPLE RACE CONDITION SCENARIO (automatically prevented):
+ * - Campaign has €50 remaining budget
+ * - User A approves submission worth €30
+ * - User B approves submission worth €40 simultaneously
+ * - Convex serializes these operations:
+ *   - First mutation reserves €30 (success, €20 remaining)
+ *   - Second mutation tries to reserve €40 (fails, insufficient budget)
+ * - Result: No over-spending, budget integrity maintained
  */
 
 import { v } from "convex/values";
@@ -35,6 +65,8 @@ export const reserveBudgetForSubmission = internalMutation({
     reservedAmount: v.optional(v.number()),
   }),
   handler: async (ctx, { campaignId, submissionId, viewCount }) => {
+    // ATOMIC TRANSACTION: All operations below execute in single atomic unit
+    // Convex ensures no other mutations can modify this campaign until completion
     const campaign = await ctx.db.get(campaignId);
     if (!campaign) {
       return { success: false, error: "Campaign not found" };
@@ -47,6 +79,7 @@ export const reserveBudgetForSubmission = internalMutation({
       campaign.maxPayoutPerSubmission
     );
 
+    // Extract current budget state and validate reservation atomically
     const currentState = extractBudgetState(campaign);
     const result = reserveBudget(currentState, earningsAmount, submissionId);
 
@@ -54,10 +87,11 @@ export const reserveBudgetForSubmission = internalMutation({
       return { success: false, error: result.error };
     }
 
-    // Update campaign with new budget state
+    // ATOMICALLY update campaign with new budget state
+    // This single patch operation ensures budget consistency across all fields
     await ctx.db.patch(campaignId, budgetStateToUpdate(result.newState!));
 
-    // Check if campaign should auto-pause
+    // Check if campaign should auto-pause (separate atomic operation)
     if (shouldAutoPause(result.newState!, campaign.maxPayoutPerSubmission)) {
       await ctx.db.patch(campaignId, { status: "paused" });
     }
@@ -83,6 +117,8 @@ export const spendBudgetForPayout = internalMutation({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, { campaignId, submissionId, amount }) => {
+    // ATOMIC TRANSACTION: Convert reserved budget to spent budget
+    // Prevents double-spending and ensures budget integrity
     const campaign = await ctx.db.get(campaignId);
     if (!campaign) {
       return { success: false, error: "Campaign not found" };
@@ -116,6 +152,8 @@ export const releaseBudgetForSubmission = internalMutation({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, { campaignId, submissionId, amount }) => {
+    // ATOMIC TRANSACTION: Release reserved budget back to remaining
+    // Ensures no budget is lost when submissions are rejected
     const campaign = await ctx.db.get(campaignId);
     if (!campaign) {
       return { success: false, error: "Campaign not found" };
@@ -156,6 +194,8 @@ export const updateBudgetForViewIncrease = internalMutation({
     budgetChange: v.optional(v.number()),
   }),
   handler: async (ctx, { campaignId, submissionId, oldViewCount, newViewCount }) => {
+    // ATOMIC TRANSACTION: Update budget when view count increases
+    // Prevents race conditions during concurrent view updates
     const campaign = await ctx.db.get(campaignId);
     if (!campaign) {
       return { success: false, error: "Campaign not found" };
@@ -183,13 +223,15 @@ export const updateBudgetForViewIncrease = internalMutation({
 
     const currentState = extractBudgetState(campaign);
 
-    // First release the old reserved amount
+    // CRITICAL SECTION: Release old amount then reserve new amount
+    // These operations are safe because they execute within a single atomic transaction
+    // If any step fails, the entire transaction rolls back maintaining budget integrity
     const releaseResult = releaseReservedBudget(currentState, oldEarnings, submissionId);
     if (!releaseResult.isValid) {
       return { success: false, error: releaseResult.error };
     }
 
-    // Then reserve the new amount
+    // Then reserve the new amount using the updated state
     const reserveResult = reserveBudget(releaseResult.newState!, newEarnings, submissionId);
     if (!reserveResult.isValid) {
       return { success: false, error: reserveResult.error };

@@ -96,7 +96,13 @@ export const getPendingEarnings = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) return { totalPending: 0, submissions: [] };
+    if (!userId) return { 
+      totalPending: 0, 
+      submissions: [],
+      isEligibleForPayout: false,
+      minimumThreshold: 2000, // €20.00
+      amountNeededForPayout: 2000
+    };
 
     // Get approved submissions that haven't been paid out yet
     const approvedSubmissions = await ctx.db
@@ -154,9 +160,19 @@ export const getPendingEarnings = query({
       })
     );
 
+    // Import earnings functions for threshold validation
+    const MINIMUM_PAYOUT_THRESHOLD = 2000; // €20.00 in cents
+    const isEligibleForPayout = totalPending >= MINIMUM_PAYOUT_THRESHOLD;
+    const amountNeededForPayout = isEligibleForPayout 
+      ? 0 
+      : MINIMUM_PAYOUT_THRESHOLD - totalPending;
+
     return {
       totalPending,
       submissions: submissionsWithCampaigns,
+      isEligibleForPayout,
+      minimumThreshold: MINIMUM_PAYOUT_THRESHOLD,
+      amountNeededForPayout,
     };
   },
 });

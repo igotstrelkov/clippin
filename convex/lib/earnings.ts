@@ -3,6 +3,9 @@
  * Extracted for improved testability and reusability
  */
 
+// Minimum payout threshold in cents (€20.00)
+export const MINIMUM_PAYOUT_THRESHOLD = 2000;
+
 /**
  * Calculate earnings based on view count and CPM rate
  * @param viewCount - Total number of views
@@ -127,4 +130,39 @@ export function shouldCompleteCampaign(
   // If remaining budget can't support meaningful earnings, complete the campaign
   const maxPossibleViews = calculateMaxViewsForBudget(remainingBudget, cpmRate);
   return maxPossibleViews < threshold;
+}
+
+/**
+ * Check if creator has enough earnings for payout
+ * @param availableEarnings - Total available earnings in cents
+ * @returns Validation result with eligibility and reason
+ */
+export function validatePayoutEligibility(
+  availableEarnings: number
+): { isEligible: boolean; reason?: string; minimumRequired?: number } {
+  if (availableEarnings < MINIMUM_PAYOUT_THRESHOLD) {
+    return {
+      isEligible: false,
+      reason: `Minimum payout threshold is €${(MINIMUM_PAYOUT_THRESHOLD / 100).toFixed(2)}. You currently have €${(availableEarnings / 100).toFixed(2)}.`,
+      minimumRequired: MINIMUM_PAYOUT_THRESHOLD
+    };
+  }
+
+  return {
+    isEligible: true
+  };
+}
+
+/**
+ * Calculate how much more earnings needed to reach payout threshold
+ * @param currentEarnings - Current earnings in cents
+ * @returns Amount needed in cents
+ */
+export function calculateEarningsNeededForPayout(
+  currentEarnings: number
+): number {
+  if (currentEarnings >= MINIMUM_PAYOUT_THRESHOLD) {
+    return 0;
+  }
+  return MINIMUM_PAYOUT_THRESHOLD - currentEarnings;
 }

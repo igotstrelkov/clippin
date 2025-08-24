@@ -28,6 +28,7 @@ import { SubmissionCard } from "./SubmissionCard";
 import { EmptyState } from "./ui/empty-state";
 import { LoadingSpinner } from "./ui/loading-spinner";
 import { ViewChart } from "./ViewChart";
+import { PayoutThreshold } from "./PayoutThreshold";
 
 export function CreatorDashboard() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -183,26 +184,40 @@ export function CreatorDashboard() {
             <CardHeader>
               <CardTitle>Available Payout</CardTitle>
               <CardDescription>
-                Request payout anytime, no minimum required
+                Minimum €20 required for payout
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center">
-              <div className="text-4xl font-bold">
-                {formatCurrency((pendingEarnings?.totalPending || 0) / 100)}
+            <CardContent className="space-y-4">
+              <div className="text-center">
+                <div className="text-4xl font-bold">
+                  {formatCurrency((pendingEarnings?.totalPending || 0) / 100)}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {pendingEarnings?.totalPending === 0
+                    ? "No earnings available"
+                    : pendingEarnings?.isEligibleForPayout
+                    ? "Ready to withdraw"
+                    : `€${((pendingEarnings?.amountNeededForPayout || 0) / 100).toFixed(2)} more needed`}
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground mb-4">
-                {pendingEarnings?.totalPending === 0
-                  ? "No earnings available"
-                  : "Ready to withdraw"}
-              </div>
+              
+              {pendingEarnings && pendingEarnings.totalPending > 0 && (
+                <PayoutThreshold
+                  currentEarnings={pendingEarnings.totalPending}
+                  minimumThreshold={pendingEarnings.minimumThreshold || 2000}
+                  isEligible={pendingEarnings.isEligibleForPayout || false}
+                  amountNeeded={pendingEarnings.amountNeededForPayout || 0}
+                />
+              )}
+
               <Button
                 className="w-full"
-                disabled={pendingEarnings?.totalPending === 0}
+                disabled={!pendingEarnings?.isEligibleForPayout}
                 onClick={() => setShowPayoutModal(true)}
               >
                 Request Payout
               </Button>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground text-center">
                 Payouts processed via Stripe Connect (2-7 business days)
               </p>
             </CardContent>
