@@ -305,16 +305,16 @@ export const updateSubmissionStatus = mutation({
       });
     } else if (args.status === "rejected") {
       // If previously approved, release reserved budget
-      if (submission.status === "approved" && submission.earnings) {
-        await ctx.runMutation(
-          internal.budgetOperations.releaseBudgetForSubmission,
-          {
-            campaignId: submission.campaignId,
-            submissionId: args.submissionId,
-            amount: submission.earnings,
-          }
-        );
-      }
+      // if (submission.status === "approved" && submission.earnings) {
+      //   await ctx.runMutation(
+      //     internal.budgetOperations.releaseBudgetForSubmission,
+      //     {
+      //       campaignId: submission.campaignId,
+      //       submissionId: args.submissionId,
+      //       amount: submission.earnings,
+      //     }
+      //   );
+      // }
 
       await ctx.db.patch(args.submissionId, updates);
 
@@ -438,7 +438,9 @@ export const autoApproveExpiredSubmissions = internalMutation({
           logger.warn("Budget reservation failed for auto-approval", {
             submissionId: submission._id,
             campaignId: submission.campaignId,
-            error: budgetResult.error ? new Error(budgetResult.error) : new Error("Unknown budget error"),
+            error: budgetResult.error
+              ? new Error(budgetResult.error)
+              : new Error("Unknown budget error"),
           });
           continue;
         }

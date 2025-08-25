@@ -1,25 +1,25 @@
 /**
  * Budget Service - Atomic budget operations for the simplified budget architecture
- * 
+ *
  * Three Budget States:
  * 1. Total Budget - What brand paid
- * 2. Spent Budget - Paid to creators 
+ * 2. Spent Budget - Paid to creators
  * 3. Reserved Budget - Held for approved submissions
- * 
+ *
  * Remaining Budget = Total - Spent - Reserved
  */
 
 import { Doc, Id } from "../_generated/dataModel";
 
 export interface BudgetState {
-  totalBudget: number;    // What brand paid
-  spentBudget: number;    // Paid to creators
+  totalBudget: number; // What brand paid
+  spentBudget: number; // Paid to creators
   reservedBudget: number; // Held for approved submissions
   remainingBudget: number; // Available for new submissions
 }
 
 export interface BudgetOperation {
-  type: 'reserve' | 'spend' | 'release' | 'refund';
+  type: "reserve" | "spend" | "release" | "refund";
   amount: number;
   submissionId?: Id<"submissions">;
   reason?: string;
@@ -45,7 +45,9 @@ export function calculateRemainingBudget(
 /**
  * Validate budget state consistency
  */
-export function validateBudgetState(state: BudgetState): BudgetValidationResult {
+export function validateBudgetState(
+  state: BudgetState
+): BudgetValidationResult {
   const calculatedRemaining = calculateRemainingBudget(
     state.totalBudget,
     state.spentBudget,
@@ -56,15 +58,19 @@ export function validateBudgetState(state: BudgetState): BudgetValidationResult 
   if (Math.abs(state.remainingBudget - calculatedRemaining) > 0.01) {
     return {
       isValid: false,
-      error: `Budget state inconsistent. Expected remaining: ${calculatedRemaining}, actual: ${state.remainingBudget}`
+      error: `Budget state inconsistent. Expected remaining: ${calculatedRemaining}, actual: ${state.remainingBudget}`,
     };
   }
 
   // Check for negative values
-  if (state.spentBudget < 0 || state.reservedBudget < 0 || state.remainingBudget < 0) {
+  if (
+    state.spentBudget < 0 ||
+    state.reservedBudget < 0 ||
+    state.remainingBudget < 0
+  ) {
     return {
       isValid: false,
-      error: "Budget values cannot be negative"
+      error: "Budget values cannot be negative",
     };
   }
 
@@ -73,7 +79,7 @@ export function validateBudgetState(state: BudgetState): BudgetValidationResult 
   if (Math.abs(sum - state.totalBudget) > 0.01) {
     return {
       isValid: false,
-      error: `Budget allocation mismatch. Total: ${state.totalBudget}, Sum: ${sum}`
+      error: `Budget allocation mismatch. Total: ${state.totalBudget}, Sum: ${sum}`,
     };
   }
 
@@ -91,14 +97,14 @@ export function reserveBudget(
   if (amount <= 0) {
     return {
       isValid: false,
-      error: "Reserve amount must be positive"
+      error: "Reserve amount must be positive",
     };
   }
 
   if (amount > currentState.remainingBudget) {
     return {
       isValid: false,
-      error: `Insufficient budget. Required: ${amount}, available: ${currentState.remainingBudget}`
+      error: `Insufficient budget. Required: ${amount}, available: ${currentState.remainingBudget}`,
     };
   }
 
@@ -123,14 +129,14 @@ export function spendReservedBudget(
   if (amount <= 0) {
     return {
       isValid: false,
-      error: "Spend amount must be positive"
+      error: "Spend amount must be positive",
     };
   }
 
   if (amount > currentState.reservedBudget) {
     return {
       isValid: false,
-      error: `Insufficient reserved budget. Required: ${amount}, reserved: ${currentState.reservedBudget}`
+      error: `Insufficient reserved budget. Required: ${amount}, reserved: ${currentState.reservedBudget}`,
     };
   }
 
@@ -155,14 +161,14 @@ export function releaseReservedBudget(
   if (amount <= 0) {
     return {
       isValid: false,
-      error: "Release amount must be positive"
+      error: "Release amount must be positive",
     };
   }
 
   if (amount > currentState.reservedBudget) {
     return {
       isValid: false,
-      error: `Cannot release more than reserved. Amount: ${amount}, reserved: ${currentState.reservedBudget}`
+      error: `Cannot release more than reserved. Amount: ${amount}, reserved: ${currentState.reservedBudget}`,
     };
   }
 
@@ -179,10 +185,12 @@ export function releaseReservedBudget(
 /**
  * Handle refund of unused budget when campaign completes
  */
-export function calculateRefundAmount(
-  currentState: BudgetState
-): { refundAmount: number; finalState: BudgetState } {
-  const refundAmount = currentState.remainingBudget + currentState.reservedBudget;
+export function calculateRefundAmount(currentState: BudgetState): {
+  refundAmount: number;
+  finalState: BudgetState;
+} {
+  const refundAmount =
+    currentState.remainingBudget + currentState.reservedBudget;
 
   const finalState: BudgetState = {
     totalBudget: currentState.spentBudget, // Adjust total to match spent
@@ -197,7 +205,7 @@ export function calculateRefundAmount(
 /**
  * Check if campaign should auto-pause due to insufficient budget
  */
-export function shouldAutoPause(
+export function shouldAutoComplete(
   currentState: BudgetState,
   minimumReserveAmount: number
 ): boolean {
@@ -213,13 +221,20 @@ export function getBudgetUtilization(currentState: BudgetState): {
   remainingPercentage: number;
 } {
   if (currentState.totalBudget === 0) {
-    return { spentPercentage: 0, reservedPercentage: 0, remainingPercentage: 0 };
+    return {
+      spentPercentage: 0,
+      reservedPercentage: 0,
+      remainingPercentage: 0,
+    };
   }
 
   return {
-    spentPercentage: (currentState.spentBudget / currentState.totalBudget) * 100,
-    reservedPercentage: (currentState.reservedBudget / currentState.totalBudget) * 100,
-    remainingPercentage: (currentState.remainingBudget / currentState.totalBudget) * 100,
+    spentPercentage:
+      (currentState.spentBudget / currentState.totalBudget) * 100,
+    reservedPercentage:
+      (currentState.reservedBudget / currentState.totalBudget) * 100,
+    remainingPercentage:
+      (currentState.remainingBudget / currentState.totalBudget) * 100,
   };
 }
 
@@ -250,7 +265,9 @@ export function extractBudgetState(campaign: Doc<"campaigns">): BudgetState {
 /**
  * Convert budget state to campaign update object
  */
-export function budgetStateToUpdate(state: BudgetState): Partial<Doc<"campaigns">> {
+export function budgetStateToUpdate(
+  state: BudgetState
+): Partial<Doc<"campaigns">> {
   return {
     spentBudget: state.spentBudget,
     reservedBudget: state.reservedBudget,

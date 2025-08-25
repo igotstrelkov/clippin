@@ -24,6 +24,7 @@ import type * as lib_budgetService from "../lib/budgetService.js";
 import type * as lib_campaigns from "../lib/campaigns.js";
 import type * as lib_earnings from "../lib/earnings.js";
 import type * as lib_emailNotifications from "../lib/emailNotifications.js";
+import type * as lib_rapidApiClient from "../lib/rapidApiClient.js";
 import type * as lib_submissions from "../lib/submissions.js";
 import type * as logger from "../logger.js";
 import type * as optimizedQueries from "../optimizedQueries.js";
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   "lib/campaigns": typeof lib_campaigns;
   "lib/earnings": typeof lib_earnings;
   "lib/emailNotifications": typeof lib_emailNotifications;
+  "lib/rapidApiClient": typeof lib_rapidApiClient;
   "lib/submissions": typeof lib_submissions;
   logger: typeof logger;
   optimizedQueries: typeof optimizedQueries;

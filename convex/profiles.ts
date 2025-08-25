@@ -8,6 +8,7 @@ import {
   query,
   type MutationCtx,
 } from "./_generated/server";
+import { rapidApiClient } from "./lib/rapidApiClient";
 
 // Get current user's profile
 export const getCurrentProfile = query({
@@ -143,12 +144,10 @@ export const completeTikTokVerification = internalAction({
   handler: async (ctx, args) => {
     try {
       // Call the TikTok verification API
-      const verificationResult = await ctx.runAction(
-        internal.tiktokVerification.checkTikTokBioForCode,
-        {
-          username: args.username,
-          verificationCode: args.verificationCode,
-        }
+      const verificationResult = await rapidApiClient.verifyBio(
+        "tiktok",
+        args.username,
+        args.verificationCode
       );
 
       // Update the profile with the verification result
@@ -183,12 +182,10 @@ export const completeInstagramVerification = internalAction({
   handler: async (ctx, args) => {
     try {
       // Call the TikTok verification API
-      const verificationResult = await ctx.runAction(
-        internal.instagramVerification.checkInstagramBioForCode,
-        {
-          username: args.username,
-          verificationCode: args.verificationCode,
-        }
+      const verificationResult = await rapidApiClient.verifyBio(
+        "instagram",
+        args.username,
+        args.verificationCode
       );
 
       // Update the profile with the verification result
@@ -223,12 +220,10 @@ export const completeYoutubeVerification = internalAction({
   handler: async (ctx, args) => {
     try {
       // Call the YouTube verification API
-      const verificationResult = await ctx.runAction(
-        internal.youtubeVerification.checkYoutubeBioForCode,
-        {
-          username: args.username,
-          verificationCode: args.verificationCode,
-        }
+      const verificationResult = await rapidApiClient.verifyBio(
+        "youtube",
+        args.username,
+        args.verificationCode
       );
 
       // Update the profile with the verification result

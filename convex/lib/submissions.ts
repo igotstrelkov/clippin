@@ -114,7 +114,17 @@ export function validateSubmissionData(
   if (!trimmedUrl) {
     errors.push("Content URL is required");
   } else if (!isValidContentUrl(trimmedUrl)) {
-    errors.push("Please provide a valid URL");
+    // Check if platform matches supported platforms for better error message
+    const supportedPlatforms = ["tiktok", "instagram", "youtube"];
+    if (args.platform && supportedPlatforms.includes(args.platform)) {
+      if (args.platform === "youtube") {
+        errors.push("Please provide a valid YouTube Shorts URL");
+      } else {
+        errors.push("Please provide a valid TikTok or Instagram URL");
+      }
+    } else {
+      errors.push("Please provide a valid URL");
+    }
   }
 
   return {
@@ -128,12 +138,14 @@ export function validateSubmissionData(
  */
 export function checkUrlDuplication(
   contentUrl: string,
-  existingSubmission: Doc<"submissions"> | null
+  existingSubmission: Doc<"submissions"> | null,
+  platform?: "tiktok" | "instagram" | "youtube"
 ): ValidationResult {
   if (existingSubmission) {
+    const platformName = platform === "youtube" ? "YouTube" : platform === "instagram" ? "Instagram" : "TikTok";
     return {
       isValid: false,
-      errors: ["This video has already been submitted to a campaign"],
+      errors: [`This ${platformName} video has already been submitted to a campaign`],
     };
   }
 

@@ -1,30 +1,30 @@
 /**
  * Atomic Budget Operations
- * 
+ *
  * These functions handle all budget state changes with atomic operations
  * ensuring consistency across the simplified budget architecture.
- * 
+ *
  * RACE CONDITION PREVENTION:
  * Convex provides built-in ACID transactions that automatically prevent race conditions:
- * 
+ *
  * 1. ATOMICITY: Each mutation runs as a single atomic transaction
  *    - All reads and writes within a mutation are isolated
  *    - Either all changes commit or none do
- * 
+ *
  * 2. CONSISTENCY: Budget invariants are always maintained
  *    - totalBudget = spentBudget + reservedBudget + remainingBudget
  *    - No negative values allowed
  *    - Validation checks prevent invalid states
- * 
+ *
  * 3. ISOLATION: Concurrent mutations are serialized
  *    - If two users approve submissions simultaneously, Convex serializes the operations
  *    - Each mutation sees a consistent snapshot of the database
  *    - No dirty reads, phantom reads, or lost updates
- * 
+ *
  * 4. DURABILITY: All committed changes are persistent
  *    - Once a mutation completes, the changes are durable
  *    - No risk of lost budget updates
- * 
+ *
  * EXAMPLE RACE CONDITION SCENARIO (automatically prevented):
  * - Campaign has €50 remaining budget
  * - User A approves submission worth €30
@@ -35,18 +35,17 @@
  * - Result: No over-spending, budget integrity maintained
  */
 
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
-import { 
-  extractBudgetState, 
-  reserveBudget, 
-  spendReservedBudget, 
-  releaseReservedBudget, 
-  calculateRefundAmount,
-  shouldAutoPause,
+import {
   budgetStateToUpdate,
-  BudgetValidationResult 
+  calculateRefundAmount,
+  extractBudgetState,
+  releaseReservedBudget,
+  reserveBudget,
+  shouldAutoComplete,
+  spendReservedBudget,
 } from "./lib/budgetService";
 import { calculateEarnings } from "./lib/earnings";
 
@@ -91,14 +90,14 @@ export const reserveBudgetForSubmission = internalMutation({
     // This single patch operation ensures budget consistency across all fields
     await ctx.db.patch(campaignId, budgetStateToUpdate(result.newState!));
 
-    // Check if campaign should auto-pause (separate atomic operation)
-    if (shouldAutoPause(result.newState!, campaign.maxPayoutPerSubmission)) {
-      await ctx.db.patch(campaignId, { status: "paused" });
+    // Check if campaign should be completed (budget exhausted) or paused (budget low)
+    if (shouldAutoComplete(result.newState!, campaign.maxPayoutPerSubmission)) {
+      await ctx.db.patch(campaignId, { status: "completed" });
     }
 
-    return { 
-      success: true, 
-      reservedAmount: earningsAmount 
+    return {
+      success: true,
+      reservedAmount: earningsAmount,
     };
   },
 });
@@ -141,42 +140,45 @@ export const spendBudgetForPayout = internalMutation({
 /**
  * Release reserved budget when submission is rejected or removed
  */
-export const releaseBudgetForSubmission = internalMutation({
-  args: {
-    campaignId: v.id("campaigns"),
-    submissionId: v.id("submissions"),
-    amount: v.number(),
-  },
-  returns: v.object({
-    success: v.boolean(),
-    error: v.optional(v.string()),
-  }),
-  handler: async (ctx, { campaignId, submissionId, amount }) => {
-    // ATOMIC TRANSACTION: Release reserved budget back to remaining
-    // Ensures no budget is lost when submissions are rejected
-    const campaign = await ctx.db.get(campaignId);
-    if (!campaign) {
-      return { success: false, error: "Campaign not found" };
-    }
+// export const releaseBudgetForSubmission = internalMutation({
+//   args: {
+//     campaignId: v.id("campaigns"),
+//     submissionId: v.id("submissions"),
+//     amount: v.number(),
+//   },
+//   returns: v.object({
+//     success: v.boolean(),
+//     error: v.optional(v.string()),
+//   }),
+//   handler: async (ctx, { campaignId, submissionId, amount }) => {
+//     // ATOMIC TRANSACTION: Release reserved budget back to remaining
+//     // Ensures no budget is lost when submissions are rejected
+//     const campaign = await ctx.db.get(campaignId);
+//     if (!campaign) {
+//       return { success: false, error: "Campaign not found" };
+//     }
 
-    const currentState = extractBudgetState(campaign);
-    const result = releaseReservedBudget(currentState, amount, submissionId);
+//     const currentState = extractBudgetState(campaign);
+//     const result = releaseReservedBudget(currentState, amount, submissionId);
 
-    if (!result.isValid) {
-      return { success: false, error: result.error };
-    }
+//     if (!result.isValid) {
+//       return { success: false, error: result.error };
+//     }
 
-    // Update campaign with new budget state
-    await ctx.db.patch(campaignId, budgetStateToUpdate(result.newState!));
+//     // Update campaign with new budget state
+//     await ctx.db.patch(campaignId, budgetStateToUpdate(result.newState!));
 
-    // If campaign was paused due to budget, check if it can be reactivated
-    if (campaign.status === "paused" && result.newState!.remainingBudget >= campaign.maxPayoutPerSubmission) {
-      await ctx.db.patch(campaignId, { status: "active" });
-    }
+//     // If campaign was paused due to budget, check if it can be reactivated
+//     if (
+//       campaign.status === "paused" &&
+//       result.newState!.remainingBudget >= campaign.maxPayoutPerSubmission
+//     ) {
+//       await ctx.db.patch(campaignId, { status: "active" });
+//     }
 
-    return { success: true };
-  },
-});
+//     return { success: true };
+//   },
+// });
 
 /**
  * Update budget when submission view count increases
@@ -193,7 +195,10 @@ export const updateBudgetForViewIncrease = internalMutation({
     error: v.optional(v.string()),
     budgetChange: v.optional(v.number()),
   }),
-  handler: async (ctx, { campaignId, submissionId, oldViewCount, newViewCount }) => {
+  handler: async (
+    ctx,
+    { campaignId, submissionId, oldViewCount, newViewCount }
+  ) => {
     // ATOMIC TRANSACTION: Update budget when view count increases
     // Prevents race conditions during concurrent view updates
     const campaign = await ctx.db.get(campaignId);
@@ -223,31 +228,55 @@ export const updateBudgetForViewIncrease = internalMutation({
 
     const currentState = extractBudgetState(campaign);
 
-    // CRITICAL SECTION: Release old amount then reserve new amount
-    // These operations are safe because they execute within a single atomic transaction
-    // If any step fails, the entire transaction rolls back maintaining budget integrity
-    const releaseResult = releaseReservedBudget(currentState, oldEarnings, submissionId);
-    if (!releaseResult.isValid) {
-      return { success: false, error: releaseResult.error };
-    }
+    // CRITICAL SECTION: Handle budget update based on old earnings
+    // If oldEarnings is 0, just reserve the new amount directly
+    // Otherwise, release old amount then reserve new amount
+    let finalState;
 
-    // Then reserve the new amount using the updated state
-    const reserveResult = reserveBudget(releaseResult.newState!, newEarnings, submissionId);
-    if (!reserveResult.isValid) {
-      return { success: false, error: reserveResult.error };
+    if (oldEarnings === 0) {
+      // First time earnings - just reserve the new amount
+      const reserveResult = reserveBudget(
+        currentState,
+        newEarnings,
+        submissionId
+      );
+      if (!reserveResult.isValid) {
+        return { success: false, error: reserveResult.error };
+      }
+      finalState = reserveResult.newState!;
+    } else {
+      // Update existing earnings - release old then reserve new
+      const releaseResult = releaseReservedBudget(
+        currentState,
+        oldEarnings,
+        submissionId
+      );
+      if (!releaseResult.isValid) {
+        return { success: false, error: releaseResult.error };
+      }
+
+      const reserveResult = reserveBudget(
+        releaseResult.newState!,
+        newEarnings,
+        submissionId
+      );
+      if (!reserveResult.isValid) {
+        return { success: false, error: reserveResult.error };
+      }
+      finalState = reserveResult.newState!;
     }
 
     // Update campaign with new budget state
-    await ctx.db.patch(campaignId, budgetStateToUpdate(reserveResult.newState!));
+    await ctx.db.patch(campaignId, budgetStateToUpdate(finalState));
 
-    // Check if campaign should auto-pause
-    if (shouldAutoPause(reserveResult.newState!, campaign.maxPayoutPerSubmission)) {
-      await ctx.db.patch(campaignId, { status: "paused" });
+    // Check if campaign should be completed (budget exhausted) or paused (budget low)
+    if (shouldAutoComplete(finalState, campaign.maxPayoutPerSubmission)) {
+      await ctx.db.patch(campaignId, { status: "completed" });
     }
 
-    return { 
-      success: true, 
-      budgetChange: earningsDelta 
+    return {
+      success: true,
+      budgetChange: earningsDelta,
     };
   },
 });
@@ -294,9 +323,9 @@ export const completeCampaignWithRefund = mutation({
       ...budgetStateToUpdate(finalState),
     });
 
-    return { 
-      success: true, 
-      refundAmount 
+    return {
+      success: true,
+      refundAmount,
     };
   },
 });
@@ -327,16 +356,19 @@ export const getCampaignBudgetBreakdown = query({
     }
 
     const budgetState = extractBudgetState(campaign);
-    
-    const spentPercentage = campaign.totalBudget > 0 
-      ? (budgetState.spentBudget / campaign.totalBudget) * 100 
-      : 0;
-    const reservedPercentage = campaign.totalBudget > 0 
-      ? (budgetState.reservedBudget / campaign.totalBudget) * 100 
-      : 0;
-    const remainingPercentage = campaign.totalBudget > 0 
-      ? (budgetState.remainingBudget / campaign.totalBudget) * 100 
-      : 0;
+
+    const spentPercentage =
+      campaign.totalBudget > 0
+        ? (budgetState.spentBudget / campaign.totalBudget) * 100
+        : 0;
+    const reservedPercentage =
+      campaign.totalBudget > 0
+        ? (budgetState.reservedBudget / campaign.totalBudget) * 100
+        : 0;
+    const remainingPercentage =
+      campaign.totalBudget > 0
+        ? (budgetState.remainingBudget / campaign.totalBudget) * 100
+        : 0;
 
     return {
       ...budgetState,
@@ -350,35 +382,38 @@ export const getCampaignBudgetBreakdown = query({
 /**
  * Check if campaign should be auto-paused due to insufficient budget
  */
-export const checkCampaignAutoPause = internalMutation({
+export const checkCampaignAutoComplete = internalMutation({
   args: {
     campaignId: v.id("campaigns"),
   },
   returns: v.object({
-    shouldPause: v.boolean(),
+    shouldComplete: v.boolean(),
     reason: v.optional(v.string()),
   }),
   handler: async (ctx, { campaignId }) => {
     const campaign = await ctx.db.get(campaignId);
     if (!campaign) {
-      return { shouldPause: false, reason: "Campaign not found" };
+      return { shouldComplete: false, reason: "Campaign not found" };
     }
 
     if (campaign.status !== "active") {
-      return { shouldPause: false, reason: "Campaign not active" };
+      return { shouldComplete: false, reason: "Campaign not active" };
     }
 
     const currentState = extractBudgetState(campaign);
-    const shouldPause = shouldAutoPause(currentState, campaign.maxPayoutPerSubmission);
+    const shouldComplete = shouldAutoComplete(
+      currentState,
+      campaign.maxPayoutPerSubmission
+    );
 
-    if (shouldPause) {
-      await ctx.db.patch(campaignId, { status: "paused" });
-      return { 
-        shouldPause: true, 
-        reason: "Insufficient budget for new submissions" 
+    if (shouldComplete) {
+      await ctx.db.patch(campaignId, { status: "completed" });
+      return {
+        shouldComplete: true,
+        reason: "Insufficient budget for new submissions",
       };
     }
 
-    return { shouldPause: false };
+    return { shouldComplete: false };
   },
 });

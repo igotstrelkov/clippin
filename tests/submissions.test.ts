@@ -191,7 +191,7 @@ describe("SubmissionService", () => {
 
     test("rejects duplicate URL", () => {
       const existingSubmission = createMockSubmission();
-      const result = checkUrlDuplication("duplicate-url", existingSubmission);
+      const result = checkUrlDuplication("duplicate-url", existingSubmission, "tiktok");
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(

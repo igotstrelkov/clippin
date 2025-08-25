@@ -265,7 +265,11 @@ export function canDeleteCampaign(
 export function calculateCampaignStats(
   campaigns: Doc<"campaigns">[]
 ): CampaignStats {
-  const totalSpent = campaigns.reduce((sum, c) => sum + (c.spentBudget ?? 0), 0);
+  const totalSpent = campaigns.reduce((sum, c) => {
+    // Use spentBudget if available, otherwise calculate from totalBudget - remainingBudget
+    const spent = c.spentBudget ?? (c.totalBudget - c.remainingBudget);
+    return sum + spent;
+  }, 0);
 
   const totalViews = campaigns.reduce((sum, c) => sum + (c.totalViews || 0), 0);
 

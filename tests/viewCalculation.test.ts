@@ -195,6 +195,13 @@ describe("View Calculation and Earnings", () => {
         }
       );
 
+      // Reserve budget for the approved submission (simulate proper approval workflow)
+      await t.mutation(internal.budgetOperations.reserveBudgetForSubmission, {
+        campaignId,
+        submissionId,
+        viewCount: 0, // Initial view count when approved
+      });
+
       // Update view count to 10,000 views
       await t.mutation(
         internal.viewTrackingHelpers.updateSubmissionViewsAndEarnings,
@@ -280,6 +287,13 @@ describe("View Calculation and Earnings", () => {
         return { submissionId, campaignId };
       });
 
+      // Reserve budget for the approved submission (simulate proper approval workflow)
+      await t.mutation(internal.budgetOperations.reserveBudgetForSubmission, {
+        campaignId,
+        submissionId,
+        viewCount: 0, // Initial view count when approved
+      });
+
       // Update to 100K views (would normally earn €10.00, but max is €5.00)
       await t.mutation(
         internal.viewTrackingHelpers.updateSubmissionViewsAndEarnings,
@@ -353,6 +367,13 @@ describe("View Calculation and Earnings", () => {
         });
 
         return { submissionId, campaignId };
+      });
+
+      // Reserve budget for the approved submission (simulate proper approval workflow)
+      await t.mutation(internal.budgetOperations.reserveBudgetForSubmission, {
+        campaignId,
+        submissionId,
+        viewCount: 0, // Initial view count when approved
       });
 
       // Update to 10K views (would earn €1.00, exactly the budget)
