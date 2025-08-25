@@ -19,7 +19,6 @@ import type * as campaigns from "../campaigns.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
-import type * as instagramVerification from "../instagramVerification.js";
 import type * as lib_budgetService from "../lib/budgetService.js";
 import type * as lib_campaigns from "../lib/campaigns.js";
 import type * as lib_earnings from "../lib/earnings.js";
@@ -35,10 +34,8 @@ import type * as rateLimiter from "../rateLimiter.js";
 import type * as refundSystem from "../refundSystem.js";
 import type * as smartMonitoring from "../smartMonitoring.js";
 import type * as submissions from "../submissions.js";
-import type * as tiktokVerification from "../tiktokVerification.js";
 import type * as viewTracking from "../viewTracking.js";
 import type * as viewTrackingHelpers from "../viewTrackingHelpers.js";
-import type * as youtubeVerification from "../youtubeVerification.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -55,7 +52,6 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   emails: typeof emails;
   http: typeof http;
-  instagramVerification: typeof instagramVerification;
   "lib/budgetService": typeof lib_budgetService;
   "lib/campaigns": typeof lib_campaigns;
   "lib/earnings": typeof lib_earnings;
@@ -71,10 +67,8 @@ declare const fullApi: ApiFromModules<{
   refundSystem: typeof refundSystem;
   smartMonitoring: typeof smartMonitoring;
   submissions: typeof submissions;
-  tiktokVerification: typeof tiktokVerification;
   viewTracking: typeof viewTracking;
   viewTrackingHelpers: typeof viewTrackingHelpers;
-  youtubeVerification: typeof youtubeVerification;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

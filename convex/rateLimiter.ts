@@ -103,39 +103,29 @@ export const recordRequest = internalMutation({
   },
 });
 
-// Get current rate limiter status
+// Get current rate limiter status (simplified for smart monitoring)
 export const getRateLimiterStatus = internalQuery({
   args: {},
   returns: v.object({
     requestsLastMinute: v.number(),
-    requestsLastSecond: v.number(),
-    queueSize: v.number(),
     utilizationPercent: v.number(),
     canMakeRequest: v.boolean(),
   }),
   handler: async (ctx) => {
     const now = Date.now();
     const oneMinuteAgo = now - RATE_LIMIT.WINDOW_SIZE_MS;
-    const oneSecondAgo = now - RATE_LIMIT.BURST_WINDOW_MS;
 
     // Clean up old requests
     requestQueue = requestQueue.filter((req) => req.timestamp > oneMinuteAgo);
 
     const requestsLastMinute = requestQueue.length;
-    const requestsLastSecond = requestQueue.filter(
-      (req) => req.timestamp > oneSecondAgo
-    ).length;
     const utilizationPercent =
       (requestsLastMinute / RATE_LIMIT.MAX_REQUESTS_PER_MINUTE) * 100;
 
-    const canMakeRequest =
-      requestsLastMinute < RATE_LIMIT.MAX_REQUESTS_PER_MINUTE &&
-      requestsLastSecond < RATE_LIMIT.MAX_REQUESTS_PER_SECOND;
+    const canMakeRequest = requestsLastMinute < RATE_LIMIT.MAX_REQUESTS_PER_MINUTE;
 
     return {
       requestsLastMinute,
-      requestsLastSecond,
-      queueSize: requestQueue.length,
       utilizationPercent,
       canMakeRequest,
     };

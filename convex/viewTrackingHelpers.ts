@@ -158,18 +158,8 @@ export const updateSubmissionViewsAndEarnings = internalMutation({
       ctx.db.patch(args.submissionId, submissionUpdates),
     ]);
 
-    const growthRate = calculateGrowthRate(submission.viewHistory || []);
-
-    // Log view tracking entry
-    await ctx.db.insert("viewTracking", {
-      submissionId: args.submissionId,
-      viewCount: args.viewCount,
-      timestamp: now,
-      growthRate: growthRate,
-    });
-
     // Add to view history for smart monitoring (async to avoid blocking)
-    ctx
+    const viewHistoryPromise = ctx
       .runMutation(internal.smartMonitoring.addViewHistoryPoint, {
         submissionId: args.submissionId,
         viewCount: args.viewCount,
@@ -181,6 +171,19 @@ export const updateSubmissionViewsAndEarnings = internalMutation({
           error: error instanceof Error ? error : new Error(String(error)),
         });
       });
+
+    const growthRate = calculateGrowthRate(submission.viewHistory || []);
+
+    // Log view tracking entry
+    await ctx.db.insert("viewTracking", {
+      submissionId: args.submissionId,
+      viewCount: args.viewCount,
+      timestamp: now,
+      growthRate: growthRate,
+    });
+
+    // Wait for view history update to complete
+    await viewHistoryPromise;
 
     logger.info("View count updated successfully", {
       submissionId: args.submissionId,

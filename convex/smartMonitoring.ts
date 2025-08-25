@@ -122,70 +122,29 @@ export const getSubmissionsDueForUpdate = internalQuery({
   },
 });
 
-// Get all submissions that need tier classification (new submissions or periodic reclassification)
-export const getSubmissionsForTierUpdate = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    const now = Date.now();
-    const sixHoursAgo = now - 6 * 60 * 60 * 1000; // Reclassify every 6 hours
 
-    return await ctx.db
-      .query("submissions")
-      .filter((q) =>
-        q.and(
-          q.or(
-            q.eq(q.field("status"), "pending"),
-            q.eq(q.field("status"), "approved")
-          ),
-          q.or(
-            q.eq(q.field("monitoringTier"), undefined),
-            q.lt(q.field("lastTierUpdate"), sixHoursAgo)
-          )
-        )
-      )
-      .collect();
-  },
-});
-
-// Update submission's monitoring tier and growth metrics
-export const updateSubmissionTier = internalMutation({
-  args: {
-    submissionId: v.id("submissions"),
-    newTier: v.union(
-      v.literal("hot"),
-      v.literal("warm"),
-      v.literal("cold"),
-      v.literal("archived")
-    ),
-    growthRate: v.number(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.submissionId, {
-      monitoringTier: args.newTier,
-      growthRate: args.growthRate,
-      lastTierUpdate: Date.now(),
-    });
-
-    logger.info("Updated submission monitoring tier", {
-      submissionId: args.submissionId,
-      newTier: args.newTier,
-      growthRate: args.growthRate,
-    });
-  },
-});
-
-// Add view data point to submission's history (keep last 7 days)
+// Add view data point to submission's history and update tier automatically
 export const addViewHistoryPoint = internalMutation({
   args: {
     submissionId: v.id("submissions"),
     viewCount: v.number(),
     timestamp: v.number(),
   },
-  returns: v.null(),
+  returns: v.object({
+    tier: v.union(
+      v.literal("hot"),
+      v.literal("warm"), 
+      v.literal("cold"),
+      v.literal("archived")
+    ),
+    growthRate: v.number(),
+    tierChanged: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId);
-    if (!submission) return;
+    if (!submission) {
+      throw new Error("Submission not found");
+    }
 
     const currentHistory = submission.viewHistory || [];
     const sevenDaysAgo = args.timestamp - 7 * 24 * 60 * 60 * 1000;
@@ -196,69 +155,35 @@ export const addViewHistoryPoint = internalMutation({
       { timestamp: args.timestamp, viewCount: args.viewCount },
     ].slice(-168); // Max 168 points (7 days * 24 hours)
 
+    // Calculate growth rate and new tier
+    const growthRate = calculateGrowthRate(updatedHistory);
+    const currentTier = submission.monitoringTier as MonitoringTier;
+    const newTier = classifyTier(growthRate, currentTier);
+    const tierChanged = newTier !== currentTier;
+
+    // Update submission with history and tier (atomic operation)
     await ctx.db.patch(args.submissionId, {
       viewHistory: updatedHistory,
+      monitoringTier: newTier,
+      growthRate,
+      lastTierUpdate: args.timestamp,
     });
-  },
-});
 
-// Smart tier classification action that processes all submissions needing updates
-export const updateAllTierClassifications = internalAction({
-  args: {},
-  returns: v.object({
-    processedCount: v.number(),
-    tierChanges: v.object({
-      hot: v.number(),
-      warm: v.number(),
-      cold: v.number(),
-      archived: v.number(),
-    }),
-  }),
-  handler: async (ctx) => {
-    const submissions = await ctx.runQuery(
-      internal.smartMonitoring.getSubmissionsForTierUpdate
-    );
-
-    let processedCount = 0;
-    const tierChanges = { hot: 0, warm: 0, cold: 0, archived: 0 };
-
-    for (const submission of submissions) {
-      try {
-        const growthRate = calculateGrowthRate(submission.viewHistory || []);
-        const currentTier = submission.monitoringTier as MonitoringTier;
-        const newTier = classifyTier(growthRate, currentTier);
-
-        // Only update if tier changed or it's a new submission
-        if (newTier !== currentTier) {
-          await ctx.runMutation(internal.smartMonitoring.updateSubmissionTier, {
-            submissionId: submission._id,
-            newTier,
-            growthRate,
-          });
-
-          tierChanges[newTier]++;
-        }
-
-        processedCount++;
-      } catch (error) {
-        logger.error("Failed to update tier classification", {
-          submissionId: submission._id,
-          error: error instanceof Error ? error : new Error(String(error)),
-        });
-      }
+    if (tierChanged) {
+      logger.info("Submission tier updated automatically", {
+        submissionId: args.submissionId,
+        growthRate,
+      });
     }
 
-    logger.info("Tier classification completed", {
-      processedCount: processedCount,
-      totalChanges: Object.values(tierChanges).reduce(
-        (sum, count) => sum + count,
-        0
-      ),
-    });
-
-    return { processedCount, tierChanges };
+    return {
+      tier: newTier,
+      growthRate,
+      tierChanged,
+    };
   },
 });
+
 
 // Smart monitoring action for a specific tier
 export const updateTierSubmissions = internalAction({

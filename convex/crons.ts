@@ -37,13 +37,6 @@ crons.interval(
   { tier: "archived" }
 );
 
-// Update tier classifications every 6 hours based on growth patterns
-crons.interval(
-  "update tier classifications",
-  { hours: 6 },
-  internal.smartMonitoring.updateAllTierClassifications,
-  {}
-);
 
 // Auto-approve submissions that have been pending for over 48 hours
 crons.interval(
